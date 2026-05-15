@@ -6,7 +6,7 @@ _generated for independent execution without prd-planner_
 ## Overview
 
 - **Summary**: Phase 1 ships the V1 foundation. Three surfaces go live — Onboarding, The Pulse, The Thread — backed by the three-call LLM card-synthesis pipeline, the event-detection scheduled job, the Banking-sector slice of the Factor Exposure Database, signal monitoring with confidence-gated triggering, append-only track-record logging, and the bias audit log. 10–15 invited testers receive magic-link access in Week 11–12.
-- **Tech stack** (PRD §9): Next.js + React + Tailwind (frontend on Vercel), Python + FastAPI (backend on Railway), PostgreSQL via Supabase, Supabase Auth (magic link), Anthropic Claude Sonnet (LLM). Tests: Jest + React Testing Library (frontend), Pytest + httpx (backend). Single `.env.local` for all secrets — never duplicated across `.env` / `.env.example` files (per workspace rules).
+- **Tech stack** (PRD §9): Next.js + React + Tailwind (frontend on Vercel), Python + FastAPI (backend on Render), PostgreSQL via Supabase, Supabase Auth (magic link), Anthropic Claude Sonnet (LLM). Tests: Jest + React Testing Library (frontend), Pytest + httpx (backend). Single `.env.local` for all secrets — never duplicated across `.env` / `.env.example` files (per workspace rules).
 
 - **Slicing approach**: every story is an end-to-end vertical slice — UI + API + DB minimum, with explicit test step(s) in the checklist. Parent task IDs are **per-phase** (this file uses `1.0`–`14.0`). All MMJ, SEBI, bias-flag, and track-record constraints from PRD §6, §8.6, §11 are treated as non-negotiable acceptance criteria, not nice-to-haves.
 
@@ -34,15 +34,15 @@ _Stand up the foundation surfaces (Pulse + Thread + Onboarding), the LLM card pi
 
 **User story**
 
-> As the team, I want a working monorepo wired to Supabase, Vercel, Railway, and GitHub Actions with a single `.env.local`, so that every later story can ship behind a green build.
+> As the team, I want a working monorepo wired to Supabase, Vercel, Render, and GitHub Actions with a single `.env.local`, so that every later story can ship behind a green build.
 
 **Acceptance criteria**
 
 - [ ] Repo contains `frontend/` (Next.js + Tailwind) and `backend/` (FastAPI), with shared `docs/` and `scripts/`.
 - [ ] Supabase project provisioned (dev) — URL + anon key stored only in `.env.local`.
-- [ ] Vercel auto-deploys `frontend/` from `main`; Railway auto-deploys `backend/` from `main`.
+- [ ] Vercel auto-deploys `frontend/` from `main`; Render auto-deploys `backend/` from `main`.
 - [ ] GitHub Actions runs lint + type-check + unit tests for both apps on every PR.
-- [ ] `GET /health` on the backend returns `200 {"status":"ok"}` from both local dev and Railway.
+- [ ] `GET /health` on the backend returns `200 {"status":"ok"}` from both local dev and Render.
 - [ ] One `.env.local` at repo root only — no `.env`, no `.env.example` duplicates.
 
 **Tech notes**
@@ -64,7 +64,7 @@ _Stand up the foundation surfaces (Pulse + Thread + Onboarding), the LLM card pi
 | `backend/tests/test_health.py` | create | Pytest for `/health` |
 | `.env.local` | create | Single source of secrets (gitignored) |
 | `.github/workflows/ci.yml` | create | Lint + test + type-check matrix |
-| `vercel.json` / Railway service config | create | Deploy targets |
+| `vercel.json` / `render.yaml` | create | Deploy targets |
 
 #### Tasks (checkboxes)
 
@@ -74,7 +74,7 @@ _Stand up the foundation surfaces (Pulse + Thread + Onboarding), the LLM card pi
   - [ ] **1.3** Provision Supabase project (dev). Capture URL + keys into `.env.local` only.
   - [ ] **1.4** Add `backend/app/main.py` with `GET /health` and CORS for the Vercel preview domain pattern.
   - [ ] **1.5** Wire Tailwind config to PRD §8.3 colour palette (slate, blue, green, amber, red, surface).
-  - [ ] **1.6** Set up Vercel project → deploy `frontend/`. Set up Railway service → deploy `backend/`.
+  - [ ] **1.6** Set up Vercel project → deploy `frontend/`. Set up Render service → deploy `backend/`.
   - [ ] **1.7** GitHub Actions workflow: `frontend` job (`pnpm lint && pnpm test && pnpm build`) and `backend` job (`ruff check . && pytest -q`).
   - [ ] **1.8** Test: `pytest backend/tests/test_health.py` passes locally and in CI; `pnpm test` in frontend runs a smoke Jest test for `app/page.tsx`.
 
@@ -310,7 +310,7 @@ _Stand up the foundation surfaces (Pulse + Thread + Onboarding), the LLM card pi
 
 **Acceptance criteria**
 
-- [ ] Scheduled job runs every 4 hours on Railway (cron) and on demand via `python -m app.jobs.event_detection`.
+- [ ] Scheduled job runs every 4 hours on Render (cron) and on demand via `python -m app.jobs.event_detection`.
 - [ ] Each polled source has a typed adapter behind a `SourceAdapter` interface; adding a new source is one new class.
 - [ ] Each detected event lands in `events` table with `lifecycle_state='draft'` and a 0–100 confidence score.
 - [ ] Editorial queue UI `/admin/queue` lists draft events sorted by confidence desc with filters by category + source.
@@ -331,7 +331,7 @@ _Stand up the foundation surfaces (Pulse + Thread + Onboarding), the LLM card pi
 | `backend/tests/test_event_detection_idempotent.py` | create | Re-run yields zero new rows |
 | `backend/tests/test_source_adapters.py` | create | Fixtures per source |
 | `frontend/app/admin/queue/page.tsx` | create | Editorial queue UI |
-| `railway.toml` / `.railway/cron.yml` | create | 4-hour cron schedule |
+| `render.yaml` | create | Render deployment config with web service and cron jobs |
 
 #### Tasks (checkboxes)
 
@@ -342,7 +342,7 @@ _Stand up the foundation surfaces (Pulse + Thread + Onboarding), the LLM card pi
   - [ ] **6.4** NSE announcements adapter — wrap public CSV/HTML scrape with a `SourceFailure` exception path (fallback to last-good-state per PRD §7.3 risk note).
   - [ ] **6.5** `event_confidence.score(raw_event)` — combines keyword heuristics + source priority (RBI > Exchange > News). 0–100.
   - [ ] **6.6** Dedupe + persist: hash on `(source, canonical_url)` unique constraint; upsert path is no-op.
-  - [ ] **6.7** Railway cron entry: every 4 hours; emits structured logs.
+  - [ ] **6.7** Render cron job: every 4 hours; emits structured logs.
   - [ ] **6.8** Admin queue route + Next.js page listing drafts (table view) with filter pills.
   - [ ] **6.9** Test: idempotency test (run twice → zero new rows); per-source unit test with HTTP fixtures.
 
@@ -840,7 +840,7 @@ Parallel-safe pairs at every week boundary: `S2/S3/S5`, `S6/S7`, `S8/S9/S10`, `S
   - [ ] **6.4** NSE adapter + fallback path
   - [ ] **6.5** Confidence scorer
   - [ ] **6.6** Dedupe + persist
-  - [ ] **6.7** Railway 4-hour cron
+  - [ ] **6.7** Render 4-hour cron
   - [ ] **6.8** Admin queue API + page
   - [ ] **6.9** Idempotency + adapter tests
 - [ ] **7.0** LLM 3-call card-synthesis pipeline (Claude Sonnet)
@@ -923,7 +923,7 @@ Parallel-safe pairs at every week boundary: `S2/S3/S5`, `S6/S7`, `S8/S9/S10`, `S
   - [ ] **1.3** Supabase project provisioning
   - [ ] **1.4** `/health` endpoint
   - [ ] **1.5** Tailwind seeded w/ PRD palette
-  - [ ] **1.6** Vercel + Railway deploys
+  - [ ] **1.6** Vercel + Render deploys
   - [ ] **1.7** CI workflow
   - [ ] **1.8** Smoke tests
 - [ ] **4.0** Core DB schema + append-only track record + SEBI footer

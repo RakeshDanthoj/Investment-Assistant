@@ -1,0 +1,85 @@
+# Render deployment configuration for FinnWise
+# Docs: https://docs.render.com/infrastructure-as-code
+
+services:
+  # Backend FastAPI service
+  - type: web
+    name: finnwise-backend
+    runtime: python
+    plan: free
+    region: singapore
+    branch: main
+    buildCommand: pip install ./backend
+    startCommand: cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: PORT
+        value: 8000
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: CLAUDE_API_KEY
+        sync: false
+      - key: NEWSAPI_KEY
+        sync: false
+
+  # Event detection cron job - runs every 4 hours
+  - type: cron
+    name: finnwise-event-detection
+    runtime: python
+    plan: free
+    region: singapore
+    branch: main
+    buildCommand: pip install ./backend
+    startCommand: cd backend && python -m app.jobs.event_detection
+    schedule: "0 */4 * * *"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: NEWSAPI_KEY
+        sync: false
+
+  # Signal monitoring cron job - runs every 30 minutes during market hours (9:00-16:00 IST)
+  - type: cron
+    name: finnwise-signal-monitor
+    runtime: python
+    plan: free
+    region: singapore
+    branch: main
+    buildCommand: pip install ./backend
+    startCommand: cd backend && python -m app.jobs.signal_monitor
+    schedule: "*/30 9-16 * * *"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+
+  # Weekly bias report cron job
+  - type: cron
+    name: finnwise-bias-report
+    runtime: python
+    plan: free
+    region: singapore
+    branch: main
+    buildCommand: pip install ./backend
+    startCommand: cd backend && python -m app.jobs.weekly_bias_report
+    schedule: "0 9 * * 1"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false

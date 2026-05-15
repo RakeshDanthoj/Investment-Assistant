@@ -6,7 +6,7 @@ _generated for independent execution without prd-planner_
 ## Overview
 
 - **Summary**: Phase 3 deepens analytical rigour and prepares FinnWise for a regulated public posture. Workstreams: an NLP pipeline that automates factor-DB extraction from quarterly filings (replacing manual weekly review), a compound-event Fog of War model that auto-suppresses confidence on interaction effects, a formal SEBI compliance audit with mandatory tester-briefing flow hardening, a productisation assessment dossier (RA-registration research, pricing model, scalability review), and — only if and when registration is obtained — a public marketing site, multi-tenant onboarding, paywall infrastructure, and the final published version of The Map. Phase 3 is **gated**: marketing, paywall, and public-launch stories cannot ship until the SEBI go/no-go (P3-S8) is green.
-- **Tech stack additions** (over Phase 2): NLP toolchain (spaCy + a small LLM extractor running on Railway), background queue (e.g. RQ or Celery on Redis), Stripe-equivalent for India billing (Razorpay or similar — research as part of P3-S7), Sentry/observability for hardening. Single `.env.local` continues.
+- **Tech stack additions** (over Phase 2): NLP toolchain (spaCy + a small LLM extractor running on Render), background queue (e.g. RQ or Celery on Redis), Stripe-equivalent for India billing (Razorpay or similar — research as part of P3-S7), Sentry/observability for hardening. Single `.env.local` continues.
 - **Slicing approach**: vertical slices where stories ship code; for strategic/research stories (SEBI audit, productisation dossier) the deliverable is a written artefact + workflow change, not running code — these are still scoped as parent + sub-tasks. Parent task IDs are **per-phase** — this file uses `1.0`–`9.0`. All PRD §6 / §8.6 / §11 invariants remain in force.
 - **Prerequisite**: Phase 2 shipped and stable. Factor DB covers all 8 sectors. Mirror + Lens have ≥3 months of live data.
 
@@ -43,7 +43,7 @@ _Automate the slow Phase 1/2 review loops, harden the platform for higher load, 
 - [ ] Every proposal carries: `instrument_id`, `factor_id`, `proposed_sensitivity`, `mmj_tag`, `source_url` (filing PDF or HTML), `source_excerpt`, `confidence`, `extracted_at`.
 - [ ] Extraction never invents numbers — extractor is constrained to numbers + qualitative claims present in the filing text (test fixture proves rejection of out-of-source numbers).
 - [ ] Job is idempotent over (filing_url, instrument, factor).
-- [ ] Performance: processes ≥100 filings/night within Railway free-tier limits.
+- [ ] Performance: processes ≥100 filings/night within Render free-tier limits.
 
 **Tech notes**
 
@@ -72,7 +72,7 @@ _Automate the slow Phase 1/2 review loops, harden the platform for higher load, 
   - [ ] **1.4** `extractor.propose(candidate)` — LLM call returning strict JSON `{instrument, factor, sensitivity, mmj_tag, confidence}`.
   - [ ] **1.5** `source_guard.assert_grounded(proposal, excerpt)` — every numeric or claim token must appear (literal or normalised) in the excerpt.
   - [ ] **1.6** Persist proposals; dedupe via unique constraint.
-  - [ ] **1.7** Railway nightly cron entry.
+  - [ ] **1.7** Render nightly cron entry.
   - [ ] **1.8** Test: out-of-source rejection; idempotency; caching test.
 
 ---
@@ -293,7 +293,7 @@ _Automate the slow Phase 1/2 review loops, harden the platform for higher load, 
   - [ ] **6.2** Sentry projects + DSNs in `.env.local`; frontend + backend init.
   - [ ] **6.3** Logger ships JSON logs to chosen provider.
   - [ ] **6.4** k6 scripts for the three surfaces.
-  - [ ] **6.5** Weekly load-test workflow on GH Actions (or scheduled Railway job).
+  - [ ] **6.5** Weekly load-test workflow on GH Actions (or scheduled Render cron job).
   - [ ] **6.6** Burn-rate alert + p95 SLO violation alert configured.
   - [ ] **6.7** Capture baseline numbers; hand over to Riley for P3-S4 dossier.
 

@@ -6,7 +6,7 @@ _generated for independent execution without prd-planner_
 ## Overview
 
 - **Summary**: Phase 2 introduces the engagement layer on top of the Phase 1 foundation: **The Mirror** (prediction history, three-level accuracy, reasoning-gap analysis, streak tracker), **The Lens** (on-demand ICE card generation with visible six-step pipeline), Portfolio Protector personalisation against session-only holdings, email notifications when signals fire, expansion of the Factor Exposure DB to all eight sectors plus The Map content, and a UI polish pass driven by Phase 1 tester feedback.
-- **Tech stack**: same as Phase 1 (Next.js + Tailwind, FastAPI, Supabase, Anthropic Sonnet, Vercel, Railway). New additions: a lightweight email provider (Resend or Postmark free tier) and Server-Sent Events for the Lens pipeline progress stream. Tests: Jest + RTL (frontend), Pytest (backend). Single `.env.local`.
+- **Tech stack**: same as Phase 1 (Next.js + Tailwind, FastAPI, Supabase, Anthropic Sonnet, Vercel, Render). New additions: a lightweight email provider (Resend or Postmark free tier) and Server-Sent Events for the Lens pipeline progress stream. Tests: Jest + RTL (frontend), Pytest (backend). Single `.env.local`.
 - **Slicing approach**: every story is an end-to-end vertical slice (UI + API + DB minimum) with explicit test step(s). Parent task IDs are **per-phase** — this file uses `1.0`–`13.0`. All PRD §6 / §8.6 / §11 constraints from Phase 1 continue to apply unchanged.
 - **Prerequisite**: Phase 1 is fully shipped and stable (Onboarding, Pulse, Thread, LLM pipeline, signal monitor, track record, bias audit) and at least one tester cohort has completed three sessions.
 

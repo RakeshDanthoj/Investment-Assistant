@@ -612,7 +612,7 @@ FinnWise is designed to feel like **The Economist**, not like a fintech app. Cal
 | **Database** | PostgreSQL via Supabase | Relational with free tier for V1. Append-only track record log enforced at database level via row-level security — cannot be edited or deleted. |
 | **Auth** | Supabase Auth — magic link email | No password management. Product Owner invites testers by email. One-click access. |
 | **Frontend Hosting** | Vercel | Native Next.js deployment. Free tier. One-click GitHub integration. Automatic preview deployments on every PR. |
-| **Backend Hosting** | Railway | Free tier handles Python backend and scheduled jobs. Event detection monitor runs as a scheduled Python job every 4 hours. |
+| **Backend Hosting** | Render | Free tier handles Python backend and scheduled jobs. Event detection monitor runs as a scheduled Python job every 4 hours. |
 | **Event Detection** | Python scheduled job — 4-hour cadence | Watches NewsAPI, RBI RSS, NSE announcements. Generates confidence score. Routes to auto-update or editorial queue per confidence gate. |
 | **Prompt Templates** | Version-controlled in Git | All three prompt templates (synthesis / dissent / framework) are version-controlled. Cards tagged with prompt version at generation. Track record interpretable when prompts change. |
 | **Dev Tooling** | Cursor, Claude Code, GitHub Copilot, v0 | AI agents for all code generation. Product Owner role: factor database review, editorial card review, product decisions — not code. |
@@ -623,7 +623,7 @@ FinnWise is designed to feel like **The Economist**, not like a fintech app. Cal
 |---|---|---|
 | Claude API — LLM reasoning and card generation | ₹8,000–10,000 | ~500–800 card generations and signal checks per month |
 | Vercel — frontend hosting | ₹0 | Free tier sufficient for V1 with 10–15 testers |
-| Railway — backend and scheduled jobs | ₹0–1,500 | Free tier or minimal paid tier |
+| Render — backend and scheduled jobs | ₹0–1,500 | Free tier or minimal paid tier |
 | Supabase — database and auth | ₹0 | Free tier sufficient for V1 |
 | NewsAPI — event detection | ₹0 | 100 requests/day free tier, sufficient for 4-hourly cadence |
 | Domain name (optional) | ₹800–1,200 | Optional for research phase |
@@ -642,7 +642,7 @@ One sector of the factor database complete. Two or three sector knowledge module
 |---|---|---|
 | 1–2 | Database schema | PostgreSQL schema live on Supabase. Factor, card, signal, track record, and user prediction tables with correct constraints and row-level security on track record. |
 | 3–4 | LLM pipeline | Three prompt templates version-controlled. ICE card synthesis, dissent generation, framework articulation. Test runs producing structurally correct cards. |
-| 5–6 | Event detection | Scheduled job running on Railway. NewsAPI and RBI RSS monitored. Events entering queue with confidence scores. Editorial review interface operational. |
+| 5–6 | Event detection | Scheduled job running on Render. NewsAPI and RBI RSS monitored. Events entering queue with confidence scores. Editorial review interface operational. |
 | 7–8 | The Thread | Full Thread surface live. ICE tabs, Living Card status panel, signal consequence map, prediction logger, provenance dots, SEBI disclaimer, two-view toggle. |
 | 9–10 | The Pulse + Onboarding | Full Pulse surface live. Two-column layout, card feed, insight panel, Fog of War mode, onboarding flow, tester access via magic link. |
 | 11–12 | Tester launch | 5–10 testers invited. First real event card published. Track record timestamp logged. Feedback collection begins. |
