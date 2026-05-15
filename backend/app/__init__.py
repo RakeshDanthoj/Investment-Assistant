@@ -1,0 +1,1 @@
+"""FinnWise FastAPI application."""

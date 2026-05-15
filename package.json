@@ -1,0 +1,15 @@
+{
+  "name": "finnwise",
+  "private": true,
+  "packageManager": "pnpm@9.15.0",
+  "scripts": {
+    "dev": "pnpm --parallel -r run dev",
+    "dev:frontend": "pnpm --filter frontend dev",
+    "dev:backend": "cd backend && uvicorn app.main:app --reload --port 8000",
+    "lint": "pnpm -r run lint",
+    "test": "pnpm -r run test",
+    "test:backend": "python -m pytest -q backend/tests",
+    "lint:backend": "python -m ruff check backend",
+    "build": "pnpm -r run build"
+  }
+}

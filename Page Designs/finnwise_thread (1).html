@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FinnWise — The Thread</title>
+<link href="https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --blue:#1B4FD8;--blue-light:#E8EEFB;--blue-mid:#3B6BE8;
+  --green:#0D6E4E;--green-light:#E3F4ED;
+  --amber:#92560A;--amber-light:#FDF3E3;
+  --red:#A0281C;--red-light:#FCECEA;
+  --purple:#3D2FA0;--purple-light:#EEEDFC;
+  --ink:#111318;--ink-mid:#3D4250;--ink-light:#6B7280;--ink-faint:#9CA3AF;
+  --surface:#F7F8FA;--surface-raised:#FFFFFF;--border:#E5E7EB;--border-mid:#D1D5DB;
+  --serif:'Lora',Georgia,serif;
+  --sans:'DM Sans',system-ui,sans-serif;
+  --mono:'DM Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--sans);background:var(--surface);color:var(--ink);font-size:14px;line-height:1.6}
+
+/* LAYOUT */
+.app{display:grid;grid-template-columns:220px 1fr;min-height:100vh}
+
+/* SIDEBAR */
+.sidebar{background:var(--surface-raised);border-right:1px solid var(--border);display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
+.sidebar-logo{padding:1.25rem 1.5rem;border-bottom:1px solid var(--border)}
+.logo-text{font-family:var(--serif);font-size:18px;font-weight:600;color:var(--ink);letter-spacing:-0.5px}
+.logo-text em{color:var(--blue);font-style:normal}
+.logo-sub{font-size:10px;color:var(--ink-faint);letter-spacing:0.08em;text-transform:uppercase;margin-top:2px}
+.nav{padding:1rem 0.75rem;flex:1}
+.nav-group{margin-bottom:1.5rem}
+.nav-group-label{font-size:10px;color:var(--ink-faint);letter-spacing:0.08em;text-transform:uppercase;padding:0 0.625rem;margin-bottom:0.5rem}
+.nav-item{display:flex;align-items:center;gap:10px;padding:0.5rem 0.625rem;border-radius:8px;cursor:pointer;color:var(--ink-light);font-size:13px;font-weight:400;transition:all 0.12s}
+.nav-item:hover{background:var(--surface);color:var(--ink-mid)}
+.nav-item.active{background:var(--blue-light);color:var(--blue);font-weight:500}
+.nav-item svg{flex-shrink:0;width:15px;height:15px}
+.sidebar-foot{padding:0.875rem;border-top:1px solid var(--border);margin-top:auto}
+.user-chip{display:flex;align-items:center;gap:10px;padding:0.625rem;border-radius:8px;cursor:pointer}
+.user-chip:hover{background:var(--surface)}
+.avatar{width:30px;height:30px;border-radius:50%;background:var(--blue-light);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:var(--blue);flex-shrink:0}
+.user-meta p{font-size:12px;font-weight:500;color:var(--ink)}
+.user-meta span{font-size:11px;color:var(--ink-faint)}
+
+/* MAIN */
+.main{display:flex;flex-direction:column;min-height:100vh}
+.thread-bar{background:var(--surface-raised);border-bottom:1px solid var(--border);padding:0 1.75rem;height:52px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
+.back{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--blue);cursor:pointer;font-weight:500}
+.back:hover{opacity:0.75}
+.tag-row{display:flex;align-items:center;gap:8px}
+.tag{font-size:11px;padding:3px 9px;border-radius:20px;font-weight:500;white-space:nowrap}
+.t-geo{background:var(--purple-light);color:var(--purple)}
+.t-short{background:var(--red-light);color:var(--red)}
+.t-long{background:var(--green-light);color:var(--green)}
+.t-time{background:none;color:var(--ink-faint);font-weight:400}
+
+/* THREAD BODY — two column on large screens */
+.thread-body{display:grid;grid-template-columns:1fr 340px;gap:0;flex:1}
+.thread-main{padding:2.5rem 2.5rem 4rem;border-right:1px solid var(--border);overflow-y:auto}
+.thread-aside{padding:1.5rem;overflow-y:auto;background:var(--surface)}
+
+/* Typography */
+.article-title{font-family:var(--serif);font-size:26px;font-weight:600;color:var(--ink);line-height:1.35;margin-bottom:0.875rem}
+.article-deck{font-size:15px;color:var(--ink-mid);line-height:1.75;margin-bottom:1.5rem;font-weight:300}
+
+/* Confidence bar */
+.conf-bar{display:flex;gap:0;border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:2rem}
+.conf-cell{flex:1;padding:0.625rem 0.875rem;border-right:1px solid var(--border);background:var(--surface-raised)}
+.conf-cell:last-child{border-right:none}
+.conf-key{font-size:10px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:3px}
+.conf-val{font-size:13px;font-weight:500;color:var(--ink);display:flex;align-items:center;gap:6px}
+.dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.d-high{background:var(--blue)}
+.d-med{background:var(--amber)}
+.d-low{background:#CBD5E1}
+
+/* ICE Tabs */
+.ice-nav{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:1.75rem}
+.ice-tab{padding:0.625rem 1.25rem;font-size:13px;font-weight:500;cursor:pointer;color:var(--ink-light);border-bottom:2px solid transparent;margin-bottom:-1px;transition:all 0.12s}
+.ice-tab:hover{color:var(--ink-mid)}
+.ice-tab.active{color:var(--blue);border-bottom-color:var(--blue)}
+
+/* Insight panel */
+.insight-prose{font-size:15px;color:var(--ink-mid);line-height:1.8;font-weight:300;margin-bottom:1.5rem;padding:1.25rem 1.5rem;background:var(--surface-raised);border:1px solid var(--border);border-radius:10px}
+.insight-prose p+p{margin-top:0.875rem}
+
+/* Stocks grid */
+.sec-label{font-size:10px;color:var(--ink-faint);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:0.875rem}
+.stocks-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:2rem}
+.stock-card{background:var(--surface-raised);border:1px solid var(--border);border-radius:10px;padding:1rem 1.125rem}
+.stock-card:hover{border-color:var(--border-mid)}
+.sn{font-size:14px;font-weight:600;color:var(--ink);margin-bottom:2px}
+.ss{font-size:11px;color:var(--ink-faint);margin-bottom:8px}
+.sig{font-size:11px;padding:2px 9px;border-radius:20px;font-weight:500;display:inline-block;margin-bottom:8px}
+.sig-pos{background:var(--green-light);color:var(--green)}
+.sig-neg{background:var(--red-light);color:var(--red)}
+.sig-watch{background:var(--amber-light);color:var(--amber)}
+.sw{font-size:12px;color:var(--ink-light);line-height:1.5}
+
+/* Causal chain */
+.chain{display:flex;flex-direction:column}
+.chain-step{display:flex;gap:16px;align-items:flex-start}
+.chain-left{display:flex;flex-direction:column;align-items:center;flex-shrink:0}
+.chain-node{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;border:1px solid var(--border)}
+.cn-event{background:var(--purple-light);color:var(--purple)}
+.cn-impact{background:var(--amber-light);color:var(--amber)}
+.cn-india{background:var(--blue-light);color:var(--blue)}
+.cn-signal{background:var(--green-light);color:var(--green)}
+.chain-connector{width:1px;background:var(--border);flex:1;min-height:24px;margin:4px 0}
+.chain-right{padding-bottom:1.75rem;flex:1}
+.cl{font-size:10px;color:var(--ink-faint);letter-spacing:0.07em;text-transform:uppercase;margin-bottom:4px}
+.ct{font-size:14px;font-weight:500;color:var(--ink);line-height:1.5;margin-bottom:5px}
+.cs{font-size:13px;color:var(--ink-light);line-height:1.6;margin-bottom:8px}
+.mmj{display:inline-flex;align-items:center;gap:4px;font-size:10px;padding:2px 8px;border-radius:4px;font-weight:600;font-family:var(--mono);cursor:pointer;border:1px solid transparent}
+.mmj-m{background:var(--blue-light);color:var(--blue);border-color:#C3D4F8}
+.mmj-mo{background:var(--green-light);color:var(--green);border-color:#B0DDC8}
+.mmj-j{background:var(--amber-light);color:var(--amber);border-color:#F8D89A}
+.mmj:hover{opacity:0.8}
+
+/* Evidence table */
+.ev-table{width:100%;border-collapse:collapse;margin-bottom:1rem}
+.ev-table th{font-size:11px;color:var(--ink-faint);padding:0.625rem 0.75rem;text-align:left;border-bottom:1px solid var(--border);font-weight:500;background:var(--surface)}
+.ev-table td{font-size:12px;color:var(--ink-light);padding:0.625rem 0.75rem;border-bottom:1px solid var(--border);vertical-align:top;line-height:1.5}
+.ev-table td:first-child{color:var(--ink-mid);font-weight:500}
+.fresh{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:4px;vertical-align:middle}
+.fresh-g{background:#10B981}
+.fresh-a{background:#F59E0B}
+.ev-note{font-size:11px;color:var(--ink-faint);line-height:1.6;padding:0.75rem;background:var(--surface);border-radius:8px;border:1px solid var(--border)}
+
+/* Dissent */
+.dissent{background:var(--surface);border:1px solid var(--border-mid);border-radius:10px;padding:1.25rem 1.5rem;margin-bottom:1.75rem}
+.dissent-head{display:flex;align-items:center;gap:10px;margin-bottom:0.875rem}
+.dissent-pill{font-size:10px;font-weight:600;color:var(--ink-faint);padding:2px 8px;border:1px solid var(--border-mid);border-radius:20px;letter-spacing:0.04em;font-family:var(--mono)}
+.dissent-title{font-size:14px;font-weight:600;color:var(--ink);margin-bottom:6px;font-family:var(--serif)}
+.dissent-body{font-size:13px;color:var(--ink-light);line-height:1.75}
+
+/* Framework */
+.framework{background:linear-gradient(135deg,#EBF0FD 0%,#E5F6EF 100%);border:1px solid #D0DEF8;border-radius:10px;padding:1.375rem 1.5rem;margin-bottom:1.75rem}
+.fw-label{font-size:10px;font-weight:600;color:var(--blue);letter-spacing:0.08em;text-transform:uppercase;font-family:var(--mono);margin-bottom:6px}
+.fw-title{font-family:var(--serif);font-size:16px;font-weight:600;color:var(--ink);margin-bottom:8px}
+.fw-body{font-size:13px;color:var(--ink-mid);line-height:1.8}
+.fw-apply{font-size:12px;color:var(--blue);margin-top:10px;font-style:italic}
+
+/* Prediction */
+.predict{background:var(--surface-raised);border:1px solid var(--border);border-radius:10px;padding:1.25rem;margin-bottom:2rem}
+.predict-q{font-size:14px;font-weight:600;color:var(--ink);margin-bottom:1rem;line-height:1.5;font-family:var(--serif)}
+.predict-opts{display:flex;flex-direction:column;gap:6px}
+.predict-opt{padding:10px 14px;border:1px solid var(--border);border-radius:8px;font-size:13px;color:var(--ink-light);cursor:pointer;background:var(--surface);transition:all 0.12s;text-align:left}
+.predict-opt:hover{border-color:var(--blue);color:var(--blue);background:var(--blue-light)}
+.predict-opt.chosen{border-color:var(--blue);background:var(--blue-light);color:var(--blue);font-weight:500}
+.track-note{font-size:12px;color:var(--green);margin-top:10px;display:none;align-items:center;gap:6px;font-weight:500}
+
+/* ASIDE */
+.aside-sticky{position:sticky;top:1.5rem}
+.aside-card{background:var(--surface-raised);border:1px solid var(--border);border-radius:10px;padding:1.125rem;margin-bottom:1rem}
+.aside-label{font-size:10px;font-weight:600;color:var(--ink-faint);letter-spacing:0.07em;text-transform:uppercase;margin-bottom:0.75rem;font-family:var(--mono)}
+.opp-item{padding:0.75rem;border-radius:8px;margin-bottom:6px}
+.opp-pos{background:var(--green-light)}
+.opp-neg{background:var(--red-light)}
+.opp-pos .ot{font-size:13px;font-weight:500;color:var(--green);margin-bottom:3px}
+.opp-neg .ot{font-size:13px;font-weight:500;color:var(--red);margin-bottom:3px}
+.opp-pos .ob,.opp-neg .ob{font-size:12px;color:var(--ink-light);line-height:1.5}
+.aside-card p{font-size:13px;color:var(--ink-mid);line-height:1.6}
+.watch-item{display:flex;gap:10px;align-items:flex-start;padding:0.625rem 0;border-bottom:1px solid var(--border)}
+.watch-item:last-child{border-bottom:none;padding-bottom:0}
+.watch-dot{width:6px;height:6px;border-radius:50%;background:var(--amber);flex-shrink:0;margin-top:5px}
+.watch-text{font-size:12px;color:var(--ink-light);line-height:1.5}
+.sebi{font-size:11px;color:var(--ink-faint);line-height:1.6;padding:0.875rem;background:var(--surface);border-radius:8px;border:1px solid var(--border);margin-top:1rem}
+
+/* hidden panels */
+.panel{display:none}
+.panel.active{display:block}
+
+/* RESPONSIVE */
+@media(max-width:900px){
+  .app{grid-template-columns:1fr}
+  .sidebar{display:none}
+  .thread-body{grid-template-columns:1fr}
+  .thread-aside{display:none}
+  .stocks-grid{grid-template-columns:1fr}
+}
+@media(max-width:640px){
+  .thread-main{padding:1.25rem 1.25rem 3rem}
+  .article-title{font-size:20px}
+  .conf-bar{flex-direction:column}
+  .conf-cell{border-right:none;border-bottom:1px solid var(--border)}
+  .conf-cell:last-child{border-bottom:none}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-text">finn<em>wise</em></div>
+      <div class="logo-sub">understand before you invest</div>
+    </div>
+    <nav class="nav">
+      <div class="nav-group">
+        <div class="nav-group-label">main</div>
+        <div class="nav-item" onclick="window.location='#'">
+          <svg viewBox="0 0 15 15" fill="none"><rect x="1" y="1" width="13" height="2.5" rx="1.25" fill="currentColor"/><rect x="1" y="6" width="9" height="2.5" rx="1.25" fill="currentColor" opacity="0.5"/><rect x="1" y="11" width="11" height="2.5" rx="1.25" fill="currentColor" opacity="0.3"/></svg>
+          the pulse
+        </div>
+        <div class="nav-item active">
+          <svg viewBox="0 0 15 15" fill="none"><path d="M2 2h11v2H2zM2 6h8v2H2zM2 10h9v2H2z" fill="currentColor"/></svg>
+          the thread
+        </div>
+        <div class="nav-item">
+          <svg viewBox="0 0 15 15" fill="none"><circle cx="7.5" cy="7.5" r="6" stroke="currentColor" stroke-width="1.2"/><path d="M7.5 1.5C7.5 1.5 5.5 4.5 5.5 7.5s2 6 2 6M7.5 1.5c0 0 2 3 2 6s-2 6-2 6M1.5 7.5h12" stroke="currentColor" stroke-width="1.2"/></svg>
+          the map
+        </div>
+        <div class="nav-item">
+          <svg viewBox="0 0 15 15" fill="none"><circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" stroke-width="1.2"/><path d="M10.5 10.5L13.5 13.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+          the lens
+        </div>
+        <div class="nav-item">
+          <svg viewBox="0 0 15 15" fill="none"><rect x="3" y="1.5" width="9" height="10" rx="1.5" stroke="currentColor" stroke-width="1.2"/><path d="M6 13.5h3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+          the mirror
+        </div>
+      </div>
+    </nav>
+    <div class="sidebar-foot">
+      <div class="user-chip">
+        <div class="avatar">P</div>
+        <div class="user-meta">
+          <p>Priya S.</p>
+          <span>₹15k · 3–7 yrs</span>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="thread-bar">
+      <div class="back">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 2L4 7l5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        back to pulse
+      </div>
+      <div class="tag-row">
+        <span class="tag t-geo">geopolitical</span>
+        <span class="tag t-short">short-term signal</span>
+        <span class="tag t-long">long-term watch</span>
+        <span class="tag t-time">published 2 hours ago · tracked from now</span>
+      </div>
+    </div>
+
+    <div class="thread-body">
+
+      <!-- LEFT — main article -->
+      <div class="thread-main">
+
+        <h1 class="article-title">The Strait of Hormuz has closed. Here is what the causal chain looks like for Indian investors.</h1>
+        <p class="article-deck">20% of global oil trade passes through this chokepoint. India imports 80% of its crude. The disruption is direct — but who it helps and who it hurts depends entirely on where you sit in the supply chain.</p>
+
+        <div class="conf-bar">
+          <div class="conf-cell">
+            <div class="conf-key">direction confidence</div>
+            <div class="conf-val"><span class="dot d-high"></span>high</div>
+          </div>
+          <div class="conf-cell">
+            <div class="conf-key">magnitude confidence</div>
+            <div class="conf-val"><span class="dot d-low"></span>uncertain — duration unknown</div>
+          </div>
+          <div class="conf-cell">
+            <div class="conf-key">data freshness</div>
+            <div class="conf-val"><span class="dot d-high"></span>within 24 hours</div>
+          </div>
+        </div>
+
+        <!-- ICE TABS -->
+        <div class="ice-nav">
+          <div class="ice-tab active" onclick="showTab('I',this)">insight</div>
+          <div class="ice-tab" onclick="showTab('C',this)">context — the causal chain</div>
+          <div class="ice-tab" onclick="showTab('E',this)">evidence & sources</div>
+        </div>
+
+        <!-- INSIGHT -->
+        <div id="panelI" class="panel active">
+          <div class="sec-label">what this means — in plain english</div>
+          <div class="insight-prose">
+            <p>A supply shock of this scale pushes oil prices up sharply in the short term. For India, that means higher import costs across the economy. But the impact is not uniform — upstream domestic oil producers gain from higher realisation, while businesses that use crude as a raw material or fuel face real pressure on their margins.</p>
+            <p>For your 3–7 year horizon, the short-term price noise matters less than the structural signal: this event accelerates India's push toward domestic energy independence and renewables. The opportunity is not just in the immediate oil price move — it is in what policy and capital allocation follows it.</p>
+          </div>
+
+          <div class="sec-label" style="margin-top:1.5rem">instruments relevant to your profile</div>
+          <div class="stocks-grid">
+            <div class="stock-card">
+              <div class="sn">ONGC</div>
+              <div class="ss">upstream oil & gas · NSE listed</div>
+              <span class="sig sig-pos">opportunity signal</span>
+              <div class="sw">Domestic crude realisation rises with global prices. Even with APM pricing controls, net realisation improves materially above $85/barrel. Historically outperforms during sustained supply shocks.</div>
+            </div>
+            <div class="stock-card">
+              <div class="sn">IndiGo (InterGlobe)</div>
+              <div class="ss">aviation · NSE listed</div>
+              <span class="sig sig-neg">headwind signal</span>
+              <div class="sw">ATF is 35–40% of operating cost. Every $10 rise in crude = ~2.5pp margin compression. No short-term hedging disclosed in last quarterly filing.</div>
+            </div>
+            <div class="stock-card">
+              <div class="sn">Asian Paints</div>
+              <div class="ss">paints & chemicals · NSE listed</div>
+              <span class="sig sig-neg">headwind signal</span>
+              <div class="sw">40% of raw materials are crude derivatives. Gross margin compression expected within 1–2 quarters if crude stays elevated above $90.</div>
+            </div>
+            <div class="stock-card">
+              <div class="sn">Adani Green Energy</div>
+              <div class="ss">renewable energy · NSE listed</div>
+              <span class="sig sig-watch">watch — long term</span>
+              <div class="sw">Supply shocks historically accelerate government renewable energy capex. Watch for policy announcements in the next 60 days as a confirming signal.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- CONTEXT -->
+        <div id="panelC" class="panel">
+          <div class="sec-label">the causal chain — how we got from event to implication</div>
+          <div class="chain">
+
+            <div class="chain-step">
+              <div class="chain-left">
+                <div class="chain-node cn-event">①</div>
+                <div class="chain-connector"></div>
+              </div>
+              <div class="chain-right">
+                <div class="cl">the event</div>
+                <div class="ct">Strait of Hormuz closes — ~20% of global seaborne oil trade blocked</div>
+                <div class="cs">The Strait is the only viable exit point for Gulf oil from Iran, Iraq, Kuwait, Saudi Arabia, and UAE. There is no alternative route capable of handling the volume involved within any reasonable timeframe.</div>
+                <span class="mmj mmj-m">measured · EIA 2025 data</span>
+              </div>
+            </div>
+
+            <div class="chain-step">
+              <div class="chain-left">
+                <div class="chain-node cn-impact">②</div>
+                <div class="chain-connector"></div>
+              </div>
+              <div class="chain-right">
+                <div class="cl">first-order impact — global</div>
+                <div class="ct">Global oil supply falls sharply → Brent crude price spikes</div>
+                <div class="cs">Historical precedent: the 1980 Iran-Iraq war caused a 50–60% crude price spike within 3 months. The 2019 Abqaiq attack caused a 15% single-day spike that partially reversed within 2 weeks. Duration of closure is the single most important variable.</div>
+                <span class="mmj mmj-m">measured · historical price data</span>
+              </div>
+            </div>
+
+            <div class="chain-step">
+              <div class="chain-left">
+                <div class="chain-node cn-india">③</div>
+                <div class="chain-connector"></div>
+              </div>
+              <div class="chain-right">
+                <div class="cl">india-specific transmission</div>
+                <div class="ct">India's import bill rises → INR under pressure → imported inflation rises</div>
+                <div class="cs">India imports 80% of crude needs — approximately 220 million barrels per year. At $100/barrel versus $75/barrel, the annual import bill increases by ~$30–35 billion. This widens the current account deficit and puts downward pressure on the rupee, creating a secondary inflation effect.</div>
+                <span class="mmj mmj-mo">modelled · based on FY24 import volume</span>
+              </div>
+            </div>
+
+            <div class="chain-step">
+              <div class="chain-left">
+                <div class="chain-node cn-impact">④</div>
+                <div class="chain-connector"></div>
+              </div>
+              <div class="chain-right">
+                <div class="cl">sector-level split</div>
+                <div class="ct">Winners and losers emerge based on crude exposure direction</div>
+                <div class="cs">Upstream producers (ONGC, Oil India) benefit from higher realisation. Downstream users — aviation, paints, logistics, tyres — face input cost pressure. The directional split is clear. The magnitude depends on closure duration and government pricing intervention decisions.</div>
+                <span class="mmj mmj-m">measured · factor exposure database</span>
+              </div>
+            </div>
+
+            <div class="chain-step">
+              <div class="chain-left">
+                <div class="chain-node cn-signal">⑤</div>
+              </div>
+              <div class="chain-right">
+                <div class="cl">long-term structural signal</div>
+                <div class="ct">Energy security becomes a priority → domestic renewable and oil investment accelerates</div>
+                <div class="cs">Every major oil shock in India's modern history has been followed within 6 months by a policy push toward domestic energy production and renewable investment. The 2022 Russia-Ukraine shock triggered ₹19,500 crore in additional solar capex commitments. This pattern is judged — it is consistent historically, but not guaranteed.</div>
+                <span class="mmj mmj-j">judged · historical pattern, not guaranteed</span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- EVIDENCE -->
+        <div id="panelE" class="panel">
+          <div class="sec-label">every number — its source, date, and confidence type</div>
+          <table class="ev-table">
+            <thead>
+              <tr><th>Claim</th><th>Source</th><th>Date</th><th>Fresh</th><th>Type</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>20% of global oil trade via Hormuz</td><td>U.S. Energy Information Administration</td><td>Jan 2025</td><td><span class="fresh fresh-g"></span>current</td><td><span class="mmj mmj-m">measured</span></td></tr>
+              <tr><td>India imports 80% of crude needs</td><td>Ministry of Petroleum & Natural Gas, Annual Report FY24</td><td>Mar 2024</td><td><span class="fresh fresh-g"></span>current</td><td><span class="mmj mmj-m">measured</span></td></tr>
+              <tr><td>ATF = 35–40% of IndiGo operating cost</td><td>InterGlobe Aviation Q3 FY25 Results, p.14</td><td>Feb 2025</td><td><span class="fresh fresh-g"></span>current</td><td><span class="mmj mmj-m">measured</span></td></tr>
+              <tr><td>Asian Paints — 40% raw materials crude-derived</td><td>Asian Paints Annual Report FY24, p.63</td><td>Jun 2024</td><td><span class="fresh fresh-a"></span>8 months old</td><td><span class="mmj mmj-m">measured</span></td></tr>
+              <tr><td>$30–35bn additional import bill at $100/bbl</td><td>FinnWise model — 220mn bbl/year × $25 delta</td><td>calculated</td><td><span class="fresh fresh-g"></span>current</td><td><span class="mmj mmj-mo">modelled</span></td></tr>
+              <tr><td>₹19,500 crore renewable push post-2022 shock</td><td>MNRE Press Release, August 2022</td><td>Aug 2022</td><td><span class="fresh fresh-a"></span>historical ref</td><td><span class="mmj mmj-j">judged</span></td></tr>
+            </tbody>
+          </table>
+          <div class="ev-note"><span class="fresh fresh-g"></span>updated within 6 months &nbsp;·&nbsp; <span class="fresh fresh-a"></span>6–18 months old — treat with caution if major events occurred since the filing date. All numbers in this card are sourced from the Evidence layer. The model does not generate numbers independently.</div>
+        </div>
+
+        <div style="height:1px;background:var(--border);margin:2rem 0"></div>
+
+        <!-- DISSENT -->
+        <div class="sec-label">the counter-argument — why this analysis could be wrong</div>
+        <div class="dissent">
+          <div class="dissent-head"><span class="dissent-pill">dissenting view</span></div>
+          <div class="dissent-title">The closure may be short-lived — and markets may have already priced the move.</div>
+          <div class="dissent-body">Historical Hormuz closure threats have never resulted in a sustained blockage longer than 72 hours. The geopolitical cost to Iran of a full closure — including triggering a direct US military response — may limit actual disruption time. Additionally, markets react instantly to geopolitical events; crude may spike and reverse before the supply chain impact reaches Indian companies' P&Ls. If you're looking at ONGC as an opportunity, check first whether the stock has already risen 10–15% since the news broke. If it has, you may be buying what institutional investors already sold to you.</div>
+        </div>
+
+        <!-- FRAMEWORK -->
+        <div class="sec-label">the framework behind this analysis</div>
+        <div class="framework">
+          <div class="fw-label">the supply shock framework</div>
+          <div class="fw-title">How to think about any sudden disruption to a critical input</div>
+          <div class="fw-body">When a critical input to an economy is suddenly restricted, ask five questions in sequence: Who needs this input and how badly? Can they source it elsewhere quickly? If not, who in the supply chain bears the cost first? Who benefits from the price rise? And has the market already priced the answer to those four questions?<br><br>You used this exact framework here — without perhaps realising it. The Strait of Hormuz is one instance of a supply shock. The same five questions apply to a semiconductor shortage, a monsoon failure, a rare earth export restriction, or a port strike in Rotterdam.</div>
+          <div class="fw-apply">Next time you hear about a supply disruption anywhere in the world, run these five questions before opening a financial app.</div>
+        </div>
+
+        <!-- PREDICTION -->
+        <div class="sec-label">your prediction — logged for review in 30 days</div>
+        <div class="predict">
+          <div class="predict-q">Before we close — what do you think happens to IndiGo's stock price over the next 30 days?</div>
+          <div class="predict-opts">
+            <div class="predict-opt" onclick="choosePred(this)">Falls more than 5% — crude impact will dominate</div>
+            <div class="predict-opt" onclick="choosePred(this)">Falls, but under 5% — hedging or demand strength partially offsets</div>
+            <div class="predict-opt" onclick="choosePred(this)">Stays flat — market has already priced this in</div>
+            <div class="predict-opt" onclick="choosePred(this)">Rises — I think the closure resolves within days</div>
+          </div>
+          <div class="track-note" id="trackNote">
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="6.5" cy="6.5" r="5.5" stroke="#0D6E4E" stroke-width="1.2"/><path d="M4 6.5l2 2 3.5-3.5" stroke="#0D6E4E" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Prediction logged. We'll surface the outcome in The Mirror in 30 days.
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ASIDE -->
+      <aside class="thread-aside">
+        <div class="aside-sticky">
+
+          <div class="aside-card">
+            <div class="aside-label">quick summary</div>
+            <div class="opp-item opp-pos">
+              <div class="ot">↑ upstream oil producers</div>
+              <div class="ob">ONGC, Oil India — benefit from realisation rise</div>
+            </div>
+            <div class="opp-item opp-pos">
+              <div class="ot">↑ renewable energy (long)</div>
+              <div class="ob">Policy acceleration likely — 60-day watch window</div>
+            </div>
+            <div class="opp-item opp-neg">
+              <div class="ot">↓ aviation</div>
+              <div class="ob">IndiGo — ATF cost pressure, unhedged</div>
+            </div>
+            <div class="opp-item opp-neg">
+              <div class="ot">↓ paints & chemicals</div>
+              <div class="ob">Asian Paints — crude derivative input shock</div>
+            </div>
+          </div>
+
+          <div class="aside-card">
+            <div class="aside-label">signals to watch</div>
+            <div class="watch-item">
+              <div class="watch-dot"></div>
+              <div class="watch-text">Duration of Hormuz closure — beyond 2 weeks changes the magnitude assessment significantly</div>
+            </div>
+            <div class="watch-item">
+              <div class="watch-dot"></div>
+              <div class="watch-text">Government ATF pricing intervention announcement — would limit aviation downside</div>
+            </div>
+            <div class="watch-item">
+              <div class="watch-dot"></div>
+              <div class="watch-text">RBI response to INR pressure — rate hold or intervention</div>
+            </div>
+            <div class="watch-item">
+              <div class="watch-dot"></div>
+              <div class="watch-text">ONGC stock price vs. pre-event level — if already up 15%+, the move may be priced in</div>
+            </div>
+          </div>
+
+          <div class="aside-card">
+            <div class="aside-label">related events</div>
+            <p style="margin-bottom:6px">RBI holds rates steady — interacts with this event to create compound inflation risk. <span style="color:var(--blue);cursor:pointer">read →</span></p>
+            <p>India–EU trade deal progress — INR weakness from this event may affect deal dynamics. <span style="color:var(--blue);cursor:pointer">read →</span></p>
+          </div>
+
+          <div class="sebi">This analysis is AI-generated for educational purposes only. It does not constitute investment advice under SEBI (Investment Advisers) Regulations 2013. All data sources are cited above. FinnWise is a research tool, not a registered investment adviser.</div>
+        </div>
+      </aside>
+
+    </div>
+  </div>
+
+</div>
+
+<script>
+function showTab(id, el) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.ice-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('panel' + id).classList.add('active');
+  el.classList.add('active');
+}
+function choosePred(el) {
+  document.querySelectorAll('.predict-opt').forEach(o => o.classList.remove('chosen'));
+  el.classList.add('chosen');
+  document.getElementById('trackNote').style.display = 'flex';
+}
+</script>
+</body>
+</html>

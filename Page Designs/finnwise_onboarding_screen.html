@@ -1,0 +1,186 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans)}
+.screen{background:var(--color-background-secondary);border-radius:var(--border-radius-lg);padding:2rem;min-height:600px;display:flex;flex-direction:column}
+.nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:3rem}
+.logo{font-size:18px;font-weight:500;color:var(--color-text-primary);letter-spacing:-0.3px}
+.logo span{color:#185FA5}
+.progress-wrap{display:flex;gap:6px;align-items:center}
+.prog-dot{width:8px;height:8px;border-radius:50%;background:var(--color-border-tertiary)}
+.prog-dot.active{background:#185FA5;width:20px;border-radius:4px}
+.prog-dot.done{background:#1D9E75}
+.chat-area{flex:1;display:flex;flex-direction:column;justify-content:center;max-width:520px;margin:0 auto;width:100%}
+.step{display:flex;flex-direction:column;gap:1.5rem}
+.app-msg{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:0 var(--border-radius-lg) var(--border-radius-lg) var(--border-radius-lg);padding:1rem 1.25rem;max-width:90%}
+.app-msg p{font-size:15px;color:var(--color-text-primary);line-height:1.7}
+.app-msg .sub{font-size:13px;color:var(--color-text-secondary);margin-top:6px}
+.choices{display:flex;flex-direction:column;gap:8px;margin-top:0.5rem}
+.choice-btn{background:var(--color-background-primary);border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-lg);padding:0.875rem 1.25rem;text-align:left;cursor:pointer;transition:border-color 0.15s}
+.choice-btn:hover{border-color:#185FA5}
+.choice-btn.selected{border:1.5px solid #185FA5;background:#E6F1FB}
+.choice-btn p{font-size:14px;font-weight:500;color:var(--color-text-primary)}
+.choice-btn span{font-size:12px;color:var(--color-text-secondary);margin-top:2px;display:block}
+.user-bubble{align-self:flex-end;background:#E6F1FB;border-radius:var(--border-radius-lg) 0 var(--border-radius-lg) var(--border-radius-lg);padding:0.75rem 1.25rem;max-width:80%}
+.user-bubble p{font-size:14px;color:#0C447C}
+.input-row{display:flex;gap:8px;align-items:center;margin-top:0.5rem}
+.amount-input{flex:1;font-size:15px;padding:0.75rem 1rem;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:var(--color-background-primary);color:var(--color-text-primary)}
+.rupee-label{font-size:16px;color:var(--color-text-secondary)}
+.tabs{display:flex;gap:4px;background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:3px}
+.tab{padding:6px 16px;border-radius:6px;font-size:13px;cursor:pointer;color:var(--color-text-secondary)}
+.tab.active{background:var(--color-background-primary);color:var(--color-text-primary);font-weight:500;border:0.5px solid var(--color-border-tertiary)}
+.step-label{font-size:12px;color:var(--color-text-tertiary);text-transform:lowercase;letter-spacing:0.02em;margin-bottom:4px}
+.cta-btn{background:#185FA5;color:#E6F1FB;border:none;border-radius:var(--border-radius-md);padding:0.875rem 2rem;font-size:15px;font-weight:500;cursor:pointer;align-self:flex-start;margin-top:1rem}
+.disclaimer{font-size:11px;color:var(--color-text-tertiary);text-align:center;margin-top:2rem;line-height:1.6;padding:0 1rem}
+.step-counter{font-size:12px;color:var(--color-text-tertiary)}
+</style>
+
+<h2 class="sr-only">FinnWise onboarding flow — three-step conversational setup showing portfolio status, investment amount, and time horizon questions</h2>
+
+<div class="screen">
+  <div class="nav">
+    <div class="logo">finn<span>wise</span></div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <span class="step-counter" id="stepCounter">step 1 of 3</span>
+      <div class="progress-wrap">
+        <div class="prog-dot active" id="d1"></div>
+        <div class="prog-dot" id="d2"></div>
+        <div class="prog-dot" id="d3"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="chat-area">
+
+    <div class="step" id="step1">
+      <div class="app-msg">
+        <p>Welcome. Before we begin, one quick question —</p>
+        <p style="font-size:17px;font-weight:500;margin-top:8px;">Do you already have investments, or are you starting fresh?</p>
+        <p class="sub">There's no right answer. This just helps us personalise what you see.</p>
+      </div>
+      <div class="choices">
+        <div class="choice-btn" id="c1a" onclick="selectChoice('step1','c1a')">
+          <p>I'm starting fresh</p>
+          <span>No investments yet — help me figure out where to begin</span>
+        </div>
+        <div class="choice-btn" id="c1b" onclick="selectChoice('step1','c1b')">
+          <p>I have some investments</p>
+          <span>SIPs, stocks, or anything else — I want to understand what's affecting them</span>
+        </div>
+        <div class="choice-btn" id="c1c" onclick="selectChoice('step1','c1c')">
+          <p>I'm just curious for now</p>
+          <span>Not ready to invest yet, but I want to understand how it all works</span>
+        </div>
+      </div>
+      <button class="cta-btn" id="btn1" style="display:none" onclick="goStep(2)">Continue →</button>
+    </div>
+
+    <div class="step" id="step2" style="display:none">
+      <div class="app-msg" style="align-self:flex-start">
+        <div class="user-bubble" style="align-self:flex-end;margin-bottom:8px"><p id="step1Answer">I'm starting fresh</p></div>
+        <p>Good to know. Now —</p>
+        <p style="font-size:17px;font-weight:500;margin-top:8px;">How much are you thinking of putting in?</p>
+        <p class="sub">Rough numbers are fine. You can always change this later.</p>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px;margin-top:4px">
+        <div class="tabs">
+          <div class="tab active" id="tabMonthly" onclick="setTab('monthly')">monthly</div>
+          <div class="tab" id="tabLump" onclick="setTab('lumpsum')">one-time</div>
+        </div>
+        <div class="input-row">
+          <span class="rupee-label">₹</span>
+          <input class="amount-input" type="number" id="amountInput" placeholder="15,000" min="1000" step="1000"/>
+          <span style="font-size:13px;color:var(--color-text-secondary)" id="freqLabel">/ month</span>
+        </div>
+        <p style="font-size:12px;color:var(--color-text-tertiary)">minimum ₹1,000 · no maximum</p>
+      </div>
+      <button class="cta-btn" onclick="goStep(3)">Continue →</button>
+    </div>
+
+    <div class="step" id="step3" style="display:none">
+      <div class="app-msg">
+        <div class="user-bubble" style="margin-bottom:8px"><p id="step2Answer">₹15,000 / month</p></div>
+        <p>Last one —</p>
+        <p style="font-size:17px;font-weight:500;margin-top:8px;">How long are you thinking of staying invested?</p>
+        <p class="sub">This shapes everything — which opportunities we surface, how we assess risk, what timelines we track.</p>
+      </div>
+      <div class="choices">
+        <div class="choice-btn" id="c3a" onclick="selectChoice('step3','c3a')">
+          <p>Less than a year</p>
+          <span>Short-term opportunities, capital preservation matters</span>
+        </div>
+        <div class="choice-btn" id="c3b" onclick="selectChoice('step3','c3b')">
+          <p>1 to 3 years</p>
+          <span>Medium horizon — balanced growth and some flexibility</span>
+        </div>
+        <div class="choice-btn" id="c3c" onclick="selectChoice('step3','c3c')">
+          <p>3 to 7 years</p>
+          <span>Long enough to ride market cycles — growth focus</span>
+        </div>
+        <div class="choice-btn" id="c3d" onclick="selectChoice('step3','c3d')">
+          <p>7 years or more</p>
+          <span>Building wealth over the long run — full equity potential</span>
+        </div>
+      </div>
+      <button class="cta-btn" id="btn3" style="display:none" onclick="goStep(4)">Take me in →</button>
+    </div>
+
+    <div class="step" id="step4" style="display:none">
+      <div style="text-align:center;padding:2rem 0">
+        <div style="width:48px;height:48px;border-radius:50%;background:#E6F1FB;display:flex;align-items:center;justify-content:center;margin:0 auto 1.5rem">
+          <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M4 11.5L9 16.5L18 6" stroke="#185FA5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <p style="font-size:20px;font-weight:500;color:var(--color-text-primary);margin-bottom:8px">You're set.</p>
+        <p style="font-size:14px;color:var(--color-text-secondary);line-height:1.7;max-width:340px;margin:0 auto">We've personalised your feed. The world is moving — let's see what it means for your money.</p>
+        <button class="cta-btn" style="margin:1.5rem auto 0;display:block" onclick="sendPrompt('Show me The Pulse — my personalised event feed')">Open my feed ↗</button>
+      </div>
+    </div>
+
+  </div>
+
+  <p class="disclaimer">finnwise provides AI-generated financial analysis for educational purposes only. This is not investment advice under SEBI (Investment Advisers) Regulations 2013.</p>
+</div>
+
+<script>
+var step1Choice=null,step3Choice=null,amtType='monthly';
+function selectChoice(step,id){
+  var prefix=step==='step1'?'c1':'c3';
+  ['a','b','c','d'].forEach(function(l){
+    var el=document.getElementById(prefix+l);
+    if(el)el.classList.remove('selected');
+  });
+  var el=document.getElementById(id);
+  if(el)el.classList.add('selected');
+  if(step==='step1'){step1Choice=id;document.getElementById('btn1').style.display='flex';}
+  if(step==='step3'){step3Choice=id;document.getElementById('btn3').style.display='flex';}
+}
+function setTab(type){
+  amtType=type;
+  document.getElementById('tabMonthly').className='tab'+(type==='monthly'?' active':'');
+  document.getElementById('tabLump').className='tab'+(type==='lumpsum'?' active':'');
+  document.getElementById('freqLabel').textContent=type==='monthly'?'/ month':'one-time';
+}
+function goStep(n){
+  ['step1','step2','step3','step4'].forEach(function(s){document.getElementById(s).style.display='none';});
+  if(n===2){
+    var labels={'c1a':'Starting fresh','c1b':'Already investing','c1c':'Just exploring'};
+    document.getElementById('step1Answer').textContent=labels[step1Choice]||'Starting fresh';
+    document.getElementById('d1').className='prog-dot done';
+    document.getElementById('d2').className='prog-dot active';
+    document.getElementById('stepCounter').textContent='step 2 of 3';
+    document.getElementById('step2').style.display='flex';
+  } else if(n===3){
+    var amt=document.getElementById('amountInput').value||'15,000';
+    var fmt=Number(amt).toLocaleString('en-IN');
+    document.getElementById('step2Answer').textContent='₹'+fmt+(amtType==='monthly'?' / month':' one-time');
+    document.getElementById('d2').className='prog-dot done';
+    document.getElementById('d3').className='prog-dot active';
+    document.getElementById('stepCounter').textContent='step 3 of 3';
+    document.getElementById('step3').style.display='flex';
+  } else if(n===4){
+    document.getElementById('d3').className='prog-dot done';
+    document.getElementById('stepCounter').textContent='done';
+    document.getElementById('step4').style.display='flex';
+  }
+}
+</script>

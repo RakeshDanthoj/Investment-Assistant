@@ -1,0 +1,317 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans)}
+.layout{display:grid;grid-template-columns:200px 1fr;grid-template-rows:auto 1fr;min-height:700px;background:var(--color-background-tertiary)}
+.sidebar{grid-row:1/3;grid-column:1;background:var(--color-background-primary);border-right:0.5px solid var(--color-border-tertiary);padding:1.25rem 0;display:flex;flex-direction:column}
+.sidebar-logo{padding:0 1.25rem 1.5rem;font-size:16px;font-weight:500;color:var(--color-text-primary);letter-spacing:-0.3px;border-bottom:0.5px solid var(--color-border-tertiary);margin-bottom:1rem}
+.sidebar-logo span{color:#185FA5}
+.nav-section{padding:0 0.75rem;margin-bottom:1.5rem}
+.nav-label{font-size:10px;color:var(--color-text-tertiary);letter-spacing:0.06em;padding:0 0.5rem;margin-bottom:6px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:var(--border-radius-md);cursor:pointer;color:var(--color-text-secondary);font-size:13px;margin-bottom:2px}
+.nav-item:hover{background:var(--color-background-secondary)}
+.nav-item.active{background:#E6F1FB;color:#0C447C;font-weight:500}
+.nav-item svg{flex-shrink:0;opacity:0.7}
+.nav-item.active svg{opacity:1}
+.sidebar-bottom{margin-top:auto;padding:0.75rem;border-top:0.5px solid var(--color-border-tertiary)}
+.user-row{display:flex;align-items:center;gap:10px;padding:8px 8px;border-radius:var(--border-radius-md);cursor:pointer}
+.user-row:hover{background:var(--color-background-secondary)}
+.avatar{width:28px;height:28px;border-radius:50%;background:#E6F1FB;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;color:#185FA5;flex-shrink:0}
+.user-info p{font-size:12px;font-weight:500;color:var(--color-text-primary)}
+.user-info span{font-size:11px;color:var(--color-text-tertiary)}
+.topbar{grid-column:2;background:var(--color-background-primary);border-bottom:0.5px solid var(--color-border-tertiary);padding:0 1.5rem;height:52px;display:flex;align-items:center;justify-content:space-between}
+.topbar-title{font-size:15px;font-weight:500;color:var(--color-text-primary)}
+.topbar-sub{font-size:13px;color:var(--color-text-secondary)}
+.topbar-right{display:flex;align-items:center;gap:12px}
+.filter-chip{font-size:12px;padding:4px 12px;border-radius:20px;border:0.5px solid var(--color-border-secondary);color:var(--color-text-secondary);cursor:pointer;background:var(--color-background-primary)}
+.filter-chip.active{background:#E6F1FB;color:#0C447C;border-color:#B5D4F4}
+.content{grid-column:2;display:grid;grid-template-columns:1fr 320px;gap:0;overflow:hidden}
+.feed-col{padding:1.25rem;overflow-y:auto;border-right:0.5px solid var(--color-border-tertiary)}
+.insight-col{padding:1.25rem;background:var(--color-background-primary);overflow-y:auto}
+.fog-banner{background:#FAEEDA;border:0.5px solid #FAC775;border-radius:var(--border-radius-lg);padding:0.875rem 1rem;margin-bottom:1.25rem;display:flex;gap:10px;align-items:flex-start}
+.fog-banner p{font-size:13px;color:#633806;line-height:1.5}
+.fog-banner strong{font-weight:500}
+.section-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.section-label{font-size:11px;color:var(--color-text-tertiary);letter-spacing:0.05em}
+.count-badge{font-size:11px;color:var(--color-text-tertiary);background:var(--color-background-secondary);padding:2px 8px;border-radius:10px}
+.event-card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:1rem 1.125rem;cursor:pointer;margin-bottom:10px;transition:border-color 0.15s}
+.event-card:hover{border-color:#B5D4F4}
+.event-card.selected{border:1.5px solid #185FA5;background:#E6F1FB}
+.implication{font-size:15px;font-weight:500;color:var(--color-text-primary);line-height:1.5;margin-bottom:6px}
+.event-card.selected .implication{color:#0C447C}
+.event-context{font-size:13px;color:var(--color-text-secondary);line-height:1.6;margin-bottom:10px}
+.card-footer{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.tags{display:flex;gap:6px;flex-wrap:wrap}
+.tag{font-size:11px;padding:2px 8px;border-radius:20px;font-weight:500}
+.tag-geo{background:#EEEDFE;color:#3C3489}
+.tag-macro{background:#E1F5EE;color:#085041}
+.tag-policy{background:#FAEEDA;color:#633806}
+.conf-row{display:flex;align-items:center;gap:5px}
+.dot{width:7px;height:7px;border-radius:50%}
+.dot-high{background:#185FA5}
+.dot-med{background:#BA7517}
+.dot-low{background:#B4B2A9}
+.conf-text{font-size:11px;color:var(--color-text-tertiary)}
+.insight-header{margin-bottom:1.25rem}
+.insight-header h2{font-size:14px;font-weight:500;color:var(--color-text-primary);margin-bottom:4px}
+.insight-header p{font-size:12px;color:var(--color-text-secondary);line-height:1.5}
+.insight-section{margin-bottom:1.25rem}
+.ins-label{font-size:10px;color:var(--color-text-tertiary);letter-spacing:0.06em;margin-bottom:8px}
+.opportunity-card{border-radius:var(--border-radius-md);padding:0.875rem;margin-bottom:8px;border:0.5px solid var(--color-border-tertiary)}
+.opp-positive{background:#EAF3DE;border-color:#C0DD97}
+.opp-negative{background:#FCEBEB;border-color:#F7C1C1}
+.opp-neutral{background:var(--color-background-secondary)}
+.opp-title{font-size:13px;font-weight:500;margin-bottom:3px}
+.opp-pos-title{color:#27500A}
+.opp-neg-title{color:#791F1F}
+.opp-body{font-size:12px;line-height:1.5}
+.opp-pos-body{color:#3B6D11}
+.opp-neg-body{color:#A32D2D}
+.opp-neu-body{color:var(--color-text-secondary)}
+.stock-list{display:flex;flex-direction:column;gap:6px}
+.stock-row{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--color-background-secondary);border-radius:var(--border-radius-md)}
+.stock-name{font-size:13px;font-weight:500;color:var(--color-text-primary)}
+.stock-sub{font-size:11px;color:var(--color-text-secondary)}
+.stock-signal{font-size:11px;padding:2px 8px;border-radius:10px}
+.sig-pos{background:#EAF3DE;color:#27500A}
+.sig-neg{background:#FCEBEB;color:#791F1F}
+.sig-watch{background:#FAEEDA;color:#633806}
+.predict-box{background:var(--color-background-secondary);border-radius:var(--border-radius-lg);padding:0.875rem;border:0.5px solid var(--color-border-tertiary)}
+.predict-box p{font-size:13px;color:var(--color-text-primary);font-weight:500;margin-bottom:10px;line-height:1.5}
+.predict-options{display:flex;flex-direction:column;gap:6px}
+.predict-btn{background:var(--color-background-primary);border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);padding:8px 12px;font-size:12px;color:var(--color-text-secondary);cursor:pointer;text-align:left}
+.predict-btn:hover{border-color:#185FA5;color:#185FA5}
+.mmj-row{display:flex;gap:6px;margin-top:6px}
+.mmj{font-size:10px;padding:2px 6px;border-radius:4px;font-weight:500}
+.mmj-m{background:#E6F1FB;color:#0C447C}
+.mmj-mo{background:#EAF3DE;color:#27500A}
+.mmj-j{background:#FAEEDA;color:#633806}
+.read-full{width:100%;background:var(--color-background-primary);border:0.5px solid #B5D4F4;border-radius:var(--border-radius-md);padding:10px;font-size:13px;color:#185FA5;cursor:pointer;margin-top:1rem;font-weight:500}
+.read-full:hover{background:#E6F1FB}
+@media(max-width:640px){
+.layout{grid-template-columns:1fr;grid-template-rows:auto auto 1fr}
+.sidebar{display:none}
+.topbar{grid-column:1}
+.content{grid-column:1;grid-template-columns:1fr;grid-template-rows:auto auto}
+.insight-col{border-top:0.5px solid var(--color-border-tertiary);border-right:none}
+.feed-col{border-right:none}
+}
+</style>
+
+<h2 class="sr-only">FinnWise Pulse v2 — two column web layout with left sidebar navigation, event feed on the left showing financial implications first, and a live insight panel on the right updating based on selected event card</h2>
+
+<div class="layout">
+  <div class="sidebar">
+    <div class="sidebar-logo">finn<span>wise</span></div>
+    <div class="nav-section">
+      <div class="nav-label">main</div>
+      <div class="nav-item active">
+        <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><rect x="1" y="1" width="13" height="2.5" rx="1.25" fill="#185FA5"/><rect x="1" y="6" width="9" height="2.5" rx="1.25" fill="#185FA5"/><rect x="1" y="11" width="11" height="2.5" rx="1.25" fill="#185FA5"/></svg>
+        the pulse
+      </div>
+      <div class="nav-item" onclick="sendPrompt('Show me The Map — sector learning')">
+        <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><circle cx="7.5" cy="7.5" r="6" stroke="currentColor" stroke-width="1.2"/><path d="M7.5 1.5C7.5 1.5 5.5 4.5 5.5 7.5s2 6 2 6M7.5 1.5c0 0 2 3 2 6s-2 6-2 6M1.5 7.5h12" stroke="currentColor" stroke-width="1.2"/></svg>
+        the map
+      </div>
+      <div class="nav-item" onclick="sendPrompt('Open The Lens — research mode')">
+        <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" stroke-width="1.2"/><path d="M10.5 10.5L13.5 13.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+        the lens
+      </div>
+      <div class="nav-item" onclick="sendPrompt('Show me The Mirror — my learning history')">
+        <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><rect x="3" y="1.5" width="9" height="10" rx="1.5" stroke="currentColor" stroke-width="1.2"/><path d="M6 13.5h3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><path d="M5 5h5M5 7.5h3.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+        the mirror
+      </div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">learn</div>
+      <div class="nav-item" onclick="sendPrompt('Show me The Map — sector learning')">
+        <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M1.5 4l4-2 4 2 4-2v9l-4 2-4-2-4 2V4z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path d="M5.5 2v9M9.5 4v9" stroke="currentColor" stroke-width="1.2"/></svg>
+        sector map
+      </div>
+    </div>
+    <div class="sidebar-bottom">
+      <div class="user-row">
+        <div class="avatar">P</div>
+        <div class="user-info">
+          <p>Priya S.</p>
+          <span>₹15k · 3–7 yrs</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="topbar">
+    <div>
+      <div class="topbar-title">your pulse</div>
+      <div class="topbar-sub">3 events active · 2 relevant to your profile</div>
+    </div>
+    <div class="topbar-right">
+      <div class="filter-chip active">all</div>
+      <div class="filter-chip">short-term</div>
+      <div class="filter-chip">long-term</div>
+      <div class="filter-chip">your sectors</div>
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="feed-col">
+      <div class="fog-banner">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="flex-shrink:0;margin-top:1px"><path d="M8 2v1.5M8 12.5V14M2 8h1.5M12.5 8H14M3.6 3.6l1.1 1.1M11.3 11.3l1.1 1.1M3.6 12.4l1.1-1.1M11.3 4.7l1.1-1.1" stroke="#BA7517" stroke-width="1.4" stroke-linecap="round"/></svg>
+        <p><strong>Compound event active.</strong> Hormuz closure and RBI hold are interacting. Where they conflict, we've flagged lower confidence than usual.</p>
+      </div>
+
+      <div class="section-row">
+        <span class="section-label">active events</span>
+        <span class="count-badge">3 events</span>
+      </div>
+
+      <div class="event-card selected" id="card1" onclick="selectCard(1)">
+        <div class="implication">Domestic oil producers stand to gain. Aviation, paint, and logistics face real margin pressure.</div>
+        <div class="event-context">The Strait of Hormuz closure disrupts 20% of global oil trade. India imports 80% of its crude — the supply shock is direct and immediate.</div>
+        <div class="card-footer">
+          <div class="tags">
+            <span class="tag tag-geo">geopolitical</span>
+            <span class="tag" style="background:#FCEBEB;color:#791F1F">short-term sharp</span>
+            <span class="tag" style="background:#EAF3DE;color:#27500A">long-term watch</span>
+          </div>
+          <div class="conf-row">
+            <div class="dot dot-high"></div>
+            <span class="conf-text">direction: high</span>
+            <span style="color:var(--color-border-tertiary);margin:0 2px">·</span>
+            <div class="dot dot-low"></div>
+            <span class="conf-text">magnitude: uncertain</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="event-card" id="card2" onclick="selectCard(2)">
+        <div class="implication">A rate hold in a growth environment favours large private banks over NBFCs. The detail matters more than the headline.</div>
+        <div class="event-context">RBI held the repo rate at 6.5%. The reasoning — inflation still sticky, growth holding — shifts the signal from neutral to selectively positive for banking.</div>
+        <div class="card-footer">
+          <div class="tags">
+            <span class="tag tag-policy">rbi policy</span>
+            <span class="tag" style="background:#EAF3DE;color:#27500A">long-term signal</span>
+          </div>
+          <div class="conf-row">
+            <div class="dot dot-high"></div>
+            <span class="conf-text">direction: high</span>
+            <span style="color:var(--color-border-tertiary);margin:0 2px">·</span>
+            <div class="dot dot-med"></div>
+            <span class="conf-text">magnitude: moderate</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="event-card" id="card3" onclick="selectCard(3)">
+        <div class="implication">Indian IT and auto exporters have a long-term tailwind — if 5 specific dependencies resolve. We've quantified each one.</div>
+        <div class="event-context">India–EU trade deal clears a key negotiating round. Tariff reductions on services and manufacturing are on the table, but ratification timelines remain uncertain.</div>
+        <div class="card-footer">
+          <div class="tags">
+            <span class="tag tag-macro">trade policy</span>
+            <span class="tag" style="background:#EAF3DE;color:#27500A">long-term signal</span>
+          </div>
+          <div class="conf-row">
+            <div class="dot dot-med"></div>
+            <span class="conf-text">direction: moderate</span>
+            <span style="color:var(--color-border-tertiary);margin:0 2px">·</span>
+            <div class="dot dot-low"></div>
+            <span class="conf-text">magnitude: judged</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="insight-col" id="insightPanel">
+      <div class="insight-header">
+        <h2>Strait of Hormuz closure</h2>
+        <p>What this means for your ₹15,000/month · 3–7 year horizon</p>
+      </div>
+
+      <div class="insight-section">
+        <div class="ins-label">opportunities</div>
+        <div class="opportunity-card opp-positive">
+          <div class="opp-title opp-pos-title">upstream oil producers</div>
+          <div class="opp-body opp-pos-body">ONGC and Oil India benefit directly from supply-driven price rise. Domestic realisation improves even with government pricing controls.</div>
+          <div class="mmj-row"><span class="mmj mmj-m">measured</span></div>
+        </div>
+        <div class="opportunity-card opp-positive">
+          <div class="opp-title opp-pos-title">renewable energy</div>
+          <div class="opp-body opp-pos-body">Supply shocks historically accelerate domestic clean energy investment. Medium-term policy tailwind strengthens.</div>
+          <div class="mmj-row"><span class="mmj mmj-mo">modelled</span></div>
+        </div>
+      </div>
+
+      <div class="insight-section">
+        <div class="ins-label">risks to watch</div>
+        <div class="opportunity-card opp-negative">
+          <div class="opp-title opp-neg-title">aviation — margin pressure</div>
+          <div class="opp-body opp-neg-body">ATF costs are 35–40% of IndiGo's operating expense. Every $10 rise in crude compresses margins by ~2.5 percentage points.</div>
+          <div class="mmj-row"><span class="mmj mmj-m">measured</span></div>
+        </div>
+        <div class="opportunity-card opp-negative">
+          <div class="opp-title opp-neg-title">paint and chemicals</div>
+          <div class="opp-body opp-neg-body">Asian Paints sources 40% of raw materials from crude derivatives. Input cost spike hits gross margins within 1–2 quarters.</div>
+          <div class="mmj-row"><span class="mmj mmj-m">measured</span></div>
+        </div>
+      </div>
+
+      <div class="insight-section">
+        <div class="ins-label">relevant to your profile</div>
+        <div class="stock-list">
+          <div class="stock-row">
+            <div><div class="stock-name">ONGC</div><div class="stock-sub">upstream oil · high exposure</div></div>
+            <span class="stock-signal sig-pos">opportunity</span>
+          </div>
+          <div class="stock-row">
+            <div><div class="stock-name">IndiGo</div><div class="stock-sub">aviation · cost pressure</div></div>
+            <span class="stock-signal sig-neg">headwind</span>
+          </div>
+          <div class="stock-row">
+            <div><div class="stock-name">Asian Paints</div><div class="stock-sub">chemicals · input cost risk</div></div>
+            <span class="stock-signal sig-neg">headwind</span>
+          </div>
+          <div class="stock-row">
+            <div><div class="stock-name">Adani Green</div><div class="stock-sub">renewables · policy tailwind</div></div>
+            <span class="stock-signal sig-watch">watch</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="insight-section">
+        <div class="ins-label">form your view first</div>
+        <div class="predict-box">
+          <p>Before you read the full analysis — what do you think happens to IndiGo's stock over the next month?</p>
+          <div class="predict-options">
+            <div class="predict-btn" onclick="sendPrompt('I predict IndiGo falls more than 5% — open the full Hormuz Thread')">Falls more than 5%</div>
+            <div class="predict-btn" onclick="sendPrompt('I predict IndiGo falls but less than 5% — open the full Hormuz Thread')">Falls, but less than 5%</div>
+            <div class="predict-btn" onclick="sendPrompt('I predict IndiGo stays flat or rises — open the full Hormuz Thread')">Stays flat or rises</div>
+          </div>
+        </div>
+      </div>
+
+      <button class="read-full" onclick="sendPrompt('Open the Thread for the Strait of Hormuz event card')">read the full analysis — the thread →</button>
+    </div>
+  </div>
+</div>
+
+<script>
+var cards={
+  1:{title:'Strait of Hormuz closure',sub:'What this means for your ₹15,000/month · 3–7 year horizon',opps:[{t:'upstream oil producers',b:'ONGC and Oil India benefit directly from supply-driven price rise. Domestic realisation improves even with government pricing controls.',mmj:'measured',cls:'opp-positive',tc:'opp-pos-title',bc:'opp-pos-body'},{t:'renewable energy',b:'Supply shocks historically accelerate domestic clean energy investment. Medium-term policy tailwind strengthens.',mmj:'modelled',cls:'opp-positive',tc:'opp-pos-title',bc:'opp-pos-body'}],risks:[{t:'aviation — margin pressure',b:'ATF costs are 35–40% of IndiGo\'s operating expense. Every $10 rise in crude compresses margins by ~2.5 percentage points.',mmj:'measured',cls:'opp-negative',tc:'opp-neg-title',bc:'opp-neg-body'},{t:'paint and chemicals',b:'Asian Paints sources 40% of raw materials from crude derivatives. Input cost spike hits gross margins within 1–2 quarters.',mmj:'measured',cls:'opp-negative',tc:'opp-neg-title',bc:'opp-neg-body'}],stocks:[{n:'ONGC',s:'upstream oil · high exposure',sig:'opportunity',sc:'sig-pos'},{n:'IndiGo',s:'aviation · cost pressure',sig:'headwind',sc:'sig-neg'},{n:'Asian Paints',s:'chemicals · input cost risk',sig:'headwind',sc:'sig-neg'},{n:'Adani Green',s:'renewables · policy tailwind',sig:'watch',sc:'sig-watch'}],predict:'Before you read the full analysis — what do you think happens to IndiGo\'s stock over the next month?',thread:'Open the Thread for the Strait of Hormuz event card'},
+  2:{title:'RBI rate hold — June 2025',sub:'What this means for your ₹15,000/month · 3–7 year horizon',opps:[{t:'large private banks',b:'HDFC Bank and ICICI benefit from a stable rate environment with healthy credit growth. NIM compression risk is limited.',mmj:'modelled',cls:'opp-positive',tc:'opp-pos-title',bc:'opp-pos-body'}],risks:[{t:'NBFCs — cost of funds',b:'Non-bank lenders face tighter spreads as deposit competition intensifies without a rate cut to ease borrowing costs.',mmj:'modelled',cls:'opp-negative',tc:'opp-neg-title',bc:'opp-neg-body'},{t:'real estate — sentiment drag',b:'Homebuyers waiting for a rate cut will delay. Housing demand momentum may soften in H2 2025.',mmj:'judged',cls:'opp-negative',tc:'opp-neg-title',bc:'opp-neg-body'}],stocks:[{n:'HDFC Bank',s:'private banking · stable NIM',sig:'opportunity',sc:'sig-pos'},{n:'ICICI Bank',s:'private banking · growth momentum',sig:'opportunity',sc:'sig-pos'},{n:'Bajaj Finance',s:'NBFC · spread pressure',sig:'headwind',sc:'sig-neg'},{n:'DLF',s:'real estate · demand sensitivity',sig:'watch',sc:'sig-watch'}],predict:'Rate holds can be positive or negative depending on context. What do you think this one signals for HDFC Bank?',thread:'Open the Thread for the RBI rate pause event card'},
+  3:{title:'India–EU trade deal progress',sub:'What this means for your ₹15,000/month · 3–7 year horizon',opps:[{t:'IT services exports',b:'A services chapter in the deal could reduce barriers for Indian IT firms in EU markets — a multi-year structural tailwind.',mmj:'judged',cls:'opp-positive',tc:'opp-pos-title',bc:'opp-pos-body'},{t:'auto component manufacturers',b:'Tariff reductions on auto parts exports to EU would benefit Motherson Sumi and similar Tier-1 suppliers significantly.',mmj:'modelled',cls:'opp-positive',tc:'opp-pos-title',bc:'opp-pos-body'}],risks:[{t:'ratification timeline — 5 dependencies',b:'EU member state unanimity required. Historical average for EU trade deals: 7–12 years from negotiation to full ratification.',mmj:'measured',cls:'opp-negative',tc:'opp-neg-title',bc:'opp-neg-body'}],stocks:[{n:'TCS',s:'IT services · EU revenue exposure',sig:'watch',sc:'sig-watch'},{n:'Infosys',s:'IT services · EU client concentration',sig:'watch',sc:'sig-watch'},{n:'Tata Motors',s:'auto · EU JLR exposure',sig:'opportunity',sc:'sig-pos'},{n:'Motherson Sumi',s:'auto components · export play',sig:'watch',sc:'sig-watch'}],predict:'This is a long-term story. Do you think the deal gets fully ratified within 5 years?',thread:'Open the Thread for the India EU trade deal event card'}
+};
+
+function selectCard(n){
+  [1,2,3].forEach(function(i){
+    var c=document.getElementById('card'+i);
+    c.className='event-card'+(i===n?' selected':'');
+  });
+  var d=cards[n];
+  var p=document.getElementById('insightPanel');
+  var mmjClass={'measured':'mmj-m','modelled':'mmj-mo','judged':'mmj-j'};
+  var oppsHtml=d.opps.map(function(o){return '<div class="opportunity-card '+o.cls+'"><div class="opp-title '+o.tc+'">'+o.t+'</div><div class="opp-body '+o.bc+'">'+o.b+'</div><div class="mmj-row"><span class="mmj '+(mmjClass[o.mmj]||'mmj-m')+'">'+o.mmj+'</span></div></div>';}).join('');
+  var risksHtml=d.risks.map(function(o){return '<div class="opportunity-card '+o.cls+'"><div class="opp-title '+o.tc+'">'+o.t+'</div><div class="opp-body '+o.bc+'">'+o.b+'</div><div class="mmj-row"><span class="mmj '+(mmjClass[o.mmj]||'mmj-m')+'">'+o.mmj+'</span></div></div>';}).join('');
+  var stocksHtml=d.stocks.map(function(s){return '<div class="stock-row"><div><div class="stock-name">'+s.n+'</div><div class="stock-sub">'+s.s+'</div></div><span class="stock-signal '+s.sc+'">'+s.sig+'</span></div>';}).join('');
+  p.innerHTML='<div class="insight-header"><h2>'+d.title+'</h2><p>'+d.sub+'</p></div><div class="insight-section"><div class="ins-label">opportunities</div>'+oppsHtml+'</div><div class="insight-section"><div class="ins-label">risks to watch</div>'+risksHtml+'</div><div class="insight-section"><div class="ins-label">relevant to your profile</div><div class="stock-list">'+stocksHtml+'</div></div><div class="insight-section"><div class="ins-label">form your view first</div><div class="predict-box"><p>'+d.predict+'</p><div class="predict-options"><div class="predict-btn" onclick="sendPrompt(\'I have a prediction — open the Thread for '+d.thread.replace(/'/g,"\\'")+'\')"  >Yes, I have a view</div><div class="predict-btn" onclick="sendPrompt(\'I\'m not sure yet — show me the full analysis for '+d.thread.replace(/'/g,"\\'")+'\')">I\'m not sure yet</div></div></div></div><button class="read-full" onclick="sendPrompt(\''+d.thread+'\')">read the full analysis — the thread →</button>';
+}
+</script>
