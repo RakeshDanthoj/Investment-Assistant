@@ -1,4 +1,5 @@
 *.md
+!backend/README.md
 !FinnWise_PRD_v3_Final.md
 !docs/**
 !scripts/**
