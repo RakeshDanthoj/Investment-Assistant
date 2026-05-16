@@ -7,6 +7,14 @@ _REPO_ROOT = Path(__file__).resolve().parents[3]
 _ENV_FILE = _REPO_ROOT / ".env.local"
 
 
+def normalize_supabase_url(url: str) -> str:
+    if not url:
+        return ""
+    if url.startswith("http"):
+        return url.rstrip("/")
+    return f"https://{url}.supabase.co"
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=str(_ENV_FILE),
@@ -17,6 +25,7 @@ class Settings(BaseSettings):
     supabase_url: str = ""
     supabase_anon_key: str = ""
     supabase_service_role_key: str = ""
+    supabase_db_url: str = ""
     claude_api_key: str = ""
     newsapi_key: str = ""
     cors_origins: str = "http://localhost:3000,https://*.vercel.app"

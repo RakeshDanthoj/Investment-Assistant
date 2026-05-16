@@ -38,12 +38,12 @@ _Stand up the foundation surfaces (Pulse + Thread + Onboarding), the LLM card pi
 
 **Acceptance criteria**
 
-- [ ] Repo contains `frontend/` (Next.js + Tailwind) and `backend/` (FastAPI), with shared `docs/` and `scripts/`.
-- [ ] Supabase project provisioned (dev) — URL + anon key stored only in `.env.local`.
-- [ ] Vercel auto-deploys `frontend/` from `main`; Render auto-deploys `backend/` from `main`.
-- [ ] GitHub Actions runs lint + type-check + unit tests for both apps on every PR.
-- [ ] `GET /health` on the backend returns `200 {"status":"ok"}` from both local dev and Render.
-- [ ] One `.env.local` at repo root only — no `.env`, no `.env.example` duplicates.
+- [x] Repo contains `frontend/` (Next.js + Tailwind) and `backend/` (FastAPI), with shared `docs/` and `scripts/`.
+- [x] Supabase project provisioned (dev) — URL + anon key stored only in `.env.local`.
+- [x] Vercel auto-deploys `frontend/` from `main`; Render auto-deploys `backend/` from `main`.
+- [x] GitHub Actions runs lint + type-check + unit tests for both apps on every PR.
+- [x] `GET /health` on the backend returns `200 {"status":"ok"}` from both local dev and Render.
+- [x] One `.env.local` at repo root only — no `.env`, no `.env.example` duplicates.
 
 **Tech notes**
 
@@ -68,15 +68,15 @@ _Stand up the foundation surfaces (Pulse + Thread + Onboarding), the LLM card pi
 
 #### Tasks (checkboxes)
 
-- [ ] **1.0** Project bootstrap, Supabase, deploys, CI
-  - [ ] **1.1** Init monorepo with `frontend/` (Next.js 14 + TS + Tailwind) and `backend/` (FastAPI).
-  - [ ] **1.2** Create single `.env.local` with placeholders: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `CLAUDE_API_KEY`, `NEWSAPI_KEY`. Add to `.gitignore` (already present).
-  - [ ] **1.3** Provision Supabase project (dev). Capture URL + keys into `.env.local` only.
-  - [ ] **1.4** Add `backend/app/main.py` with `GET /health` and CORS for the Vercel preview domain pattern.
-  - [ ] **1.5** Wire Tailwind config to PRD §8.3 colour palette (slate, blue, green, amber, red, surface).
-  - [ ] **1.6** Set up Vercel project → deploy `frontend/`. Set up Render service → deploy `backend/`.
-  - [ ] **1.7** GitHub Actions workflow: `frontend` job (`pnpm lint && pnpm test && pnpm build`) and `backend` job (`ruff check . && pytest -q`).
-  - [ ] **1.8** Test: `pytest backend/tests/test_health.py` passes locally and in CI; `pnpm test` in frontend runs a smoke Jest test for `app/page.tsx`.
+- [x] **1.0** Project bootstrap, Supabase, deploys, CI
+  - [x] **1.1** Init monorepo with `frontend/` (Next.js 14 + TS + Tailwind) and `backend/` (FastAPI).
+  - [x] **1.2** Create single `.env.local` with placeholders: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `CLAUDE_API_KEY`, `NEWSAPI_KEY`. Add to `.gitignore` (already present).
+  - [x] **1.3** Provision Supabase project (dev). Capture URL + keys into `.env.local` only.
+  - [x] **1.4** Add `backend/app/main.py` with `GET /health` and CORS for the Vercel preview domain pattern.
+  - [x] **1.5** Wire Tailwind config to PRD §8.3 colour palette (slate, blue, green, amber, red, surface).
+  - [x] **1.6** Set up Vercel project → deploy `frontend/`. Set up Render service → deploy `backend/`.
+  - [x] **1.7** GitHub Actions workflow: `frontend` job (`pnpm lint && pnpm typecheck && pnpm test && pnpm build`) and `backend` job (`ruff check . && pytest -q`).
+  - [x] **1.8** Test: `pytest backend/tests/test_health.py` passes locally and in CI; `pnpm test` in frontend runs a smoke Jest test for `app/page.tsx`.
 
 ---
 
@@ -94,13 +94,13 @@ _Stand up the foundation surfaces (Pulse + Thread + Onboarding), the LLM card pi
 
 **Acceptance criteria**
 
-- [ ] Split-screen layout on desktop (420px brand panel + right onboarding panel). Mobile hides brand panel (PRD §5 Screen 1).
-- [ ] Three progress dots, never a percentage bar. Active dot blue (#1A4FCC), 1.2× scale.
-- [ ] Step 1: three full-width option buttons. Step 2: free-text amount with `₹` prefix + Monthly/One-time segment. Step 3: 2×2 horizon grid.
-- [ ] Step 4 reveals detected mode (Portfolio Builder / Protector / Curious) with one-sentence rationale + four-surface preview + CTA "Enter FinnWise →".
-- [ ] Persistent red SEBI footer present on every step (PRD §8.6) — never a popup, never dismissable.
-- [ ] No financial data persisted beyond session — mode + horizon are server-stored, amount is **session-only** (PRD §11.1).
-- [ ] Portfolio Builder routes to `/map`; Portfolio Protector and Curious route to `/pulse`.
+- [x] Split-screen layout on desktop (420px brand panel + right onboarding panel). Mobile hides brand panel (PRD §5 Screen 1).
+- [x] Three progress dots, never a percentage bar. Active dot blue (#1A4FCC), 1.2× scale.
+- [x] Step 1: three full-width option buttons. Step 2: free-text amount with `₹` prefix + Monthly/One-time segment. Step 3: 2×2 horizon grid.
+- [x] Step 4 reveals detected mode (Portfolio Builder / Protector / Curious) with one-sentence rationale + four-surface preview + CTA "Enter FinnWise →".
+- [x] Persistent red SEBI footer present on every step (PRD §8.6) — never a popup, never dismissable.
+- [x] No financial data persisted beyond session — mode + horizon are server-stored, amount is **session-only** (PRD §11.1).
+- [x] Portfolio Builder routes to `/map`; Portfolio Protector and Curious route to `/pulse`.
 
 **Reference screen**
 
@@ -134,18 +134,18 @@ _Stand up the foundation surfaces (Pulse + Thread + Onboarding), the LLM card pi
 
 #### Tasks (checkboxes)
 
-- [ ] **2.0** Onboarding three-question flow + mode detection
-  - [ ] **2.1** Migration: `session_profiles` table + RLS (user can only read/write own row).
-  - [ ] **2.2** Implement `mode_detection.detect_mode(status, horizon)` as a pure function — table of 9 cases.
-  - [ ] **2.3** `POST /onboarding/session` route, Pydantic request/response, never accepts or stores the amount value (passed back as echo for client only).
-  - [ ] **2.4** Build `BrandPanel`, `ProgressDots`, persistent `SebiFooter` components from PRD §5 Screen 1 spec.
-  - [ ] **2.5** Build `Step1Status` with three radio-style option buttons + selected state (blue border 1.5px, `#EEF3FF` bg).
-  - [ ] **2.6** Build `Step2Amount` — `₹` prefix box, free-text input (numeric mask only), Monthly/One-time two-segment toggle.
-  - [ ] **2.7** Build `Step3Horizon` 2×2 grid (Under 1y / 1–3y / 3–7y / 7+y).
-  - [ ] **2.8** Build `Step4ModeResult` — read mode from API response, render Playfair Display 20px headline, four-surface preview, CTA.
-  - [ ] **2.9** Loading + error states on Step 4 submit (skeleton dots while POST in flight; inline error block on failure).
-  - [ ] **2.10** Route after CTA: Builder → `/map`, Protector/Curious → `/pulse`.
-  - [ ] **2.11** Test: Jest reducer test for all transitions; RTL test for Step1 selection; Pytest test covering all 9 mode-detection inputs.
+- [x] **2.0** Onboarding three-question flow + mode detection
+  - [x] **2.1** Migration: `session_profiles` table + RLS (user can only read/write own row).
+  - [x] **2.2** Implement `mode_detection.detect_mode(status, horizon)` as a pure function — table of 9 cases.
+  - [x] **2.3** `POST /onboarding/session` route, Pydantic request/response, never accepts or stores the amount value (passed back as echo for client only).
+  - [x] **2.4** Build `BrandPanel`, `ProgressDots`, persistent `SebiFooter` components from PRD §5 Screen 1 spec.
+  - [x] **2.5** Build `Step1Status` with three radio-style option buttons + selected state (blue border 1.5px, `#EEF3FF` bg).
+  - [x] **2.6** Build `Step2Amount` — `₹` prefix box, free-text input (numeric mask only), Monthly/One-time two-segment toggle.
+  - [x] **2.7** Build `Step3Horizon` 2×2 grid (Under 1y / 1–3y / 3–7y / 7+y).
+  - [x] **2.8** Build `Step4ModeResult` — read mode from API response, render Playfair Display 20px headline, four-surface preview, CTA.
+  - [x] **2.9** Loading + error states on Step 4 submit (skeleton dots while POST in flight; inline error block on failure).
+  - [x] **2.10** Route after CTA: Builder → `/map`, Protector/Curious → `/pulse`.
+  - [x] **2.11** Test: Jest reducer test for all transitions; RTL test for Step1 selection; Pytest test covering all 9 mode-detection inputs.
 
 ---
 
@@ -163,10 +163,10 @@ _Stand up the foundation surfaces (Pulse + Thread + Onboarding), the LLM card pi
 
 **Acceptance criteria**
 
-- [ ] Supabase magic-link auth wired end-to-end; callback page exchanges token and creates a session cookie.
-- [ ] All routes under `/(app)/*` (Pulse, Thread, Mirror, Lens, Map) are guarded — unauth users redirect to `/onboarding` or a sign-in screen.
-- [ ] User chip (PRD §8.4) appears at bottom of sidebar: 28px blue avatar circle + initials + name + DM Mono sub-label.
-- [ ] Sign-out clears session + redirects to public landing.
+- [x] Supabase magic-link auth wired end-to-end; callback page exchanges token and creates a session cookie.
+- [x] All routes under `/(app)/*` (Pulse, Thread, Mirror, Lens, Map) are guarded — unauth users redirect to `/onboarding` or a sign-in screen.
+- [x] User chip (PRD §8.4) appears at bottom of sidebar: 28px blue avatar circle + initials + name + DM Mono sub-label.
+- [x] Sign-out clears session + redirects to public landing.
 
 **Tech notes**
 
@@ -188,15 +188,15 @@ _Stand up the foundation surfaces (Pulse + Thread + Onboarding), the LLM card pi
 
 #### Tasks (checkboxes)
 
-- [ ] **3.0** Magic-link auth + protected routes + user chip
-  - [ ] **3.1** Configure Supabase Auth in dashboard — magic-link only, no password.
-  - [ ] **3.2** `sign-in/page.tsx` — single email input + "Send link" button, success/error inline states.
-  - [ ] **3.3** `/callback` route handler exchanges code and writes session cookie.
-  - [ ] **3.4** `middleware.ts` guards `/(app)/*` and `/api/(protected)/*`; bounces unauth users to `/sign-in`.
-  - [ ] **3.5** Backend `get_current_user` FastAPI dependency — verifies Supabase JWT, returns `User` model.
-  - [ ] **3.6** `UserChip` component reading from session; rendered in the sidebar slot.
-  - [ ] **3.7** Sign-out action + button in user chip menu.
-  - [ ] **3.8** Test: Pytest for `get_current_user` (valid + invalid JWT); RTL test for `UserChip` rendering name/initials; smoke E2E (Playwright optional, Jest mock acceptable for V1).
+- [x] **3.0** Magic-link auth + protected routes + user chip
+  - [x] **3.1** Configure Supabase Auth in dashboard — magic-link only, no password.
+  - [x] **3.2** `sign-in/page.tsx` — single email input + "Send link" button, success/error inline states.
+  - [x] **3.3** `/callback` route handler exchanges code and writes session cookie.
+  - [x] **3.4** `middleware.ts` guards `/(app)/*` and `/api/(protected)/*`; bounces unauth users to `/sign-in`.
+  - [x] **3.5** Backend `get_current_user` FastAPI dependency — verifies Supabase JWT, returns `User` model.
+  - [x] **3.6** `UserChip` component reading from session; rendered in the sidebar slot.
+  - [x] **3.7** Sign-out action + button in user chip menu.
+  - [x] **3.8** Test: Pytest for `get_current_user` (valid + invalid JWT); RTL test for `UserChip` rendering name/initials; smoke E2E (Playwright optional, Jest mock acceptable for V1).
 
 ---
 
@@ -214,12 +214,12 @@ _Stand up the foundation surfaces (Pulse + Thread + Onboarding), the LLM card pi
 
 **Acceptance criteria**
 
-- [ ] Tables created per PRD §7.2: `events`, `signals`, `instrument_assessments`, `user_predictions`, `track_record`.
-- [ ] `track_record` enforces append-only via RLS + revoked UPDATE/DELETE for all roles (incl. service role policy denies UPDATE/DELETE). PRD §6.4 + §11.1.
-- [ ] Pytest integration test attempts UPDATE and DELETE on `track_record` and both fail.
-- [ ] `SebiFooter` component reused on Pulse, Thread (later stories) — exported from `components/SebiFooter.tsx` and present on every page that shows instrument-specific analysis.
-- [ ] All `MEASURED | MODELLED | JUDGED` enums declared at DB level as a Postgres `mmj_type`.
-- [ ] All `lifecycle_state` declared as Postgres enum matching the 8 PRD states (draft → archived).
+- [x] Tables created per PRD §7.2: `events`, `signals`, `instrument_assessments`, `user_predictions`, `track_record`.
+- [x] `track_record` enforces append-only via RLS + revoked UPDATE/DELETE for all roles (incl. service role policy denies UPDATE/DELETE). PRD §6.4 + §11.1.
+- [x] Pytest integration test attempts UPDATE and DELETE on `track_record` and both fail.
+- [x] `SebiFooter` component reused on Pulse, Thread (later stories) — exported from `components/SebiFooter.tsx` and present on every page that shows instrument-specific analysis.
+- [x] All `MEASURED | MODELLED | JUDGED` enums declared at DB level as a Postgres `mmj_type`.
+- [x] All `lifecycle_state` declared as Postgres enum matching the 8 PRD states (draft → archived).
 
 #### Relevant files
 
@@ -235,16 +235,16 @@ _Stand up the foundation surfaces (Pulse + Thread + Onboarding), the LLM card pi
 
 #### Tasks (checkboxes)
 
-- [ ] **4.0** Core DB schema + append-only track record + SEBI footer
-  - [ ] **4.1** Migration: `enums.sql` for `mmj_type`, `lifecycle_state` (8 states), `signal_state` (pending/triggered/resolved), `event_category`.
-  - [ ] **4.2** Migration: `events` table — id, title, category, source_url, confidence_score, lifecycle_state, prompt_version, created_at.
-  - [ ] **4.3** Migration: `signals` table — id, card_id, signal_text, state, triggered_at.
-  - [ ] **4.4** Migration: `instrument_assessments` — id, card_id, version, instrument_id, signal_type, reasoning, entry_conditions[], exit_conditions[].
-  - [ ] **4.5** Migration: `user_predictions` — id, user_id, card_id, prediction_text, logged_at, mechanism_accuracy, business_accuracy, market_accuracy.
-  - [ ] **4.6** Migration: `track_record` — id, card_id, payload jsonb, logged_at — **no updated_at**. RLS denies UPDATE+DELETE for all roles.
-  - [ ] **4.7** Backend Pydantic + SQLAlchemy/asyncpg models matching the schema.
-  - [ ] **4.8** Confirm `SebiFooter` (from S2) implements PRD §8.6 spec; verify on every protected-app shell page.
-  - [ ] **4.9** Test: Pytest integration test that attempts UPDATE and DELETE on `track_record` — both must fail with permission error.
+- [x] **4.0** Core DB schema + append-only track record + SEBI footer
+  - [x] **4.1** Migration: `enums.sql` for `mmj_type`, `lifecycle_state` (8 states), `signal_state` (pending/triggered/resolved), `event_category`.
+  - [x] **4.2** Migration: `events` table — id, title, category, source_url, confidence_score, lifecycle_state, prompt_version, created_at.
+  - [x] **4.3** Migration: `signals` table — id, card_id, signal_text, state, triggered_at.
+  - [x] **4.4** Migration: `instrument_assessments` — id, card_id, version, instrument_id, signal_type, reasoning, entry_conditions[], exit_conditions[].
+  - [x] **4.5** Migration: `user_predictions` — id, user_id, card_id, prediction_text, logged_at, mechanism_accuracy, business_accuracy, market_accuracy.
+  - [x] **4.6** Migration: `track_record` — id, card_id, payload jsonb, logged_at — **no updated_at**. RLS denies UPDATE+DELETE for all roles.
+  - [x] **4.7** Backend Pydantic + SQLAlchemy/asyncpg models matching the schema.
+  - [x] **4.8** Confirm `SebiFooter` (from S2) implements PRD §8.6 spec; verify on every protected-app shell page.
+  - [x] **4.9** Test: Pytest integration test that attempts UPDATE and DELETE on `track_record` — both must fail with permission error.
 
 ---
 
@@ -867,18 +867,18 @@ Parallel-safe pairs at every week boundary: `S2/S3/S5`, `S6/S7`, `S8/S9/S10`, `S
 
 ### Tasks by developer — Sam
 
-- [ ] **2.0** Onboarding three-question flow + mode detection
-  - [ ] **2.1** `session_profiles` migration + RLS
-  - [ ] **2.2** `detect_mode()` pure function
-  - [ ] **2.3** `POST /onboarding/session` route
-  - [ ] **2.4** `BrandPanel`, `ProgressDots`, `SebiFooter`
-  - [ ] **2.5** `Step1Status`
-  - [ ] **2.6** `Step2Amount`
-  - [ ] **2.7** `Step3Horizon`
-  - [ ] **2.8** `Step4ModeResult`
-  - [ ] **2.9** Loading + error states
-  - [ ] **2.10** Routing logic (Builder/Protector/Curious)
-  - [ ] **2.11** Reducer + RTL + Pytest tests
+- [x] **2.0** Onboarding three-question flow + mode detection
+  - [x] **2.1** `session_profiles` migration + RLS
+  - [x] **2.2** `detect_mode()` pure function
+  - [x] **2.3** `POST /onboarding/session` route
+  - [x] **2.4** `BrandPanel`, `ProgressDots`, `SebiFooter`
+  - [x] **2.5** `Step1Status`
+  - [x] **2.6** `Step2Amount`
+  - [x] **2.7** `Step3Horizon`
+  - [x] **2.8** `Step4ModeResult`
+  - [x] **2.9** Loading + error states
+  - [x] **2.10** Routing logic (Builder/Protector/Curious)
+  - [x] **2.11** Reducer + RTL + Pytest tests
 - [ ] **9.0** The Pulse — feed, filters, live insight panel, Fog of War
   - [ ] **9.1** Sidebar (PRD §8.4)
   - [ ] **9.2** `(app)/layout.tsx`
@@ -917,25 +917,25 @@ Parallel-safe pairs at every week boundary: `S2/S3/S5`, `S6/S7`, `S8/S9/S10`, `S
 
 ### Tasks by developer — Riley
 
-- [ ] **1.0** Project bootstrap, Supabase, deploys, CI
-  - [ ] **1.1** Monorepo init
-  - [ ] **1.2** Single `.env.local`
-  - [ ] **1.3** Supabase project provisioning
-  - [ ] **1.4** `/health` endpoint
-  - [ ] **1.5** Tailwind seeded w/ PRD palette
-  - [ ] **1.6** Vercel + Render deploys
-  - [ ] **1.7** CI workflow
-  - [ ] **1.8** Smoke tests
-- [ ] **4.0** Core DB schema + append-only track record + SEBI footer
-  - [ ] **4.1** Enums migration
-  - [ ] **4.2** `events`
-  - [ ] **4.3** `signals`
-  - [ ] **4.4** `instrument_assessments`
-  - [ ] **4.5** `user_predictions`
-  - [ ] **4.6** `track_record` append-only RLS
-  - [ ] **4.7** Pydantic/SQLAlchemy models
-  - [ ] **4.8** Verify `SebiFooter` on every protected page
-  - [ ] **4.9** Append-only test
+- [x] **1.0** Project bootstrap, Supabase, deploys, CI
+  - [x] **1.1** Monorepo init
+  - [x] **1.2** Single `.env.local`
+  - [x] **1.3** Supabase project provisioning
+  - [x] **1.4** `/health` endpoint
+  - [x] **1.5** Tailwind seeded w/ PRD palette
+  - [x] **1.6** Vercel + Render deploys
+  - [x] **1.7** CI workflow
+  - [x] **1.8** Smoke tests
+- [x] **4.0** Core DB schema + append-only track record + SEBI footer
+  - [x] **4.1** Enums migration
+  - [x] **4.2** `events`
+  - [x] **4.3** `signals`
+  - [x] **4.4** `instrument_assessments`
+  - [x] **4.5** `user_predictions`
+  - [x] **4.6** `track_record` append-only RLS
+  - [x] **4.7** Pydantic/SQLAlchemy models
+  - [x] **4.8** Verify `SebiFooter` on every protected page
+  - [x] **4.9** Append-only test
 - [ ] **5.0** Factor Exposure DB — Banking sector slice + admin viewer
   - [ ] **5.1** Schema + check constraints
   - [ ] **5.2** 8-factor seed
