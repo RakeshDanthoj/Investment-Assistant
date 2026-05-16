@@ -25,6 +25,7 @@ jobs:
         run: pnpm install
         working-directory: .
       - run: pnpm lint
+      - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
 
