@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     supabase_db_url: str = ""
     claude_api_key: str = ""
     newsapi_key: str = ""
+    factor_db_admin_emails: str = ""
     cors_origins: str = "http://localhost:3000,https://*.vercel.app"
 
 

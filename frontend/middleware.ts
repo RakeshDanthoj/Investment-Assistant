@@ -20,6 +20,8 @@ export const config = {
     "/lens/:path*",
     "/map",
     "/map/:path*",
+    "/admin",
+    "/admin/:path*",
     "/api/protected/:path*",
   ],
 };

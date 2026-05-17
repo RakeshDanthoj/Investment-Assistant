@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.admin_queue import router as admin_router
+from app.api.factor_db import router as factor_db_router
 from app.api.onboarding import router as onboarding_router
 from app.core.settings import get_settings
 
@@ -19,6 +21,8 @@ app.add_middleware(
 
 
 app.include_router(onboarding_router, prefix="/onboarding", tags=["onboarding"])
+app.include_router(admin_router, prefix="/admin")
+app.include_router(factor_db_router, prefix="/api", tags=["factor-db"])
 
 
 @app.get("/health")

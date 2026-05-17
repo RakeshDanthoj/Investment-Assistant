@@ -14,6 +14,8 @@ class EventRecord(BaseModel):
     title: str
     category: EventCategory
     source_url: str | None = None
+    canonical_url: str = ""
+    event_source: str = ""
     confidence_score: int = Field(ge=0, le=100)
     lifecycle_state: LifecycleState = LifecycleState.DRAFT
     prompt_version: str | None = None

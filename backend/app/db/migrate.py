@@ -6,6 +6,8 @@ MIGRATION_FILES = (
     "0003_enums.sql",
     "0004_core_tables.sql",
     "0005_track_record_append_only.sql",
+    "0006_events_dedupe_newsapi_quota.sql",
+    "0007_factor_db.sql",
 )
 
 _SCHEMA_MIGRATIONS_DDL = """

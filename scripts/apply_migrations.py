@@ -25,8 +25,21 @@ def main() -> int:
         )
         return 1
 
-    with psycopg.connect(settings.supabase_db_url) as conn:
-        apply_migrations(conn)
+    try:
+        with psycopg.connect(settings.supabase_db_url) as conn:
+            apply_migrations(conn)
+    except psycopg.OperationalError as exc:
+        err = str(exc).lower()
+        print(f"Database connection failed: {exc}", file=sys.stderr)
+        if "getaddrinfo" in err or "11001" in err:
+            print(
+                "\nDNS lookup failed for the database host. Typical causes: no internet, "
+                "VPN off when required, corporate DNS/firewall blocking outbound DNS, or a "
+                "typo in SUPABASE_DB_URL (Project Settings → Database → connection string).",
+                file=sys.stderr,
+            )
+        return 1
+
     print("Migrations applied successfully.")
     return 0
 

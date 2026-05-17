@@ -263,20 +263,21 @@ _Stand up the foundation surfaces (Pulse + Thread + Onboarding), the LLM card pi
 
 **Acceptance criteria**
 
-- [ ] Tables: `sectors`, `instruments`, `factors` (the 8 from PRD §7.1), `instrument_factor_sensitivity(instrument_id, factor_id, sensitivity, mmj_tag, source_url, retrieved_at)`.
-- [ ] Banking sector seeded with at least 15 NSE-listed banks, each tagged across all 8 factors.
-- [ ] Every sensitivity row carries an MMJ tag (PRD §6.2) and source URL — rows without an MMJ tag fail check constraint.
-- [ ] Internal `/admin/factor-db` page (gated to Product Owner email allow-list) renders the matrix with filter by sector and factor.
-- [ ] `GET /api/factor-db/sensitivity?instrument=...&factor=...` returns the row with freshness metadata.
+- [x] Tables: `sectors`, `instruments`, `factors` (the 8 from PRD §7.1), `instrument_factor_sensitivity(instrument_id, factor_id, sensitivity, mmj_tag, source_url, retrieved_at)`.
+- [x] Banking sector seeded with at least 15 NSE-listed banks, each tagged across all 8 factors.
+- [x] Every sensitivity row carries an MMJ tag (PRD §6.2) and source URL — rows without an MMJ tag fail check constraint.
+- [x] Internal `/admin/factor-db` page (gated to Product Owner email allow-list) renders the matrix with filter by sector and factor.
+- [x] `GET /api/factor-db/sensitivity?instrument=...&factor=...` returns the row with freshness metadata.
 
 #### Relevant files
 
 | Path | Type | Purpose |
 |------|------|---------|
-| `backend/db/migrations/0006_factor_db.sql` | create | Schema for sectors/instruments/factors/sensitivities |
+| `backend/db/migrations/0007_factor_db.sql` | create | Schema for sectors/instruments/factors/sensitivities |
 | `backend/db/seeds/banking_sector.sql` | create | Banking seed (≥15 NSE banks × 8 factors) |
-| `backend/app/api/factor_db.py` | create | Query endpoint |
-| `backend/app/services/factor_db.py` | create | Sensitivity lookup service |
+| `scripts/gen_banking_sector_seed.py` | create | Deterministic seed generator (maintains CSV→SQL-style workflow) |
+| `backend/app/api/factor_db.py` | create | Query endpoints |
+| `backend/app/services/factor_db.py` | create | Sensitivity lookup + matrix service |
 | `backend/tests/test_factor_db_seed.py` | create | Asserts seed completeness + MMJ tag on every row |
 | `frontend/app/admin/factor-db/page.tsx` | create | Internal matrix viewer |
 | `frontend/app/admin/factor-db/_components/FactorMatrix.tsx` | create | Grid component |
@@ -284,16 +285,16 @@ _Stand up the foundation surfaces (Pulse + Thread + Onboarding), the LLM card pi
 
 #### Tasks (checkboxes)
 
-- [ ] **5.0** Factor Exposure DB — Banking sector slice + admin viewer
-  - [ ] **5.1** Migration: factor-DB tables + check constraint `mmj_tag IN ('MEASURED','MODELLED','JUDGED')` and `NOT NULL` on `source_url`.
-  - [ ] **5.2** Seed: 8 factors from PRD §7.1 with descriptions.
-  - [ ] **5.3** Seed: Banking sector with ≥15 instruments (top NSE banks) — capture ticker, ISIN, exchange.
-  - [ ] **5.4** Manually research and load sensitivities (Product Owner task; engineer scripts the CSV→SQL loader).
-  - [ ] **5.5** `factor_db.lookup(instrument, factor)` service function with freshness flag (green / amber / red per PRD §8.6).
-  - [ ] **5.6** `GET /api/factor-db/sensitivity` route, requires auth; admin-only `GET /api/factor-db/matrix?sector=`.
-  - [ ] **5.7** Internal `FactorMatrix` UI — sticky first column (instruments), 8 factor columns, MMJ-coloured dots per cell.
-  - [ ] **5.8** Admin allow-list check on the page (server component returns 403 if email not on list).
-  - [ ] **5.9** Test: Pytest seed integrity (every row has MMJ + source + 8/8 factors covered); RTL render test for `FactorMatrix`.
+- [x] **5.0** Factor Exposure DB — Banking sector slice + admin viewer
+  - [x] **5.1** Migration: factor-DB tables + Postgres `mmj_type` + `NOT NULL` on `source_url`.
+  - [x] **5.2** Seed: 8 factors from PRD §7.1 with descriptions.
+  - [x] **5.3** Seed: Banking sector with ≥15 instruments (top NSE banks) — capture ticker, ISIN, exchange.
+  - [x] **5.4** Manually research and load sensitivities (Product Owner task; engineer scripts the CSV→SQL loader).
+  - [x] **5.5** `factor_db.lookup_sensitivity(...)` service function with freshness flag (green / amber / red per PRD Evidence tab tiers).
+  - [x] **5.6** `GET /api/factor-db/sensitivity` route, requires auth; admin-only `GET /api/factor-db/matrix?sector=`.
+  - [x] **5.7** Internal `FactorMatrix` UI — sticky first column (instruments), 8 factor columns, MMJ-coloured dots per cell.
+  - [x] **5.8** Admin allow-list check on the page (403-style forbidden screen if email not on list).
+  - [x] **5.9** Test: Pytest seed integrity (every row has MMJ + source + 8/8 factors covered); RTL render test for `FactorMatrix`.
 
 ---
 
@@ -311,12 +312,12 @@ _Stand up the foundation surfaces (Pulse + Thread + Onboarding), the LLM card pi
 
 **Acceptance criteria**
 
-- [ ] Scheduled job runs every 4 hours on Render (cron) and on demand via `python -m app.jobs.event_detection`.
-- [ ] Each polled source has a typed adapter behind a `SourceAdapter` interface; adding a new source is one new class.
-- [ ] Each detected event lands in `events` table with `lifecycle_state='draft'` and a 0–100 confidence score.
-- [ ] Editorial queue UI `/admin/queue` lists draft events sorted by confidence desc with filters by category + source.
-- [ ] Daily call quota guard: NewsAPI usage stays under the 100-calls/day free-tier limit (PRD §7.3).
-- [ ] Job is idempotent — re-running on the same window does not create duplicate event rows (dedupe by source + canonical URL).
+- [x] Scheduled job runs every 4 hours on Render (cron) and on demand via `python -m app.jobs.event_detection`.
+- [x] Each polled source has a typed adapter behind a `SourceAdapter` interface; adding a new source is one new class.
+- [x] Each detected event lands in `events` table with `lifecycle_state='draft'` and a 0–100 confidence score.
+- [x] Editorial queue UI `/admin/queue` lists draft events sorted by confidence desc with filters by category + source.
+- [x] Daily call quota guard: NewsAPI usage stays under the 100-calls/day free-tier limit (PRD §7.3).
+- [x] Job is idempotent — re-running on the same window does not create duplicate event rows (dedupe by source + canonical URL).
 
 #### Relevant files
 
@@ -336,16 +337,16 @@ _Stand up the foundation surfaces (Pulse + Thread + Onboarding), the LLM card pi
 
 #### Tasks (checkboxes)
 
-- [ ] **6.0** Event-detection scheduled job + editorial queue
-  - [ ] **6.1** `SourceAdapter` ABC: `fetch(window: timedelta) -> list[RawEvent]` + canonical URL helper.
-  - [ ] **6.2** NewsAPI adapter — query for India-market keywords; respect daily call ceiling with a Redis-less in-DB call counter.
-  - [ ] **6.3** RBI RSS adapter using `feedparser`.
-  - [ ] **6.4** NSE announcements adapter — wrap public CSV/HTML scrape with a `SourceFailure` exception path (fallback to last-good-state per PRD §7.3 risk note).
-  - [ ] **6.5** `event_confidence.score(raw_event)` — combines keyword heuristics + source priority (RBI > Exchange > News). 0–100.
-  - [ ] **6.6** Dedupe + persist: hash on `(source, canonical_url)` unique constraint; upsert path is no-op.
-  - [ ] **6.7** Render cron job: every 4 hours; emits structured logs.
-  - [ ] **6.8** Admin queue route + Next.js page listing drafts (table view) with filter pills.
-  - [ ] **6.9** Test: idempotency test (run twice → zero new rows); per-source unit test with HTTP fixtures.
+- [x] **6.0** Event-detection scheduled job + editorial queue
+  - [x] **6.1** `SourceAdapter` ABC: `fetch(window: timedelta) -> list[RawEvent]` + canonical URL helper.
+  - [x] **6.2** NewsAPI adapter — query for India-market keywords; respect daily call ceiling with a Redis-less in-DB call counter.
+  - [x] **6.3** RBI RSS adapter using `feedparser`.
+  - [x] **6.4** NSE announcements adapter — wrap public CSV/HTML scrape with a `SourceFailure` exception path (fallback to last-good-state per PRD §7.3 risk note).
+  - [x] **6.5** `event_confidence.score(raw_event)` — combines keyword heuristics + source priority (RBI > Exchange > News). 0–100.
+  - [x] **6.6** Dedupe + persist: hash on `(source, canonical_url)` unique constraint; upsert path is no-op.
+  - [x] **6.7** Render cron job: every 4 hours; emits structured logs.
+  - [x] **6.8** Admin queue route + Next.js page listing drafts (table view) with filter pills.
+  - [x] **6.9** Test: idempotency test (run twice → zero new rows); per-source unit test with HTTP fixtures.
 
 ---
 
@@ -937,16 +938,16 @@ Parallel-safe pairs at every week boundary: `S2/S3/S5`, `S6/S7`, `S8/S9/S10`, `S
   - [x] **4.7** Pydantic/SQLAlchemy models
   - [x] **4.8** Verify `SebiFooter` on every protected page
   - [x] **4.9** Append-only test
-- [ ] **5.0** Factor Exposure DB — Banking sector slice + admin viewer
-  - [ ] **5.1** Schema + check constraints
-  - [ ] **5.2** 8-factor seed
-  - [ ] **5.3** 15 NSE banks seed
-  - [ ] **5.4** CSV→SQL loader script
-  - [ ] **5.5** `factor_db.lookup()`
-  - [ ] **5.6** Factor DB API routes
-  - [ ] **5.7** `FactorMatrix` UI
-  - [ ] **5.8** Admin allow-list gate
-  - [ ] **5.9** Seed-integrity + RTL tests
+- [x] **5.0** Factor Exposure DB — Banking sector slice + admin viewer
+  - [x] **5.1** Schema + check constraints
+  - [x] **5.2** 8-factor seed
+  - [x] **5.3** 15 NSE banks seed
+  - [x] **5.4** CSV→SQL loader script
+  - [x] **5.5** `factor_db.lookup_sensitivity()`
+  - [x] **5.6** Factor DB API routes
+  - [x] **5.7** `FactorMatrix` UI
+  - [x] **5.8** Admin allow-list gate
+  - [x] **5.9** Seed-integrity + RTL tests
 - [ ] **8.0** Editorial review interface for drafts
   - [ ] **8.1** Reuse Thread components in read-only
   - [ ] **8.2** `ChecklistPanel` (5 items)
