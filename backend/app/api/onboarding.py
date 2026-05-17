@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Literal
 from uuid import UUID, uuid4
 
-import httpx
+import http
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
@@ -47,25 +47,14 @@ def create_onboarding_session(body: OnboardingSessionRequest) -> OnboardingSessi
     mode, surface, rationale = detect_mode(body.investment_status, body.horizon)
     sid = body.session_id or uuid4()
 
-    try:
-        persist_session_profile(
-            session_id=sid,
-            user_id=None,
-            status=body.investment_status,
-            horizon=body.horizon,
-            cadence=body.cadence,
-            mode=mode,
-        )
-    except httpx.HTTPStatusError as e:
-        raise HTTPException(
-            status_code=502,
-            detail="Could not persist onboarding profile.",
-        ) from e
-    except httpx.RequestError as e:
-        raise HTTPException(
-            status_code=502,
-            detail="Could not reach database.",
-        ) from e
+    persist_session_profile(
+        session_id=sid,
+        user_id=None,
+        status=body.investment_status,
+        horizon=body.horizon,
+        cadence=body.cadence,
+        mode=mode,
+    )
 
     return OnboardingSessionResponse(
         mode=mode,

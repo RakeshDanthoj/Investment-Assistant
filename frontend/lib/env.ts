@@ -17,3 +17,10 @@ export function getSupabaseAnonKey(): string {
     ""
   );
 }
+
+/** Dev/test only: disables auth redirects and gates when NEXT_PUBLIC_SKIP_AUTH is true (never runs in production). */
+export function isAuthSkipped(): boolean {
+  if (process.env.NODE_ENV === "production") return false;
+  const raw = process.env.NEXT_PUBLIC_SKIP_AUTH;
+  return raw === "true" || raw === "1";
+}

@@ -1,23 +1,30 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { isAuthSkipped } from "@/lib/env";
+import { createClient } from "@/lib/supabase/client";
 import type { SessionApiResult } from "@/lib/onboarding/state";
 
 const SURFACES = [
   {
+    slug: "pulse",
     name: "The Pulse",
     description: "Personalised event feed — implications first.",
   },
   {
+    slug: "thread",
     name: "The Thread",
     description: "Full Event Intelligence Card when you go deeper.",
   },
   {
+    slug: "map",
     name: "The Map",
     description: "Sector learning across the Indian economy.",
   },
   {
+    slug: "mirror",
     name: "The Mirror",
     description: "Your learning history & accuracy (Phase 2).",
   },
@@ -34,14 +41,49 @@ function modeHeadline(mode: string): string {
   }
 }
 
+function startingSurfaceLabel(surface: string): string {
+  return surface === "map" ? "The Map" : "The Pulse";
+}
+
 type Step4ModeResultProps = {
   result: SessionApiResult;
 };
 
 export function Step4ModeResult({ result }: Step4ModeResultProps) {
   const router = useRouter();
+  const [authChecked, setAuthChecked] = useState(false);
+  const [isSignedIn, setIsSignedIn] = useState(false);
 
   const targetPath = result.starting_surface === "map" ? "/map" : "/pulse";
+  const startingLabel = startingSurfaceLabel(result.starting_surface);
+
+  useEffect(() => {
+    if (isAuthSkipped()) {
+      setIsSignedIn(true);
+      setAuthChecked(true);
+      return;
+    }
+    const supabase = createClient();
+    void supabase.auth.getUser().then(({ data: { user } }) => {
+      setIsSignedIn(Boolean(user));
+      setAuthChecked(true);
+    });
+  }, []);
+
+  function handleEnter() {
+    if (!authChecked) return;
+    if (isSignedIn) {
+      router.push(targetPath);
+      return;
+    }
+    router.push(`/sign-in?next=${encodeURIComponent(targetPath)}`);
+  }
+
+  const ctaLabel = !authChecked
+    ? "Loading…"
+    : isSignedIn
+      ? `Go to ${startingLabel} →`
+      : `Sign in & open ${startingLabel} →`;
 
   return (
     <div className="flex flex-col gap-6">
@@ -68,25 +110,51 @@ export function Step4ModeResult({ result }: Step4ModeResultProps) {
         <p className="font-mono text-[9px] font-medium uppercase tracking-wider text-slate-400">
           Your surfaces
         </p>
+        <p className="mt-1 text-xs text-slate-500">
+          Preview of what&apos;s inside — your starting surface is{" "}
+          <span className="font-medium text-slate-700">{startingLabel}</span>.
+        </p>
         <ul className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-          {SURFACES.map((s) => (
-            <li
-              key={s.name}
-              className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-left"
-            >
-              <p className="text-xs font-semibold text-slate-900">{s.name}</p>
-              <p className="mt-0.5 text-[11px] text-slate-500">{s.description}</p>
-            </li>
-          ))}
+          {SURFACES.map((s) => {
+            const isStarting = s.slug === result.starting_surface;
+            return (
+              <li
+                key={s.name}
+                className={`rounded-lg border bg-white px-3 py-2.5 text-left ${
+                  isStarting
+                    ? "border-finnwise-blue ring-2 ring-finnwise-blue/20"
+                    : "border-slate-200"
+                }`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-xs font-semibold text-slate-900">{s.name}</p>
+                  {isStarting ? (
+                    <span className="shrink-0 rounded bg-finnwise-blue-tint px-1.5 py-0.5 font-mono text-[8px] uppercase tracking-wide text-finnwise-blue">
+                      Starts here
+                    </span>
+                  ) : null}
+                </div>
+                <p className="mt-0.5 text-[11px] text-slate-500">{s.description}</p>
+              </li>
+            );
+          })}
         </ul>
       </div>
 
+      {!authChecked || isSignedIn ? null : (
+        <p className="text-center text-xs text-slate-500">
+          FinnWise uses magic-link sign-in for invited testers. We&apos;ll email you a
+          one-time link, then take you straight to {startingLabel}.
+        </p>
+      )}
+
       <button
         type="button"
-        onClick={() => router.push(targetPath)}
-        className="rounded-lg bg-[#185FA5] px-8 py-3.5 text-sm font-medium text-[#E6F1FB] transition-colors hover:bg-[#144a84]"
+        disabled={!authChecked}
+        onClick={handleEnter}
+        className="rounded-lg bg-[#185FA5] px-8 py-3.5 text-sm font-medium text-[#E6F1FB] transition-colors hover:bg-[#144a84] disabled:cursor-not-allowed disabled:opacity-50"
       >
-        Enter FinnWise →
+        {ctaLabel}
       </button>
     </div>
   );

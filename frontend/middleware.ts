@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 
+import { isAuthSkipped } from "@/lib/env";
 import { updateSession } from "@/lib/supabase/middleware";
 
 const PROTECTED_PREFIXES = [
@@ -21,7 +22,11 @@ function isProtectedPath(pathname: string): boolean {
 export async function middleware(request: NextRequest) {
   const { supabaseResponse, user } = await updateSession(request);
 
-  if (isProtectedPath(request.nextUrl.pathname) && !user) {
+  if (
+    !isAuthSkipped() &&
+    isProtectedPath(request.nextUrl.pathname) &&
+    !user
+  ) {
     const url = request.nextUrl.clone();
     url.pathname = "/sign-in";
     url.searchParams.set("next", request.nextUrl.pathname);
@@ -33,10 +38,15 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
+    "/pulse",
     "/pulse/:path*",
+    "/thread",
     "/thread/:path*",
+    "/mirror",
     "/mirror/:path*",
+    "/lens",
     "/lens/:path*",
+    "/map",
     "/map/:path*",
     "/api/protected/:path*",
   ],

@@ -1,3 +1,6 @@
+import { redirect } from "next/navigation";
+
+import { isAuthSkipped } from "@/lib/env";
 import SignInForm from "./sign-in-form";
 
 type SignInPageProps = {
@@ -7,6 +10,13 @@ type SignInPageProps = {
 export default function SignInPage({ searchParams }: SignInPageProps) {
   const authError = searchParams?.error === "auth";
   const nextPath = searchParams?.next ?? "/pulse";
+
+  if (isAuthSkipped()) {
+    const rawNext = searchParams?.next;
+    const destination =
+      typeof rawNext === "string" && rawNext.startsWith("/") ? rawNext : nextPath;
+    redirect(destination);
+  }
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-finnwise-surface p-8">
@@ -18,6 +28,17 @@ export default function SignInPage({ searchParams }: SignInPageProps) {
           Enter your invited email. We&apos;ll send a one-time magic link — no
           password required.
         </p>
+        {nextPath !== "/pulse" ? (
+          <p className="mt-2 text-xs text-slate-400">
+            After sign-in you&apos;ll open{" "}
+            <span className="font-medium text-slate-600">{nextPath}</span>.
+          </p>
+        ) : (
+          <p className="mt-2 text-xs text-slate-400">
+            After sign-in you&apos;ll open{" "}
+            <span className="font-medium text-slate-600">The Pulse</span>.
+          </p>
+        )}
         {authError ? (
           <p
             className="mt-4 rounded-md border border-finnwise-red/20 bg-red-50 px-3 py-2 text-sm text-finnwise-red"

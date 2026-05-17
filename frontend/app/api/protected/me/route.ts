@@ -1,8 +1,16 @@
 import { NextResponse } from "next/server";
 
+import { isAuthSkipped } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 
 export async function GET() {
+  if (isAuthSkipped()) {
+    return NextResponse.json({
+      id: "local-dev-placeholder",
+      email: "dev@local",
+    });
+  }
+
   const supabase = await createClient();
   const {
     data: { user },

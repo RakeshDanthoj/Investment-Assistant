@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import AppShell from "@/components/Sidebar/AppShell";
+import { isAuthSkipped } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 import { displayNameFromUser } from "@/lib/user-display";
 
@@ -14,12 +15,12 @@ export default async function AppLayout({
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) {
+  if (!isAuthSkipped() && !user) {
     redirect("/sign-in");
   }
 
-  const userName = displayNameFromUser(user);
-  const userEmail = user.email ?? "";
+  const userName = user ? displayNameFromUser(user) : "Developer";
+  const userEmail = user?.email ?? "dev@local";
 
   return (
     <AppShell userName={userName} userEmail={userEmail}>
