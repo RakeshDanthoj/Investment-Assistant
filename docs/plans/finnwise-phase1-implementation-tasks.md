@@ -5,7 +5,7 @@ _generated for independent execution without prd-planner_
 
 ## Overview
 
-- **Summary**: Phase 1 ships the V1 foundation. Three surfaces go live — Onboarding, The Pulse, The Thread — backed by the three-call LLM card-synthesis pipeline, the event-detection scheduled job, the Banking-sector slice of the Factor Exposure Database, signal monitoring with confidence-gated triggering, append-only track-record logging, and the bias audit log. 10–15 invited testers receive magic-link access in Week 11–12.
+- **Summary**: Phase 1 ships the V1 foundation. Three surfaces go live — Onboarding, The Pulse, The Thread — backed by the three-call LLM card-synthesis pipeline, the event-detection scheduled job, the Banking-sector slice of the Factor Exposure Database, signal monitoring with confidence-gated triggering, append-only track-record logging, and the bias audit log. **Route and API auth gating are intentionally omitted for Phase 1** (open access to app surfaces); magic-link / invite-only access is a post–Phase 1 hardening item before wider external testing.
 - **Tech stack** (PRD §9): Next.js + React + Tailwind (frontend on Vercel), Python + FastAPI (backend on Render), PostgreSQL via Supabase, Supabase Auth (magic link), Anthropic Claude Sonnet (LLM). Tests: Jest + React Testing Library (frontend), Pytest + httpx (backend). Single `.env.local` for all secrets — never duplicated across `.env` / `.env.example` files (per workspace rules).
 
 - **Slicing approach**: every story is an end-to-end vertical slice — UI + API + DB minimum, with explicit test step(s) in the checklist. Parent task IDs are **per-phase** (this file uses `1.0`–`14.0`). All MMJ, SEBI, bias-flag, and track-record constraints from PRD §6, §8.6, §11 are treated as non-negotiable acceptance criteria, not nice-to-haves.
@@ -30,7 +30,7 @@ _Stand up the foundation surfaces (Pulse + Thread + Onboarding), the LLM card pi
 - **Points:** 4
 - **Layers:** Infra, DB, CI
 - **Depends on:** _None_
-- **Parallel with:** _None_ (gating story for the phase)
+- **Parallel with:** _None_
 
 **User story**
 
@@ -85,7 +85,7 @@ _Stand up the foundation surfaces (Pulse + Thread + Onboarding), the LLM card pi
 - **Assigned:** Sam
 - **Points:** 5
 - **Layers:** DB, API, UI
-- **Depends on:** P1-S1, P1-S3 (Auth) — but UI can be built against mocked API and integrated when S3 lands
+- **Depends on:** P1-S1 — UI can be built against mocked API (no auth gate required for Phase 1)
 - **Parallel with:** P1-S3, P1-S5
 
 **User story**
@@ -149,7 +149,7 @@ _Stand up the foundation surfaces (Pulse + Thread + Onboarding), the LLM card pi
 
 ---
 
-### Story P1-S3 — Magic-link auth + protected routes + user chip
+### Story P1-S3 — Supabase session + user chip (route gating deferred)
 
 - **Assigned:** Jordan
 - **Points:** 4
@@ -159,26 +159,27 @@ _Stand up the foundation surfaces (Pulse + Thread + Onboarding), the LLM card pi
 
 **User story**
 
-> As an invited tester, I want to sign in with a magic-link email so that I can access FinnWise without managing a password, and see my identity in the sidebar user chip.
+> As a developer or early user, I want Supabase session support and a visible identity chip when signed in, without route-level auth blocking Phase 1 surfaces.
 
 **Acceptance criteria**
 
-- [x] Supabase magic-link auth wired end-to-end; callback page exchanges token and creates a session cookie.
-- [x] All routes under `/(app)/*` (Pulse, Thread, Mirror, Lens, Map) are guarded — unauth users redirect to `/onboarding` or a sign-in screen.
-- [x] User chip (PRD §8.4) appears at bottom of sidebar: 28px blue avatar circle + initials + name + DM Mono sub-label.
+- [x] Supabase magic-link auth wired end-to-end; callback page exchanges token and creates a session cookie (when email delivery works).
+- [ ] **Phase 1:** Routes under `/(app)/*` and onboarding exits are **not** gated — no redirect to `/sign-in` for anonymous visitors. Re-introduce guards before public beta / wider testing.
+- [x] User chip (PRD §8.4) appears at bottom of sidebar: 28px blue avatar circle + initials + name + DM Mono sub-label; placeholders when no session.
 - [x] Sign-out clears session + redirects to public landing.
 
 **Tech notes**
 
-- Server components use `@supabase/auth-helpers-nextjs`. Backend reads JWT via FastAPI dependency.
+- Server components use `@supabase/ssr`. Backend `get_current_user` exists for future protected APIs; Phase 1 frontend does not use JWT gates for page access.
+- `GET /api/protected/me` returns an anonymous-shaped payload when there is no session (no `401` in Phase 1).
 
 #### Relevant files
 
 | Path | Type | Purpose |
 |------|------|---------|
-| `frontend/app/(auth)/sign-in/page.tsx` | create | Email entry for magic link |
+| `frontend/app/(auth)/sign-in/page.tsx` | create | Email entry for magic link (optional manual flow) |
 | `frontend/app/(auth)/callback/route.ts` | create | Token exchange route handler |
-| `frontend/middleware.ts` | create | Route guard for `/(app)/*` |
+| `frontend/middleware.ts` | create | Session refresh only — **no** auth redirect in Phase 1 |
 | `frontend/components/Sidebar/UserChip.tsx` | create | Bottom-of-sidebar identity chip |
 | `frontend/lib/supabase/client.ts` | create | Singleton browser client |
 | `frontend/lib/supabase/server.ts` | create | Server-side client (RSC + route handlers) |
@@ -188,11 +189,11 @@ _Stand up the foundation surfaces (Pulse + Thread + Onboarding), the LLM card pi
 
 #### Tasks (checkboxes)
 
-- [x] **3.0** Magic-link auth + protected routes + user chip
+- [ ] **3.0** Supabase session + user chip (route gating deferred)
   - [x] **3.1** Configure Supabase Auth in dashboard — magic-link only, no password.
   - [x] **3.2** `sign-in/page.tsx` — single email input + "Send link" button, success/error inline states.
   - [x] **3.3** `/callback` route handler exchanges code and writes session cookie.
-  - [x] **3.4** `middleware.ts` guards `/(app)/*` and `/api/(protected)/*`; bounces unauth users to `/sign-in`.
+  - [ ] **3.4** `middleware.ts` — refresh Supabase session cookies on matched routes; **do not** bounce unauthenticated users to `/sign-in` during Phase 1.
   - [x] **3.5** Backend `get_current_user` FastAPI dependency — verifies Supabase JWT, returns `User` model.
   - [x] **3.6** `UserChip` component reading from session; rendered in the sidebar slot.
   - [x] **3.7** Sign-out action + button in user chip menu.
@@ -451,7 +452,7 @@ _Stand up the foundation surfaces (Pulse + Thread + Onboarding), the LLM card pi
 - **Assigned:** Sam
 - **Points:** 7
 - **Layers:** UI, API
-- **Depends on:** P1-S3 (auth), P1-S4 (schema), P1-S7 (cards exist)
+- **Depends on:** P1-S3 (app shell + session), P1-S4 (schema), P1-S7 (cards exist)
 - **Parallel with:** P1-S8, P1-S10 (different surfaces; can develop in parallel with mocked card JSON)
 
 **User story**
@@ -824,11 +825,11 @@ Parallel-safe pairs at every week boundary: `S2/S3/S5`, `S6/S7`, `S8/S9/S10`, `S
 
 ### Tasks by developer — Jordan
 
-- [ ] **3.0** Magic-link auth + protected routes + user chip
+- [ ] **3.0** Supabase session + user chip (route gating deferred)
   - [ ] **3.1** Configure Supabase Auth magic-link only
   - [ ] **3.2** Sign-in page UI
   - [ ] **3.3** Callback route handler
-  - [ ] **3.4** Middleware route guard
+  - [ ] **3.4** Middleware: session refresh only — **no** auth redirect in Phase 1
   - [ ] **3.5** `get_current_user` FastAPI dependency
   - [ ] **3.6** `UserChip` from session
   - [ ] **3.7** Sign-out action

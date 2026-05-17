@@ -1,6 +1,3 @@
-import { redirect } from "next/navigation";
-
-import { isAuthSkipped } from "@/lib/env";
 import SignInForm from "./sign-in-form";
 
 type SignInPageProps = {
@@ -10,13 +7,6 @@ type SignInPageProps = {
 export default function SignInPage({ searchParams }: SignInPageProps) {
   const authError = searchParams?.error === "auth";
   const nextPath = searchParams?.next ?? "/pulse";
-
-  if (isAuthSkipped()) {
-    const rawNext = searchParams?.next;
-    const destination =
-      typeof rawNext === "string" && rawNext.startsWith("/") ? rawNext : nextPath;
-    redirect(destination);
-  }
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-finnwise-surface p-8">

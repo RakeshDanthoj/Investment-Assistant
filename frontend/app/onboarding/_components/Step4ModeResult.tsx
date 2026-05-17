@@ -1,10 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { isAuthSkipped } from "@/lib/env";
-import { createClient } from "@/lib/supabase/client";
 import type { SessionApiResult } from "@/lib/onboarding/state";
 
 const SURFACES = [
@@ -51,39 +48,13 @@ type Step4ModeResultProps = {
 
 export function Step4ModeResult({ result }: Step4ModeResultProps) {
   const router = useRouter();
-  const [authChecked, setAuthChecked] = useState(false);
-  const [isSignedIn, setIsSignedIn] = useState(false);
 
   const targetPath = result.starting_surface === "map" ? "/map" : "/pulse";
   const startingLabel = startingSurfaceLabel(result.starting_surface);
 
-  useEffect(() => {
-    if (isAuthSkipped()) {
-      setIsSignedIn(true);
-      setAuthChecked(true);
-      return;
-    }
-    const supabase = createClient();
-    void supabase.auth.getUser().then(({ data: { user } }) => {
-      setIsSignedIn(Boolean(user));
-      setAuthChecked(true);
-    });
-  }, []);
-
   function handleEnter() {
-    if (!authChecked) return;
-    if (isSignedIn) {
-      router.push(targetPath);
-      return;
-    }
-    router.push(`/sign-in?next=${encodeURIComponent(targetPath)}`);
+    router.push(targetPath);
   }
-
-  const ctaLabel = !authChecked
-    ? "Loading…"
-    : isSignedIn
-      ? `Go to ${startingLabel} →`
-      : `Sign in & open ${startingLabel} →`;
 
   return (
     <div className="flex flex-col gap-6">
@@ -141,20 +112,12 @@ export function Step4ModeResult({ result }: Step4ModeResultProps) {
         </ul>
       </div>
 
-      {!authChecked || isSignedIn ? null : (
-        <p className="text-center text-xs text-slate-500">
-          FinnWise uses magic-link sign-in for invited testers. We&apos;ll email you a
-          one-time link, then take you straight to {startingLabel}.
-        </p>
-      )}
-
       <button
         type="button"
-        disabled={!authChecked}
         onClick={handleEnter}
-        className="rounded-lg bg-[#185FA5] px-8 py-3.5 text-sm font-medium text-[#E6F1FB] transition-colors hover:bg-[#144a84] disabled:cursor-not-allowed disabled:opacity-50"
+        className="rounded-lg bg-[#185FA5] px-8 py-3.5 text-sm font-medium text-[#E6F1FB] transition-colors hover:bg-[#144a84]"
       >
-        {ctaLabel}
+        Go to {startingLabel} →
       </button>
     </div>
   );
