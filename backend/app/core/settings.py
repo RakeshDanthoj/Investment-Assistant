@@ -1,6 +1,7 @@
 from functools import lru_cache
 from pathlib import Path
 
+from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -26,7 +27,20 @@ class Settings(BaseSettings):
     supabase_anon_key: str = ""
     supabase_service_role_key: str = ""
     supabase_db_url: str = ""
-    claude_api_key: str = ""
+    gemini_api_key: str = Field(
+        default="",
+        validation_alias=AliasChoices("GEMINI_API_KEY", "GOOGLE_API_KEY"),
+    )
+    gemini_model: str = Field(default="gemini-2.0-flash", validation_alias="GEMINI_MODEL")
+
+    @field_validator("gemini_model", mode="before")
+    @classmethod
+    def _gemini_model_fallback(cls, v: object) -> object:
+        if v is None:
+            return "gemini-2.0-flash"
+        if isinstance(v, str) and not v.strip():
+            return "gemini-2.0-flash"
+        return v
     newsapi_key: str = ""
     factor_db_admin_emails: str = ""
     cors_origins: str = "http://localhost:3000,https://*.vercel.app"

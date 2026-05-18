@@ -12,3 +12,31 @@ body {
   background: var(--background);
   font-family: var(--font-inter), system-ui, sans-serif;
 }
+
+@keyframes thread-lifecycle-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+.thread-lifecycle-pulse {
+  animation: thread-lifecycle-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes thread-signal-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.thread-signal-pulse {
+  animation: thread-signal-pulse 1.5s ease-in-out infinite;
+}

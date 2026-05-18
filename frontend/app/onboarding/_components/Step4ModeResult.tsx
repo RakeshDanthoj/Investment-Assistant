@@ -1,8 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 import type { SessionApiResult } from "@/lib/onboarding/state";
+import { setStoredSessionId } from "@/lib/sessionProfile";
 
 const SURFACES = [
   {
@@ -48,6 +50,10 @@ type Step4ModeResultProps = {
 
 export function Step4ModeResult({ result }: Step4ModeResultProps) {
   const router = useRouter();
+
+  useEffect(() => {
+    if (result.session_id) setStoredSessionId(result.session_id);
+  }, [result.session_id]);
 
   const targetPath = result.starting_surface === "map" ? "/map" : "/pulse";
   const startingLabel = startingSurfaceLabel(result.starting_surface);

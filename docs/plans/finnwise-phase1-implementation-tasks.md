@@ -6,7 +6,7 @@ _generated for independent execution without prd-planner_
 ## Overview
 
 - **Summary**: Phase 1 ships the V1 foundation. Three surfaces go live — Onboarding, The Pulse, The Thread — backed by the three-call LLM card-synthesis pipeline, the event-detection scheduled job, the Banking-sector slice of the Factor Exposure Database, signal monitoring with confidence-gated triggering, append-only track-record logging, and the bias audit log. **Route and API auth gating are intentionally omitted for Phase 1** (open access to app surfaces); magic-link / invite-only access is a post–Phase 1 hardening item before wider external testing.
-- **Tech stack** (PRD §9): Next.js + React + Tailwind (frontend on Vercel), Python + FastAPI (backend on Render), PostgreSQL via Supabase, Supabase Auth (magic link), Anthropic Claude Sonnet (LLM). Tests: Jest + React Testing Library (frontend), Pytest + httpx (backend). Single `.env.local` for all secrets — never duplicated across `.env` / `.env.example` files (per workspace rules).
+- **Tech stack** (PRD §9): Next.js + React + Tailwind (frontend on Vercel), Python + FastAPI (backend on Render), PostgreSQL via Supabase, Supabase Auth (magic link), Google Gemini API (LLM). Tests: Jest + React Testing Library (frontend), Pytest + httpx (backend). Single `.env.local` for all secrets — never duplicated across `.env` / `.env.example` files (per workspace rules).
 
 - **Slicing approach**: every story is an end-to-end vertical slice — UI + API + DB minimum, with explicit test step(s) in the checklist. Parent task IDs are **per-phase** (this file uses `1.0`–`14.0`). All MMJ, SEBI, bias-flag, and track-record constraints from PRD §6, §8.6, §11 are treated as non-negotiable acceptance criteria, not nice-to-haves.
 
@@ -70,7 +70,7 @@ _Stand up the foundation surfaces (Pulse + Thread + Onboarding), the LLM card pi
 
 - [x] **1.0** Project bootstrap, Supabase, deploys, CI
   - [x] **1.1** Init monorepo with `frontend/` (Next.js 14 + TS + Tailwind) and `backend/` (FastAPI).
-  - [x] **1.2** Create single `.env.local` with placeholders: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `CLAUDE_API_KEY`, `NEWSAPI_KEY`. Add to `.gitignore` (already present).
+  - [x] **1.2** Create single `.env.local` with placeholders: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `GEMINI_API_KEY` (or `GOOGLE_API_KEY`), `NEWSAPI_KEY`. Add to `.gitignore` (already present).
   - [x] **1.3** Provision Supabase project (dev). Capture URL + keys into `.env.local` only.
   - [x] **1.4** Add `backend/app/main.py` with `GET /health` and CORS for the Vercel preview domain pattern.
   - [x] **1.5** Wire Tailwind config to PRD §8.3 colour palette (slate, blue, green, amber, red, surface).
@@ -350,7 +350,7 @@ _Stand up the foundation surfaces (Pulse + Thread + Onboarding), the LLM card pi
 
 ---
 
-### Story P1-S7 — LLM 3-call card-synthesis pipeline (Claude Sonnet)
+### Story P1-S7 — LLM 3-call card-synthesis pipeline (Gemini)
 
 - **Assigned:** Jordan
 - **Points:** 7
@@ -360,47 +360,47 @@ _Stand up the foundation surfaces (Pulse + Thread + Onboarding), the LLM card pi
 
 **User story**
 
-> As the editorial pipeline, I want to turn a queued event into a structurally complete Event Intelligence Card via three separate, version-controlled Claude Sonnet calls (Synthesis / Dissent / Framework), so that every card carries an Insight, a Context causal chain, a dissenting view, and a Framework Behind This — with every number traceable to the Evidence layer.
+> As the editorial pipeline, I want to turn a queued event into a structurally complete Event Intelligence Card via three separate, version-controlled Gemini calls (Synthesis / Dissent / Framework), so that every card carries an Insight, a Context causal chain, a dissenting view, and a Framework Behind This — with every number traceable to the Evidence layer.
 
 **Acceptance criteria**
 
-- [ ] Three prompt templates checked into `prompts/` with semantic versions in their filename or front-matter. Cards persist `prompt_version` per PRD §6.3.
-- [ ] LLM never generates or fabricates numbers — synthesis-call output is parsed, and any number not present in the Evidence layer fails validation and rejects the draft (PRD §6.3 constraint).
-- [ ] Every quantitative claim carries an MMJ tag, enforced by post-generation validator.
-- [ ] Dissenting view is a **separate** call — pipeline fails the draft if dissent payload is empty or generic (PRD §6.3 Role 2).
-- [ ] Framework Behind This is generated last and stored with the card.
-- [ ] Per-card LLM cost recorded; daily cap of 50 cards enforced (PRD §12 risk 7).
+- [x] Three prompt templates checked into `prompts/` with semantic versions in their filename or front-matter. Cards persist `prompt_version` per PRD §6.3.
+- [x] LLM never generates or fabricates numbers — synthesis-call output is parsed, and any number not present in the Evidence layer fails validation and rejects the draft (PRD §6.3 constraint).
+- [x] Every quantitative claim carries an MMJ tag, enforced by post-generation validator.
+- [x] Dissenting view is a **separate** call — pipeline fails the draft if dissent payload is empty or generic (PRD §6.3 Role 2).
+- [x] Framework Behind This is generated last and stored with the card.
+- [x] Per-card LLM cost recorded; daily cap of 50 cards enforced (PRD §12 risk 7).
 
 #### Relevant files
 
 | Path | Type | Purpose |
 |------|------|---------|
-| `backend/prompts/synthesis.v1.md` | create | Prompt template — Role 1 |
-| `backend/prompts/dissent.v1.md` | create | Prompt template — Role 2 |
-| `backend/prompts/framework.v1.md` | create | Prompt template — Role 3 |
-| `backend/app/services/llm_client.py` | create | Thin Anthropic Sonnet client w/ retries |
-| `backend/app/services/card_pipeline.py` | create | Orchestrates 3 calls + validation |
-| `backend/app/services/number_validator.py` | create | Rejects numbers absent from Evidence layer |
-| `backend/app/services/mmj_validator.py` | create | Asserts every quantitative claim has an MMJ tag |
-| `backend/app/services/cost_guard.py` | create | Daily 50-card cap + cost log |
-| `backend/app/api/cards.py` | create | `POST /api/cards/draft-from-event` |
-| `backend/tests/test_card_pipeline.py` | create | End-to-end with mocked LLM responses |
-| `backend/tests/test_number_validator.py` | create | Asserts hallucinated numbers rejected |
-| `backend/tests/test_mmj_validator.py` | create | Asserts missing MMJ tags rejected |
+| `backend/prompts/synthesis.v1.md` | done | Prompt template — Role 1 |
+| `backend/prompts/dissent.v1.md` | done | Prompt template — Role 2 |
+| `backend/prompts/framework.v1.md` | done | Prompt template — Role 3 |
+| `backend/app/services/llm_client.py` | done | Thin Gemini client (`google-genai`) w/ retries |
+| `backend/app/services/card_pipeline.py` | done | Orchestrates 3 calls + validation |
+| `backend/app/services/number_validator.py` | done | Rejects numbers absent from Evidence layer |
+| `backend/app/services/mmj_validator.py` | done | Asserts every quantitative claim has an MMJ tag |
+| `backend/app/services/cost_guard.py` | done | Daily 50-card cap + cost log |
+| `backend/app/api/cards.py` | done | `POST /api/cards/draft-from-event` |
+| `backend/tests/test_card_pipeline.py` | done | End-to-end with mocked LLM responses |
+| `backend/tests/test_number_validator.py` | done | Asserts hallucinated numbers rejected |
+| `backend/tests/test_mmj_validator.py` | done | Asserts missing MMJ tags rejected |
 
 #### Tasks (checkboxes)
 
-- [ ] **7.0** LLM 3-call card-synthesis pipeline (Claude Sonnet)
-  - [ ] **7.1** Author `synthesis.v1.md` with explicit instruction: "Use only numbers found in the Evidence inputs; every quantitative claim must end with `[MEASURED]`, `[MODELLED]`, or `[JUDGED]` tags."
-  - [ ] **7.2** Author `dissent.v1.md` — must produce a specific mechanism, not a generic disclaimer (cite PRD §5 Screen 3 language rule).
-  - [ ] **7.3** Author `framework.v1.md` — must name the transferable pattern.
-  - [ ] **7.4** `llm_client.complete(prompt, version, vars)` — wraps Anthropic SDK with retry/backoff, logs prompt version + token counts.
-  - [ ] **7.5** `card_pipeline.draft_card(event_id)` — pull event + Factor DB sensitivities + macro signals, call synthesis, validate numbers + MMJ, call dissent, call framework, persist draft card + signals + instrument assessments.
-  - [ ] **7.6** `number_validator` parses numbers from Insight/Context layers and asserts each appears in the Evidence layer payload.
-  - [ ] **7.7** `mmj_validator` parses every quantitative claim and asserts presence of an MMJ token.
-  - [ ] **7.8** `cost_guard.check_and_record()` — abort pipeline if today's count ≥ 50.
-  - [ ] **7.9** `POST /api/cards/draft-from-event` accepts `event_id`, runs pipeline, returns draft card id or structured error.
-  - [ ] **7.10** Test: pipeline test with mocked Anthropic responses; validator tests covering hallucinated numbers and missing MMJ tags.
+- [x] **7.0** LLM 3-call card-synthesis pipeline (Gemini)
+  - [x] **7.1** Author `synthesis.v1.md` with explicit instruction: "Use only numbers found in the Evidence inputs; every quantitative claim must end with `[MEASURED]`, `[MODELLED]`, or `[JUDGED]` tags."
+  - [x] **7.2** Author `dissent.v1.md` — must produce a specific mechanism, not a generic disclaimer (cite PRD §5 Screen 3 language rule).
+  - [x] **7.3** Author `framework.v1.md` — must name the transferable pattern.
+  - [x] **7.4** `llm_client.complete_json(...)` — wraps Gemini `google-genai` SDK with retry/backoff, logs prompt version + token counts.
+  - [x] **7.5** `card_pipeline.draft_card(event_id)` — pull event + Factor DB sensitivities + macro signals, call synthesis, validate numbers + MMJ, call dissent, call framework, persist draft card + signals + instrument assessments.
+  - [x] **7.6** `number_validator` parses numbers from Insight/Context layers and asserts each appears in the Evidence layer payload.
+  - [x] **7.7** `mmj_validator` parses every quantitative claim and asserts presence of an MMJ token.
+  - [x] **7.8** `cost_guard.check_and_record()` — abort pipeline if today's count ≥ 50.
+  - [x] **7.9** `POST /api/cards/draft-from-event` accepts `event_id`, runs pipeline, returns draft card id or structured error.
+  - [x] **7.10** Test: pipeline test with mocked LLM responses; validator tests covering hallucinated numbers and missing MMJ tags.
 
 ---
 
@@ -418,33 +418,33 @@ _Stand up the foundation surfaces (Pulse + Thread + Onboarding), the LLM card pi
 
 **Acceptance criteria**
 
-- [ ] `/admin/review/[draft_id]` shows the full draft card in the same shell as The Thread (read-mostly) with an editorial sidecar.
-- [ ] Non-expert checklist (5 items per PRD §6.1) — all must be ticked before Publish enables.
-- [ ] Publish writes `lifecycle_state='published'`, inserts initial `track_record` row (immutable), and notifies in-app any user whose profile matches the card's category.
-- [ ] Send-back path triggers regeneration with optional editor notes injected into the synthesis prompt.
-- [ ] Editor time-per-card auto-logged on publish.
+- [x] `/admin/review/[draft_id]` shows the full draft card in the same shell as The Thread (read-mostly) with an editorial sidecar.
+- [x] Non-expert checklist (5 items per PRD §6.1) — all must be ticked before Publish enables.
+- [x] Publish writes `lifecycle_state='published'`, inserts initial `track_record` row (immutable), and notifies in-app any user whose profile matches the card's category.
+- [x] Send-back path triggers regeneration with optional editor notes injected into the synthesis prompt.
+- [x] Editor time-per-card auto-logged on publish.
 
 #### Relevant files
 
 | Path | Type | Purpose |
 |------|------|---------|
-| `frontend/app/admin/review/[draftId]/page.tsx` | create | Editorial review page |
-| `frontend/app/admin/review/_components/ChecklistPanel.tsx` | create | 5-item checklist + publish gate |
-| `backend/app/api/admin_review.py` | create | `POST /api/admin/cards/{id}/publish` + `/regenerate` |
-| `backend/app/services/publish_card.py` | create | Publish workflow + track-record insert |
-| `backend/app/services/regenerate_card.py` | create | Re-run pipeline with editor notes |
-| `backend/tests/test_publish_writes_track_record.py` | create | Asserts immutable record |
-| `frontend/app/admin/review/_components/ChecklistPanel.test.tsx` | create | Publish disabled until all 5 ticked |
+| `frontend/app/admin/review/[draftId]/page.tsx` | done | Editorial review page |
+| `frontend/app/admin/review/_components/ChecklistPanel.tsx` | done | 5-item checklist + publish gate |
+| `backend/app/api/admin_review.py` | done | `POST /api/admin/cards/{id}/publish` + `/regenerate` |
+| `backend/app/services/publish_card.py` | done | Publish workflow + track-record insert |
+| `backend/app/services/regenerate_card.py` | done | Re-run pipeline with editor notes |
+| `backend/tests/test_publish_writes_track_record.py` | done | Asserts immutable record |
+| `frontend/app/admin/review/_components/ChecklistPanel.test.tsx` | done | Publish disabled until all 5 ticked |
 
 #### Tasks (checkboxes)
 
-- [ ] **8.0** Editorial review interface for drafts
-  - [ ] **8.1** Page shell reusing Thread components in read-only mode (lifts S10 components — coordinate import order).
-  - [ ] **8.2** `ChecklistPanel` — 5 items from PRD §6.1 ("all numbers source-tagged", "dissenting view present", "confidence consistent with freshness", "language non-expert accessible", "no buy/sell/hold language").
-  - [ ] **8.3** `POST /publish` writes `lifecycle_state='published'`, inserts append-only `track_record` row, fires in-app notify.
-  - [ ] **8.4** `POST /regenerate` re-invokes `card_pipeline.draft_card` with `editor_notes` field appended to synthesis vars.
-  - [ ] **8.5** Editor-time log: capture time-on-page from open to publish (no PII), surface in admin metrics later.
-  - [ ] **8.6** Test: Pytest asserting publish creates exactly one `track_record` row and the card transitions to `published`; RTL test asserting Publish button disabled until 5/5 checked.
+- [x] **8.0** Editorial review interface for drafts
+  - [x] **8.1** Page shell reusing Thread components in read-only mode (lifts S10 components — coordinate import order).
+  - [x] **8.2** `ChecklistPanel` — 5 items from PRD §6.1 ("all numbers source-tagged", "dissenting view present", "confidence consistent with freshness", "language non-expert accessible", "no buy/sell/hold language").
+  - [x] **8.3** `POST /publish` writes `lifecycle_state='published'`, inserts append-only `track_record` row, fires in-app notify.
+  - [x] **8.4** `POST /regenerate` re-invokes `card_pipeline.draft_card` with `editor_notes` field appended to synthesis vars.
+  - [x] **8.5** Editor-time log: capture time-on-page from open to publish (no PII), surface in admin metrics later.
+  - [x] **8.6** Test: Pytest asserting publish creates exactly one `track_record` row and the card transitions to `published`; RTL test asserting Publish button disabled until 5/5 checked.
 
 ---
 
@@ -462,14 +462,14 @@ _Stand up the foundation surfaces (Pulse + Thread + Onboarding), the LLM card pi
 
 **Acceptance criteria**
 
-- [ ] Left sidebar (220px) per PRD §8.4 with 5 nav items; Phase 2 items (Mirror, Lens) show grey badge.
-- [ ] Two-column layout: feed (~60%) + sticky insight panel (~40%) per PRD §5 Screen 2.
-- [ ] Category filter pills in the topbar (not in the feed column). Active pill = navy bg, white text.
-- [ ] Event card: financial-consequence headline in Playfair 15px, event context italic, separate direction + magnitude confidence dots (never combined — PRD §8.6).
-- [ ] Selecting a card updates the right insight panel **without** route navigation; selected card shows 3px blue left border.
-- [ ] Fog of War banner appears when ≥3 major events are simultaneously active (PRD §5 Screen 2).
-- [ ] Resolved cards remain in the feed with green "Resolved" pill (PRD design rule — no survivorship bias).
-- [ ] Single-column on mobile; insight panel hidden, tap-through to Thread.
+- [x] Left sidebar (220px) per PRD §8.4 with 5 nav items; Phase 2 items (Mirror, Lens) show grey badge.
+- [x] Two-column layout: feed (~60%) + sticky insight panel (~40%) per PRD §5 Screen 2.
+- [x] Category filter pills in the topbar (not in the feed column). Active pill = navy bg, white text.
+- [x] Event card: financial-consequence headline in Playfair 15px, event context italic, separate direction + magnitude confidence dots (never combined — PRD §8.6).
+- [x] Selecting a card updates the right insight panel **without** route navigation; selected card shows 3px blue left border.
+- [x] Fog of War banner appears when ≥3 major events are simultaneously active (PRD §5 Screen 2).
+- [x] Resolved cards remain in the feed with green "Resolved" pill (PRD design rule — no survivorship bias).
+- [x] Single-column on mobile; insight panel hidden, tap-through to Thread.
 
 #### Relevant files
 
@@ -492,19 +492,19 @@ _Stand up the foundation surfaces (Pulse + Thread + Onboarding), the LLM card pi
 
 #### Tasks (checkboxes)
 
-- [ ] **9.0** The Pulse — feed, filters, live insight panel, Fog of War
-  - [ ] **9.1** Implement `Sidebar` strictly to PRD §8.4 spec (widths, paddings, active state colours, Phase 2 badge).
-  - [ ] **9.2** `(app)/layout.tsx` wraps Sidebar + Topbar slot + main + SEBI footer.
-  - [ ] **9.3** `GET /api/feed` accepts category + horizon, joins on user profile, returns published+resolved cards.
-  - [ ] **9.4** `services/feed.detect_fog_of_war()` — true when ≥3 cards have `lifecycle_state in (active, signal_triggered)` and category overlap.
-  - [ ] **9.5** `EventCard` — Playfair 15px headline, italic context, category tag, two confidence dots, instrument chips.
-  - [ ] **9.6** `InsightPanel` — sticky, updates via shared selection state hook; shows confidence trio + 4 instrument mini cards + "Read full analysis in The Thread →".
-  - [ ] **9.7** `FilterPills` in Topbar — multi-select pills, "All" reset, persist in URL search params.
-  - [ ] **9.8** `FogOfWarBanner` rendered above feed when API flag is true.
-  - [ ] **9.9** Resolved badge inline on event card (green pill) — do not filter out resolved cards.
-  - [ ] **9.10** Mobile: hide insight panel, tap card → `/thread/[id]`.
-  - [ ] **9.11** Loading skeletons + empty state ("No events match your filters") + error retry.
-  - [ ] **9.12** Test: API filter tests; Fog of War threshold test; RTL test asserting two separate confidence dots and resolved cards stay in list.
+- [x] **9.0** The Pulse — feed, filters, live insight panel, Fog of War
+  - [x] **9.1** Implement `Sidebar` strictly to PRD §8.4 spec (widths, paddings, active state colours, Phase 2 badge).
+  - [x] **9.2** `(app)/layout.tsx` wraps Sidebar + Topbar slot + main + SEBI footer.
+  - [x] **9.3** `GET /api/feed` accepts category + horizon, joins on user profile, returns published+resolved cards.
+  - [x] **9.4** `services/feed.detect_fog_of_war()` — true when ≥3 cards have `lifecycle_state in (active, signal_triggered)` and category overlap.
+  - [x] **9.5** `EventCard` — Playfair 15px headline, italic context, category tag, two confidence dots, instrument chips.
+  - [x] **9.6** `InsightPanel` — sticky, updates via shared selection state hook; shows confidence trio + 4 instrument mini cards + "Read full analysis in The Thread →".
+  - [x] **9.7** `FilterPills` in Topbar — multi-select pills, "All" reset, persist in URL search params.
+  - [x] **9.8** `FogOfWarBanner` rendered above feed when API flag is true.
+  - [x] **9.9** Resolved badge inline on event card (green pill) — do not filter out resolved cards.
+  - [x] **9.10** Mobile: hide insight panel, tap card → `/thread/[id]`.
+  - [x] **9.11** Loading skeletons + empty state ("No events match your filters") + error retry.
+  - [x] **9.12** Test: API filter tests; Fog of War threshold test; RTL test asserting two separate confidence dots and resolved cards stay in list.
 
 ---
 
@@ -522,16 +522,16 @@ _Stand up the foundation surfaces (Pulse + Thread + Onboarding), the LLM card pi
 
 **Acceptance criteria**
 
-- [ ] Route `/thread/[cardId]` with breadcrumb + lifecycle badge (pulsing for Active) + Current/Original toggle (PRD §5 Screen 3).
-- [ ] ICE tabs: I always visible, C requires one tap, E requires second tap.
-- [ ] Instrument Assessment Card with signal pill (`opportunity signal` / `headwind signal` / `watch`) + reasoning + Entry/Exit conditions in two-column grid (green / amber backgrounds). **No price targets anywhere.**
-- [ ] C tab: numbered causal chain with MMJ badge inline per step.
-- [ ] E tab: source table with freshness dot (green ≤6m / amber 6–18m / red >18m).
-- [ ] Aside: 7-step Lifecycle tracker, Signals to Watch with consequence map, Confidence Composition segmented bar, Bias Flags.
-- [ ] Dissenting View block on every card — amber-tinted, separately styled.
-- [ ] Prediction Logger appears **before** the Context tab is revealed, with 4 discrete prediction options.
-- [ ] Current/Original toggle — Original View is read from the immutable `track_record` row.
-- [ ] All language rules from PRD §5 Screen 3 enforced — automated lint check on copy in test.
+- [x] Route `/thread/[cardId]` with breadcrumb + lifecycle badge (pulsing for Active) + Current/Original toggle (PRD §5 Screen 3).
+- [x] ICE tabs: I always visible, C requires one tap, E requires second tap.
+- [x] Instrument Assessment Card with signal pill (`opportunity signal` / `headwind signal` / `watch`) + reasoning + Entry/Exit conditions in two-column grid (green / amber backgrounds). **No price targets anywhere.**
+- [x] C tab: numbered causal chain with MMJ badge inline per step.
+- [x] E tab: source table with freshness dot (green ≤6 months / amber 6–18 months / red >18 months per PRD §5 Evidence).
+- [x] Aside: 7-step Lifecycle tracker, Signals to Watch with consequence map, Confidence Composition segmented bar, Bias Flags.
+- [x] Dissenting View block on every card — amber-tinted, separately styled.
+- [x] Prediction Logger appears **before** the Context tab is revealed, with 4 discrete prediction options.
+- [x] Current/Original toggle — Original View is read from the immutable `track_record` row.
+- [x] All language rules from PRD §5 Screen 3 enforced — automated lint check on copy in test.
 
 #### Relevant files
 
@@ -559,20 +559,20 @@ _Stand up the foundation surfaces (Pulse + Thread + Onboarding), the LLM card pi
 
 #### Tasks (checkboxes)
 
-- [ ] **10.0** The Thread — Living Card with ICE tabs + aside
-  - [ ] **10.1** Page shell with breadcrumb + lifecycle badge + Current/Original toggle.
-  - [ ] **10.2** `IceTabs` — I active by default; C and E gated behind tap (no URL change required, but URL hash optional for shareability).
-  - [ ] **10.3** `InsightLayer` — summary paragraphs + InstrumentCards + DissentingView + PredictionLogger + FrameworkBehindThis.
-  - [ ] **10.4** `InstrumentCard` — signal pill (only the three allowed values), Entry/Exit two-column grid, conditions = world facts only.
-  - [ ] **10.5** `ContextLayer` — numbered steps with navy circle, MMJ badge inline.
-  - [ ] **10.6** `EvidenceLayer` — table with freshness dot computed from `retrieved_at`; LLM never appears in this table.
-  - [ ] **10.7** Aside: `LifecycleTracker` with 7 steps + pulsing dot animation (1.5s ease-in-out per §8.6).
-  - [ ] **10.8** Aside: `SignalsToWatch` — Pending/Triggered/Resolved dot states; clicking signal expands consequence map.
-  - [ ] **10.9** Aside: `ConfidenceComposition` segmented bar (M/M/J proportions).
-  - [ ] **10.10** Aside: `BiasFlags` reading from card's `bias_audit` payload (placeholder until P1-S13 fills it).
-  - [ ] **10.11** `PredictionLogger` — 4 discrete options, "Log my prediction →" calls `POST /api/predictions`; appears before C tab is revealed.
-  - [ ] **10.12** `CurrentOriginalToggle` — Original View hits `?view=original`; backend returns the immutable `track_record` snapshot for Day 1.
-  - [ ] **10.13** Test: RTL asserting InstrumentCard has no `buy|sell|hold|₹\d` substrings; DissentingView is required to render; original-view backend test asserting immutability.
+- [x] **10.0** The Thread — Living Card with ICE tabs + aside
+  - [x] **10.1** Page shell with breadcrumb + lifecycle badge + Current/Original toggle.
+  - [x] **10.2** `IceTabs` — I active by default; C and E gated behind tap (no URL change required, but URL hash optional for shareability).
+  - [x] **10.3** `InsightLayer` — summary paragraphs + InstrumentCards + DissentingView + PredictionLogger + FrameworkBehindThis.
+  - [x] **10.4** `InstrumentCard` — signal pill (only the three allowed values), Entry/Exit two-column grid, conditions = world facts only.
+  - [x] **10.5** `ContextLayer` — numbered steps with navy circle, MMJ badge inline.
+  - [x] **10.6** `EvidenceLayer` — table with freshness dot computed from `retrieved_at`; LLM never appears in this table.
+  - [x] **10.7** Aside: `LifecycleTracker` with 7 steps + pulsing dot animation (1.5s ease-in-out per §8.6).
+  - [x] **10.8** Aside: `SignalsToWatch` — Pending/Triggered/Resolved dot states; clicking signal expands consequence map.
+  - [x] **10.9** Aside: `ConfidenceComposition` segmented bar (M/M/J proportions).
+  - [x] **10.10** Aside: `BiasFlags` reading from card's `bias_audit` payload (placeholder until P1-S13 fills it).
+  - [x] **10.11** `PredictionLogger` — 4 discrete options, "Log my prediction →" calls `POST /api/predictions`; appears before C tab is revealed.
+  - [x] **10.12** `CurrentOriginalToggle` — Original View hits `?view=original`; backend returns the immutable `track_record` snapshot for Day 1.
+  - [x] **10.13** Test: RTL asserting InstrumentCard has no `buy|sell|hold|₹\d` substrings; DissentingView is required to render; original-view backend test asserting immutability.
 
 ---
 
@@ -590,12 +590,12 @@ _Stand up the foundation surfaces (Pulse + Thread + Onboarding), the LLM card pi
 
 **Acceptance criteria**
 
-- [ ] Background job runs every 30 minutes during market hours; signals are checked against latest market + macro data.
-- [ ] High confidence (3+ sources, direct match within 4h): auto-update card, 2-hour editor override window; logs to `track_record`.
-- [ ] Medium confidence (1–2 sources, partial match): draft update queued for editor; surfaces in admin queue.
-- [ ] Low confidence: logged to internal digest only — no card change.
-- [ ] In-app notification badge in topbar when a signal fires on a card the user has predicted on.
-- [ ] All gate decisions logged with rationale for later override-rate analysis (PRD §13 metric).
+- [x] Background job runs every 30 minutes during market hours; signals are checked against latest market + macro data.
+- [x] High confidence (3+ sources, direct match within 4h): auto-update card, 2-hour editor override window; logs to `track_record`.
+- [x] Medium confidence (1–2 sources, partial match): draft update queued for editor; surfaces in admin queue.
+- [x] Low confidence: logged to internal digest only — no card change.
+- [x] In-app notification badge in topbar when a signal fires on a card the user has predicted on.
+- [x] All gate decisions logged with rationale for later override-rate analysis (PRD §13 metric).
 
 #### Relevant files
 
@@ -612,16 +612,16 @@ _Stand up the foundation surfaces (Pulse + Thread + Onboarding), the LLM card pi
 
 #### Tasks (checkboxes)
 
-- [ ] **11.0** Signal monitoring + confidence-gated detection + in-app notifications
-  - [ ] **11.1** `signal_check.evaluate(signal)` — returns `triggered|partial|none` + sources list.
-  - [ ] **11.2** `confidence_gate.route(result)` — High/Medium/Low decision + reason.
-  - [ ] **11.3** High path: write card update + new `track_record` row; open 2-hour override window flag.
-  - [ ] **11.4** Medium path: enqueue draft update for `/admin/review`.
-  - [ ] **11.5** Low path: write to `digest_log` table — no card mutation.
-  - [ ] **11.6** Notification: insert row into `notifications` for any user with a logged prediction on the affected card.
-  - [ ] **11.7** Frontend `NotificationBadge` — pulsing blue dot; click navigates to the affected Thread.
-  - [ ] **11.8** Scheduled cron entry (every 30 minutes during market hours 9:00–16:00 IST).
-  - [ ] **11.9** Test: confidence-gate branches; override-log creation; notification fan-out covers only predicting users.
+- [x] **11.0** Signal monitoring + confidence-gated detection + in-app notifications
+  - [x] **11.1** `signal_check.evaluate(signal)` — returns `triggered|partial|none` + sources list.
+  - [x] **11.2** `confidence_gate.route(result)` — High/Medium/Low decision + reason.
+  - [x] **11.3** High path: write card update + new `track_record` row; open 2-hour override window flag.
+  - [x] **11.4** Medium path: enqueue draft update for `/admin/review`.
+  - [x] **11.5** Low path: write to `digest_log` table — no card mutation.
+  - [x] **11.6** Notification: insert row into `notifications` for any user with a logged prediction on the affected card.
+  - [x] **11.7** Frontend `NotificationBadge` — pulsing blue dot; click navigates to the affected Thread.
+  - [x] **11.8** Scheduled cron entry (every 30 minutes during **NSE/BSE cash session** 09:15–15:30 IST, Mon–Fri; runner no-ops outside that window).
+  - [x] **11.9** Test: confidence-gate branches; override-log creation; notification fan-out covers only predicting users.
 
 ---
 
@@ -761,6 +761,44 @@ _Stand up the foundation surfaces (Pulse + Thread + Onboarding), the LLM card pi
 
 ---
 
+### Story P1-S15 — Admin UX: editorial signal queue (medium-confidence hits)
+
+- **Assigned:** Riley (or Jordan)
+- **Points:** 2
+- **Layers:** UI, API (consumer)
+- **Depends on:** P1-S11 (signal monitor + `GET /api/admin/signal-queue`), P1-S8 (admin review routes)
+- **Parallel with:** P1-S14 (optional polish before tester launch)
+
+**User story**
+
+> As an editor, I want a dedicated admin screen that lists medium-confidence signal hits queued for review — with direct links into the existing card review workspace — so I do not rely on raw API calls or the database.
+
+**Acceptance criteria**
+
+- [ ] Admin route (e.g. `frontend/app/admin/signal-queue/page.tsx` or a section on an existing admin index) lists **pending** rows from the backend queue API.
+- [ ] Each row shows at minimum: **card title** (or id), **signal excerpt / reason**, **gate**, **queued at**, and a **link** to `/admin/review/[cardId]` (or current review URL pattern).
+- [ ] **Empty state** when there are no pending items.
+- [ ] **Loading and error** states (retry) consistent with other admin pages.
+- [ ] **Test:** RTL or smoke test that pending rows render and the review link href is correct.
+
+#### Relevant files
+
+| Path | Type | Purpose |
+|------|------|---------|
+| `frontend/app/admin/signal-queue/page.tsx` | create | Queue list UI |
+| `frontend/app/admin/signal-queue/SignalQueueClient.tsx` | create | Fetch `GET /api/admin/signal-queue?status=pending` |
+| `frontend/app/admin/signal-queue/page.test.tsx` | create | Assert row + link |
+
+#### Tasks (checkboxes)
+
+- [ ] **15.0** Admin signal queue UX
+  - [ ] **15.1** Server or client fetch of `/api/admin/signal-queue` with `status=pending`.
+  - [ ] **15.2** Table or card list + empty state + error UI.
+  - [ ] **15.3** Deep link to existing `admin/review/[draftId]` (card id).
+  - [ ] **15.4** RTL: at least one row renders with expected `href`.
+
+---
+
 ## Risks
 
 - **LLM qualitative drift** (PRD §12 risk 1) — Mitigated by S7 number-validator + mmj-validator + S8 editorial review + version-controlled prompts. Add a sample-of-N spot-check ritual in `docs/plans/phase1-go-no-go.md`.
@@ -788,9 +826,9 @@ Suggested order (12 weeks, solo + AI agents per PRD §9):
 3. **Week 5–6:** Jordan S7 (LLM pipeline) — gated on S5. Sam starts S9 + S10 against mock card JSON.
 4. **Week 7–8:** Riley S8 (editorial review). Sam continues S10. Jordan S11 (signal monitoring) starts.
 5. **Week 9–10:** Sam finishes S9 + S10 + S12 (prediction logger). Riley S13 (bias audit). Jordan finishes S11.
-6. **Week 11–12:** Riley S14 tester launch kit. First real card published. Track-record timestamp logged. 5–10 testers onboarded.
+6. **Week 11–12:** Riley S14 tester launch kit. Optional **P1-S15** admin signal-queue screen if time. First real card published. Track-record timestamp logged. 5–10 testers onboarded.
 
-Parallel-safe pairs at every week boundary: `S2/S3/S5`, `S6/S7`, `S8/S9/S10`, `S11/S12/S13`. Anything past S14 is Phase 2.
+Parallel-safe pairs at every week boundary: `S2/S3/S5`, `S6/S7`, `S8/S9/S10`, `S11/S12/S13`. **Phase 2 starts after Phase 1 is complete** (final stories **P1-S14** go/no-go + optional **P1-S15** admin queue UX).
 
 ---
 
@@ -845,17 +883,17 @@ Parallel-safe pairs at every week boundary: `S2/S3/S5`, `S6/S7`, `S8/S9/S10`, `S
   - [ ] **6.7** Render 4-hour cron
   - [ ] **6.8** Admin queue API + page
   - [ ] **6.9** Idempotency + adapter tests
-- [ ] **7.0** LLM 3-call card-synthesis pipeline (Claude Sonnet)
-  - [ ] **7.1** `synthesis.v1.md`
-  - [ ] **7.2** `dissent.v1.md`
-  - [ ] **7.3** `framework.v1.md`
-  - [ ] **7.4** `llm_client.complete()`
-  - [ ] **7.5** `card_pipeline.draft_card()`
-  - [ ] **7.6** `number_validator`
-  - [ ] **7.7** `mmj_validator`
-  - [ ] **7.8** `cost_guard` (50/day cap)
-  - [ ] **7.9** `POST /api/cards/draft-from-event`
-  - [ ] **7.10** Pipeline + validator tests
+- [x] **7.0** LLM 3-call card-synthesis pipeline (Gemini)
+  - [x] **7.1** `synthesis.v1.md`
+  - [x] **7.2** `dissent.v1.md`
+  - [x] **7.3** `framework.v1.md`
+  - [x] **7.4** `llm_client.complete()`
+  - [x] **7.5** `card_pipeline.draft_card()`
+  - [x] **7.6** `number_validator`
+  - [x] **7.7** `mmj_validator`
+  - [x] **7.8** `cost_guard` (50/day cap)
+  - [x] **7.9** `POST /api/cards/draft-from-event`
+  - [x] **7.10** Pipeline + validator tests
 - [ ] **11.0** Signal monitoring + confidence gating + notifications
   - [ ] **11.1** `signal_check.evaluate()`
   - [ ] **11.2** `confidence_gate.route()`
@@ -894,20 +932,20 @@ Parallel-safe pairs at every week boundary: `S2/S3/S5`, `S6/S7`, `S8/S9/S10`, `S
   - [ ] **9.10** Mobile behaviour
   - [ ] **9.11** Loading/empty/error
   - [ ] **9.12** API + Fog + RTL tests
-- [ ] **10.0** The Thread — Living Card with ICE tabs + aside
-  - [ ] **10.1** Page shell + lifecycle badge + Current/Original toggle
-  - [ ] **10.2** `IceTabs` (I default, C/E gated)
-  - [ ] **10.3** `InsightLayer`
-  - [ ] **10.4** `InstrumentCard` (no buy/sell/hold, no price targets)
-  - [ ] **10.5** `ContextLayer` w/ MMJ badges
-  - [ ] **10.6** `EvidenceLayer` w/ freshness dots
-  - [ ] **10.7** Aside `LifecycleTracker`
-  - [ ] **10.8** Aside `SignalsToWatch` + consequence map
-  - [ ] **10.9** Aside `ConfidenceComposition`
-  - [ ] **10.10** Aside `BiasFlags` (placeholder)
-  - [ ] **10.11** `PredictionLogger` before C tab
-  - [ ] **10.12** `CurrentOriginalToggle` reads `track_record`
-  - [ ] **10.13** Language-rule + dissent-required + immutable tests
+- [x] **10.0** The Thread — Living Card with ICE tabs + aside
+  - [x] **10.1** Page shell + lifecycle badge + Current/Original toggle
+  - [x] **10.2** `IceTabs` (I default, C/E gated)
+  - [x] **10.3** `InsightLayer`
+  - [x] **10.4** `InstrumentCard` (no buy/sell/hold, no price targets)
+  - [x] **10.5** `ContextLayer` w/ MMJ badges
+  - [x] **10.6** `EvidenceLayer` w/ freshness dots
+  - [x] **10.7** Aside `LifecycleTracker`
+  - [x] **10.8** Aside `SignalsToWatch` + consequence map
+  - [x] **10.9** Aside `ConfidenceComposition`
+  - [x] **10.10** Aside `BiasFlags` (placeholder)
+  - [x] **10.11** `PredictionLogger` before C tab
+  - [x] **10.12** `CurrentOriginalToggle` reads `track_record`
+  - [x] **10.13** Language-rule + dissent-required + immutable tests
 - [ ] **12.0** Prediction logger + user track-record entries
   - [ ] **12.1** Unique constraint migration
   - [ ] **12.2** `predictions.log()` dual-write

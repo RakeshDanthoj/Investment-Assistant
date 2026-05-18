@@ -23,7 +23,9 @@ services:
         sync: false
       - key: SUPABASE_SERVICE_ROLE_KEY
         sync: false
-      - key: CLAUDE_API_KEY
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
         sync: false
       - key: NEWSAPI_KEY
         sync: false
@@ -48,7 +50,7 @@ services:
       - key: NEWSAPI_KEY
         sync: false
 
-  # Signal monitoring cron job - runs every 30 minutes during market hours (9:00-16:00 IST)
+  # Signal monitoring — cron runs every 30m UTC; job no-ops outside NSE cash hours (Mon–Fri 09:15–15:30 IST).
   - type: cron
     name: finnwise-signal-monitor
     runtime: python
@@ -57,7 +59,7 @@ services:
     branch: main
     buildCommand: pip install ./backend
     startCommand: cd backend && python -m app.jobs.signal_monitor
-    schedule: "*/30 9-16 * * *"
+    schedule: "*/30 * * * *"
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0

@@ -5,16 +5,16 @@ _generated for independent execution without prd-planner_
 
 ## Overview
 
-- **Summary**: Phase 2 introduces the engagement layer on top of the Phase 1 foundation: **The Mirror** (prediction history, three-level accuracy, reasoning-gap analysis, streak tracker), **The Lens** (on-demand ICE card generation with visible six-step pipeline), Portfolio Protector personalisation against session-only holdings, email notifications when signals fire, expansion of the Factor Exposure DB to all eight sectors plus The Map content, and a UI polish pass driven by Phase 1 tester feedback.
-- **Tech stack**: same as Phase 1 (Next.js + Tailwind, FastAPI, Supabase, Anthropic Sonnet, Vercel, Render). New additions: a lightweight email provider (Resend or Postmark free tier) and Server-Sent Events for the Lens pipeline progress stream. Tests: Jest + RTL (frontend), Pytest (backend). Single `.env.local`.
-- **Slicing approach**: every story is an end-to-end vertical slice (UI + API + DB minimum) with explicit test step(s). Parent task IDs are **per-phase** — this file uses `1.0`–`13.0`. All PRD §6 / §8.6 / §11 constraints from Phase 1 continue to apply unchanged.
+- **Summary**: Phase 2 introduces the engagement layer on top of the Phase 1 foundation: **The Mirror** (prediction history, three-level accuracy, reasoning-gap analysis, streak tracker), **The Lens** (on-demand ICE card generation with visible six-step pipeline), Portfolio Protector personalisation against session-only holdings, email notifications when signals fire, expansion of the Factor Exposure DB to all eight sectors plus The Map content, **stronger market/macro inputs for the signal-confidence gate** (beyond `events` titles), and a UI polish pass driven by Phase 1 tester feedback.
+- **Tech stack**: same as Phase 1 (Next.js + Tailwind, FastAPI, Supabase, Google Gemini, Vercel, Render). New additions: a lightweight email provider (Resend or Postmark free tier) and Server-Sent Events for the Lens pipeline progress stream. Tests: Jest + RTL (frontend), Pytest (backend). Single `.env.local`.
+- **Slicing approach**: every story is an end-to-end vertical slice (UI + API + DB minimum) with explicit test step(s). Parent task IDs are **per-phase** — this file uses `1.0`–`14.0`. All PRD §6 / §8.6 / §11 constraints from Phase 1 continue to apply unchanged.
 - **Prerequisite**: Phase 1 is fully shipped and stable (Onboarding, Pulse, Thread, LLM pipeline, signal monitor, track record, bias audit) and at least one tester cohort has completed three sessions.
 
 ## Team plan
 
 | Developer | Focus | Total points |
 |-----------|-------|---------------|
-| Jordan | Mirror grading service, Lens loading stream, Portfolio Protector backend, cost & rate-limit hardening | 20 |
+| Jordan | Mirror grading service, Lens loading stream, Portfolio Protector backend, **signal-monitor fact pipeline**, cost & rate-limit hardening | 24 |
 | Sam | Mirror UI (prediction list, streak), Lens UI (query / loading / result states), Phase 1 polish iteration | 24 |
 | Riley | Reasoning-gap analysis, resolved-card notification system, email channel, Factor DB expansion to 8 sectors + Map content | 20 |
 
@@ -627,6 +627,49 @@ _Add the personal learning surface (The Mirror) and the on-demand research surfa
 
 ---
 
+### Story P2-S14 — Signal monitor: richer market + macro fact sources
+
+- **Assigned:** Jordan
+- **Points:** 4
+- **Layers:** Services, jobs (consumer)
+- **Depends on:** Phase 1 (P1-S11 signal monitor, P1-S6 event ingest); optional alignment with existing **NSE announcements** / NewsAPI adapters
+- **Parallel with:** P2-S10 (email), P2-S11 (Factor DB / Map)
+
+**User story**
+
+> As the platform, I want the scheduled signal monitor to corroborate card signals against **actionable market and macro lines** — not only generic `events` table titles — so High/Medium/Low confidence routing better reflects listing, index, and announcement reality where data is available.
+
+**Acceptance criteria**
+
+- [ ] **Unified fact feed:** `run_signal_monitor`’s default path (production) builds the `MarketFact` list by **merging** at least two streams: (a) existing recent **`events`** rows (macro/ingest proxy), and (b) at least one **market-leaning** stream with stable `source_id`, text line, and `observed_at`.
+- [ ] **Market stream (minimum bar):** e.g. **NSE corporate announcements** and/or **benchmark index level / move** lines (Nifty/Sensex or agreed substitute), sourced via an adapter that reuses or extends Phase 1 source patterns (`app/sources/*`), with timeouts and parse fallbacks documented.
+- [ ] **No silent empty prod:** if a stream fails, log and continue; document which streams are optional vs required per env.
+- [ ] **Configuration:** feature flags or env toggles to disable brittle sources without code deploy where practical.
+- [ ] **Tests:** unit tests for merge + dedup-by-`source_id`; at least one fixture-based test proving `evaluate()` sees facts from both streams; contract test or recorded-response test for the market adapter if live calls are flaky in CI.
+
+#### Relevant files
+
+| Path | Type | Purpose |
+|------|------|---------|
+| `backend/app/services/market_facts.py` | modify | Orchestrate `build_market_facts(reference_time)` |
+| `backend/app/services/market_facts_adapters.py` | create | NSE/index + events merge, normalization |
+| `backend/app/sources/nse_announcements.py` | modify | Harden / narrow window for monitor use (if needed) |
+| `backend/app/services/signal_monitor_runner.py` | modify | Default `facts_provider` uses merged builder |
+| `backend/tests/test_market_facts_merge.py` | create | Merge + evaluate integration |
+| `backend/tests/test_nse_facts_adapter_contract.py` | create | Optional recorded-response / schema test |
+
+#### Tasks (checkboxes)
+
+- [ ] **14.0** Signal monitor: richer market + macro fact sources
+  - [ ] **14.1** Design fact-merge contract (`MarketFact`, ordering, cap on list size, dedup rules).
+  - [ ] **14.2** Implement market adapter(s): NSE announcements and/or index snapshot lines with `observed_at` in IST/UTC consistently.
+  - [ ] **14.3** Merge with `fetch_recent_event_facts`; wire as default in `run_signal_monitor` (keep `facts_provider` override for tests).
+  - [ ] **14.4** Env toggles + structured logging when a stream is empty or errors.
+  - [ ] **14.5** Tests: merge unit tests + dual-stream `evaluate` fixture test.
+  - [ ] **14.6** Document operational playbook (rate limits, market holidays vs cron) in PR comment or short `docs/` note if needed.
+
+---
+
 ## Risks
 
 - **Mirror grading mis-reads cards** — Mitigated by P2-S2 grading using Original View only + per-level rubric in `grading.v1.md` + explicit forbid-generic-gaps. Add a spot-check ritual to `docs/plans/phase2-go-no-go.md`.
@@ -634,6 +677,7 @@ _Add the personal learning surface (The Mirror) and the on-demand research surfa
 - **Email channel becomes a recommendation channel** — P2-S10 template lint asserts no buy/sell/hold copy; PR review checklist for any future email work.
 - **LLM cost from Lens spikes** (PRD §12 risk 7) — P2-S13 enforces per-user rate limit + monthly ceiling.
 - **Factor DB expansion quality** — P2-S11 keeps MMJ + source invariant from Phase 1; coverage test prevents partial seeds shipping.
+- **Signal gate over-fit to headlines** — P2-S14 adds market-leaning fact streams so P1-S11 gates are not driven only by `events` titles; monitor failures fall back to partial coverage with logged skips.
 - **Reasoning-gap heuristics produce trivial gaps** — P2-S4 tests must include negative fixtures (insufficient history → suppress panel).
 
 ## Recommendations
@@ -642,6 +686,7 @@ _Add the personal learning surface (The Mirror) and the on-demand research surfa
 - Land Mirror stack (S1 + S2 + S3 + S4 + S5) by end of Month 5; gives 4 weeks of self-grading before Lens lands.
 - The Lens stack (S6 + S7 + S8) is one developer pair-week per story; tackle in sequence to keep stream contract clean.
 - P2-S12 (polish) is a continuous trickle — schedule one half-day per week, not a single sprint.
+- **P2-S14** (signal fact pipeline) should land before you rely on auto-gated signal actions at scale; keep event-only corroboration in Phase 1 until then.
 
 ---
 
@@ -651,11 +696,11 @@ Suggested order (Months 4–9, 24 weeks):
 
 1. **Month 4:** Sam P2-S1 + P2-S5 (Mirror UI). Jordan P2-S2 (grading service). Riley P2-S11 starts (Factor DB sectors 1–3) + P2-S3 (notifications).
 2. **Month 5:** Sam P2-S6 + P2-S8 (Lens UI). Jordan P2-S7 (Lens stream). Riley P2-S4 (gaps) + continues P2-S11 (sectors 4–6).
-3. **Month 6:** Jordan P2-S9 (personalisation). Riley P2-S10 (email) + P2-S11 (sectors 7–8). Sam P2-S12 (polish trickle).
-4. **Month 7:** Jordan P2-S13 (rate-limit + observability). Riley finishes P2-S11 + Map modules linked to gaps. Sam polish + Phase 2 tester onboarding.
+3. **Month 6:** Jordan P2-S9 (personalisation) + **starts P2-S14** (signal fact pipeline). Riley P2-S10 (email) + P2-S11 (sectors 7–8). Sam P2-S12 (polish trickle).
+4. **Month 7:** Jordan P2-S13 (rate-limit + observability); **finish P2-S14** if not done. Riley finishes P2-S11 + Map modules linked to gaps. Sam polish + Phase 2 tester onboarding.
 5. **Month 8–9:** Soak test, Phase 2 tester cohort, feedback iteration, prepare Phase 3 go/no-go.
 
-Parallel-safe pairs: `{S1, S2, S6, S11}` in Month 4; `{S3, S4, S5, S7, S8}` in Month 5; `{S9, S10, S13}` in Month 6.
+Parallel-safe pairs: `{S1, S2, S6, S11}` in Month 4; `{S3, S4, S5, S7, S8}` in Month 5; `{S9, S10, S13, S14}` in Month 6–7.
 
 ---
 
@@ -677,8 +722,8 @@ Parallel-safe pairs: `{S1, S2, S6, S11}` in Month 4; `{S3, S4, S5, S7, S8}` in M
 - `frontend/lib/lens/**` — Lens state + stream hooks
 - `frontend/lib/personalisation/**` — Session-only holdings store
 - `backend/app/api/**` — mirror, mirror_notifications, mirror_gaps, mirror_streak, lens, lens_stream, saved_threads, map, unsubscribe, admin_metrics
-- `backend/app/services/**` — mirror_stats, prediction_grader, reasoning_gap_detector, notify_on_grade, lens_pipeline, feed_ranker, email_client, cost_guard (modified)
-- `backend/app/jobs/**` — grade_on_resolve, email_on_signal
+- `backend/app/services/**` — mirror_stats, prediction_grader, reasoning_gap_detector, notify_on_grade, lens_pipeline, feed_ranker, email_client, **market_facts / market_facts_adapters (P2-S14)**, cost_guard (modified)
+- `backend/app/jobs/**` — grade_on_resolve, email_on_signal, **signal_monitor (consumer of merged facts, P2-S14)**
 - `backend/app/middleware/rate_limit.py`
 - `backend/prompts/grading.v1.md`
 - `backend/email-templates/signal_fired.html`
@@ -719,6 +764,13 @@ Parallel-safe pairs: `{S1, S2, S6, S11}` in Month 4; `{S3, S4, S5, S7, S8}` in M
   - [ ] **13.3** Structured JSON logging
   - [ ] **13.4** `/api/admin/metrics`
   - [ ] **13.5** 429 + ceiling tests
+- [ ] **14.0** Signal monitor: richer market + macro fact sources
+  - [ ] **14.1** Fact-merge contract + caps
+  - [ ] **14.2** NSE/index (or agreed) adapter
+  - [ ] **14.3** Merge with `events`; default in `run_signal_monitor`
+  - [ ] **14.4** Env toggles + logging on stream failure
+  - [ ] **14.5** Merge + dual-stream evaluate tests
+  - [ ] **14.6** Ops notes (holidays, rate limits)
 
 ### Tasks by developer — Sam
 
@@ -804,3 +856,19 @@ Parallel-safe pairs: `{S1, S2, S6, S11}` in Month 4; `{S3, S4, S5, S7, S8}` in M
   - [ ] **11.5** Map sector-detail page
   - [ ] **11.6** Cross-link gaps → modules
   - [ ] **11.7** Coverage + linked-modules tests
+
+---
+
+## Optional user stories (backlog — not in core Phase 2 scope)
+
+_These are explicitly deferred from Phase 1 or deprioritised; pick up when roadmap allows._
+
+### Optional — In-app alerts: read/unread, dismissal, recency window (Phase 1 surfaces)
+
+- **Context:** Phase 1 (P1-S11) writes `signal_fired` (and other kinds) into `in_app_notifications` and shows a pulsing topbar badge when any matching row exists in the fetched list. There is **no** read state, user dismissal, or “only show if newer than X days” rule.
+- **Rough scope when prioritised:**
+  - Add `read_at` / `dismissed_at` (or equivalent) on notification rows.
+  - `PATCH /api/notifications/:id/read` (or batch read).
+  - Badge reflects **unread** `signal_fired` only; optional TTL (e.g. hide pulse for alerts older than 7 days).
+  - Optional: notification panel / dropdown in the shell (not only deep link from badge).
+- **Depends on:** Phase 1 auth + existing `GET /api/notifications`.

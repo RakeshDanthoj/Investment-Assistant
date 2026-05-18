@@ -8,6 +8,9 @@ MIGRATION_FILES = (
     "0005_track_record_append_only.sql",
     "0006_events_dedupe_newsapi_quota.sql",
     "0007_factor_db.sql",
+    "0008_cards_llm_budget.sql",
+    "0009_editorial_publish_notifications.sql",
+    "0010_signal_monitoring.sql",
 )
 
 _SCHEMA_MIGRATIONS_DDL = """
