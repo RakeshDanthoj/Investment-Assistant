@@ -5,8 +5,7 @@ from __future__ import annotations
 from typing import Literal
 from uuid import UUID, uuid4
 
-import http
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
 from app.services.mode_detection import detect_mode
