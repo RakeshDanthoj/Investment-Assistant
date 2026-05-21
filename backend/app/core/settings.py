@@ -26,6 +26,13 @@ class Settings(BaseSettings):
     supabase_url: str = ""
     supabase_anon_key: str = ""
     supabase_service_role_key: str = ""
+
+    @field_validator("supabase_url", mode="before")
+    @classmethod
+    def _normalize_supabase_url(cls, v: object) -> object:
+        if isinstance(v, str):
+            return normalize_supabase_url(v)
+        return v
     supabase_db_url: str = ""
     gemini_api_key: str = Field(
         default="",
@@ -43,7 +50,7 @@ class Settings(BaseSettings):
         return v
     newsapi_key: str = ""
     factor_db_admin_emails: str = ""
-    cors_origins: str = "http://localhost:3000,https://*.vercel.app"
+    cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000,https://*.vercel.app"
 
 
 @lru_cache

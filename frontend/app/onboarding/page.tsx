@@ -3,7 +3,7 @@
 import { useReducer } from "react";
 
 import { SebiFooter } from "@/components/SebiFooter";
-import { getApiBaseUrl } from "@/lib/api";
+import { describeFetchFailure, getApiBaseUrl } from "@/lib/api";
 import {
   initialOnboardingState,
   onboardingReducer,
@@ -83,8 +83,10 @@ export default function OnboardingPage() {
         },
       });
     } catch (e) {
-      const message = e instanceof Error ? e.message : "Something went wrong. Please try again.";
-      dispatch({ type: "SUBMIT_SESSION_ERROR", message });
+      dispatch({
+        type: "SUBMIT_SESSION_ERROR",
+        message: describeFetchFailure(e, "save your profile"),
+      });
     }
   }
 
