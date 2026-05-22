@@ -5,6 +5,7 @@ import type { CardDetailResponse } from "@/lib/cards/threadTypes";
 import { Card, CardContent } from "@/components/ui/card";
 
 import { DissentingView } from "./DissentingView";
+import { EmptyLayerState } from "./EmptyLayerState";
 import { FrameworkBehindThis } from "./FrameworkBehindThis";
 import { InstrumentCard } from "./InstrumentCard";
 import { PredictionLogger } from "./PredictionLogger";
@@ -25,14 +26,24 @@ export function InsightLayer({
   dissenting_view,
   framework_behind_this,
 }: InsightLayerProps) {
+  const hasInsight = insight_layer.trim().length > 0;
+
   return (
     <div className="w-full min-w-0 space-y-8">
       <Card className="w-full min-w-0 rounded-[10px] py-0 shadow-none ring-slate-200">
         <CardContent className="p-6">
           <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-slate-400">Insight</p>
-          <div className="mt-4 text-[15px] leading-[1.75] font-light whitespace-pre-wrap text-slate-700">
-            {insight_layer.trim() || "—"}
-          </div>
+          {hasInsight ? (
+            <div className="mt-4 text-[15px] leading-[1.75] font-light whitespace-pre-wrap text-slate-700">
+              {insight_layer}
+            </div>
+          ) : (
+            <EmptyLayerState
+              className="mt-4"
+              title="No insight published yet"
+              description="This card does not have insight content yet. Check back after editorial review, or open another card from The Pulse."
+            />
+          )}
         </CardContent>
       </Card>
 

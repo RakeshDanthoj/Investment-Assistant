@@ -62,7 +62,7 @@ export function IceTabs({
   return (
     <Tabs
       value={active}
-      className="w-full min-w-0"
+      className="flex w-full min-w-0 flex-col"
       onValueChange={(value) => {
         const tab = TABS.find((t) => t.id === value);
         if (tab) handleSelect(tab.id, tab.tier);
@@ -71,7 +71,7 @@ export function IceTabs({
       <TabsList
         variant="line"
         aria-label="ICE layers"
-        className="h-auto w-full justify-start gap-0 rounded-none border-b border-slate-200 bg-transparent p-0"
+        className="h-auto w-full shrink-0 justify-start gap-0 rounded-none border-b border-slate-200 bg-transparent p-0"
       >
         {TABS.map((t) => {
           const locked = t.tier > maxUnlockedTier;
@@ -94,7 +94,7 @@ export function IceTabs({
       </TabsList>
       {hint ? <p className="mt-2 font-mono text-[10px] text-amber-700">{hint}</p> : null}
       {TABS.map((t) => (
-        <TabsContent key={t.id} value={t.id} className="mt-6 w-full min-w-0 outline-none">
+        <TabsContent key={t.id} value={t.id} className="mt-6 w-full min-w-0 outline-none focus-visible:outline-none">
           {panels[t.id]}
         </TabsContent>
       ))}

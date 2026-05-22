@@ -4,6 +4,8 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import type { ContextStep } from "@/lib/cards/threadTypes";
 
+import { EmptyLayerState } from "./EmptyLayerState";
+
 function mmjVariant(mmj: string | null): "measured" | "modelled" | "judged" {
   const k = (mmj || "MEASURED").toUpperCase();
   if (k === "MODELLED") return "modelled";
@@ -24,10 +26,29 @@ type ContextLayerProps = {
 };
 
 export function ContextLayer({ steps, fallbackText }: ContextLayerProps) {
-  const items =
-    steps.length > 0
-      ? steps
-      : [{ title: fallbackText.trim() || "—", body: "", mmj: null as string | null }];
+  const hasSteps = steps.length > 0;
+  const hasFallback = fallbackText.trim().length > 0;
+
+  if (!hasSteps && !hasFallback) {
+    return (
+      <Card className="w-full min-w-0 rounded-[10px] py-0 shadow-none ring-slate-200">
+        <CardContent className="p-6">
+          <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-slate-400">
+            Causal chain
+          </p>
+          <EmptyLayerState
+            className="mt-6"
+            title="No context chain yet"
+            description="The causal chain from event to market impact has not been published for this card."
+          />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const items = hasSteps
+    ? steps
+    : [{ title: fallbackText.trim(), body: "", mmj: null as string | null }];
 
   return (
     <Card className="w-full min-w-0 rounded-[10px] py-0 shadow-none ring-slate-200">

@@ -189,11 +189,11 @@ _Stand up the foundation surfaces (Pulse + Thread + Onboarding), the LLM card pi
 
 #### Tasks (checkboxes)
 
-- [ ] **3.0** Supabase session + user chip (route gating deferred)
+- [x] **3.0** Supabase session + user chip (route gating deferred)
   - [x] **3.1** Configure Supabase Auth in dashboard — magic-link only, no password.
   - [x] **3.2** `sign-in/page.tsx` — single email input + "Send link" button, success/error inline states.
   - [x] **3.3** `/callback` route handler exchanges code and writes session cookie.
-  - [ ] **3.4** `middleware.ts` — refresh Supabase session cookies on matched routes; **do not** bounce unauthenticated users to `/sign-in` during Phase 1.
+  - [x] **3.4** `middleware.ts` — refresh Supabase session cookies on matched routes; **do not** bounce unauthenticated users to `/sign-in` during Phase 1.
   - [x] **3.5** Backend `get_current_user` FastAPI dependency — verifies Supabase JWT, returns `User` model.
   - [x] **3.6** `UserChip` component reading from session; rendered in the sidebar slot.
   - [x] **3.7** Sign-out action + button in user chip menu.
@@ -864,25 +864,25 @@ Parallel-safe pairs at every week boundary: `S2/S3/S5`, `S6/S7`, `S8/S9/S10`, `S
 
 ### Tasks by developer — Jordan
 
-- [ ] **3.0** Supabase session + user chip (route gating deferred)
-  - [ ] **3.1** Configure Supabase Auth magic-link only
-  - [ ] **3.2** Sign-in page UI
-  - [ ] **3.3** Callback route handler
-  - [ ] **3.4** Middleware: session refresh only — **no** auth redirect in Phase 1
-  - [ ] **3.5** `get_current_user` FastAPI dependency
-  - [ ] **3.6** `UserChip` from session
-  - [ ] **3.7** Sign-out action
-  - [ ] **3.8** Auth tests (Pytest + RTL)
-- [ ] **6.0** Event-detection scheduled job + editorial queue
-  - [ ] **6.1** `SourceAdapter` ABC
-  - [ ] **6.2** NewsAPI adapter w/ daily-cap
-  - [ ] **6.3** RBI RSS adapter
-  - [ ] **6.4** NSE adapter + fallback path
-  - [ ] **6.5** Confidence scorer
-  - [ ] **6.6** Dedupe + persist
-  - [ ] **6.7** Render 4-hour cron
-  - [ ] **6.8** Admin queue API + page
-  - [ ] **6.9** Idempotency + adapter tests
+- [x] **3.0** Supabase session + user chip (route gating deferred)
+  - [x] **3.1** Configure Supabase Auth magic-link only
+  - [x] **3.2** Sign-in page UI
+  - [x] **3.3** Callback route handler
+  - [x] **3.4** Middleware: session refresh only — **no** auth redirect in Phase 1
+  - [x] **3.5** `get_current_user` FastAPI dependency
+  - [x] **3.6** `UserChip` from session
+  - [x] **3.7** Sign-out action
+  - [x] **3.8** Auth tests (Pytest + RTL)
+- [x] **6.0** Event-detection scheduled job + editorial queue
+  - [x] **6.1** `SourceAdapter` ABC
+  - [x] **6.2** NewsAPI adapter w/ daily-cap
+  - [x] **6.3** RBI RSS adapter
+  - [x] **6.4** NSE adapter + fallback path
+  - [x] **6.5** Confidence scorer
+  - [x] **6.6** Dedupe + persist
+  - [x] **6.7** Render 4-hour cron
+  - [x] **6.8** Admin queue API + page
+  - [x] **6.9** Idempotency + adapter tests
 - [x] **7.0** LLM 3-call card-synthesis pipeline (Gemini)
   - [x] **7.1** `synthesis.v1.md`
   - [x] **7.2** `dissent.v1.md`
@@ -894,16 +894,16 @@ Parallel-safe pairs at every week boundary: `S2/S3/S5`, `S6/S7`, `S8/S9/S10`, `S
   - [x] **7.8** `cost_guard` (50/day cap)
   - [x] **7.9** `POST /api/cards/draft-from-event`
   - [x] **7.10** Pipeline + validator tests
-- [ ] **11.0** Signal monitoring + confidence gating + notifications
-  - [ ] **11.1** `signal_check.evaluate()`
-  - [ ] **11.2** `confidence_gate.route()`
-  - [ ] **11.3** High path: auto-update + override window
-  - [ ] **11.4** Medium path: editor queue
-  - [ ] **11.5** Low path: digest log only
-  - [ ] **11.6** Notification fan-out
-  - [ ] **11.7** Frontend `NotificationBadge`
-  - [ ] **11.8** 30-min scheduled cron
-  - [ ] **11.9** Gate + override + notification tests
+- [x] **11.0** Signal monitoring + confidence gating + notifications
+  - [x] **11.1** `signal_check.evaluate()`
+  - [x] **11.2** `confidence_gate.route()`
+  - [x] **11.3** High path: auto-update + override window
+  - [x] **11.4** Medium path: editor queue
+  - [x] **11.5** Low path: digest log only
+  - [x] **11.6** Notification fan-out
+  - [x] **11.7** Frontend `NotificationBadge`
+  - [x] **11.8** 30-min scheduled cron
+  - [x] **11.9** Gate + override + notification tests
 
 ### Tasks by developer — Sam
 
@@ -919,19 +919,19 @@ Parallel-safe pairs at every week boundary: `S2/S3/S5`, `S6/S7`, `S8/S9/S10`, `S
   - [x] **2.9** Loading + error states
   - [x] **2.10** Routing logic (Builder/Protector/Curious)
   - [x] **2.11** Reducer + RTL + Pytest tests
-- [ ] **9.0** The Pulse — feed, filters, live insight panel, Fog of War
-  - [ ] **9.1** Sidebar (PRD §8.4)
-  - [ ] **9.2** `(app)/layout.tsx`
-  - [ ] **9.3** `GET /api/feed`
-  - [ ] **9.4** Fog of War detector
-  - [ ] **9.5** `EventCard`
-  - [ ] **9.6** `InsightPanel` sticky
-  - [ ] **9.7** `FilterPills` w/ URL state
-  - [ ] **9.8** `FogOfWarBanner`
-  - [ ] **9.9** Resolved badge inline
-  - [ ] **9.10** Mobile behaviour
-  - [ ] **9.11** Loading/empty/error
-  - [ ] **9.12** API + Fog + RTL tests
+- [x] **9.0** The Pulse — feed, filters, live insight panel, Fog of War
+  - [x] **9.1** Sidebar (PRD §8.4)
+  - [x] **9.2** `(app)/layout.tsx`
+  - [x] **9.3** `GET /api/feed`
+  - [x] **9.4** Fog of War detector
+  - [x] **9.5** `EventCard`
+  - [x] **9.6** `InsightPanel` sticky
+  - [x] **9.7** `FilterPills` w/ URL state
+  - [x] **9.8** `FogOfWarBanner`
+  - [x] **9.9** Resolved badge inline
+  - [x] **9.10** Mobile behaviour
+  - [x] **9.11** Loading/empty/error
+  - [x] **9.12** API + Fog + RTL tests
 - [x] **10.0** The Thread — Living Card with ICE tabs + aside
   - [x] **10.1** Page shell + lifecycle badge + Current/Original toggle
   - [x] **10.2** `IceTabs` (I default, C/E gated)
@@ -986,13 +986,13 @@ Parallel-safe pairs at every week boundary: `S2/S3/S5`, `S6/S7`, `S8/S9/S10`, `S
   - [x] **5.7** `FactorMatrix` UI
   - [x] **5.8** Admin allow-list gate
   - [x] **5.9** Seed-integrity + RTL tests
-- [ ] **8.0** Editorial review interface for drafts
-  - [ ] **8.1** Reuse Thread components in read-only
-  - [ ] **8.2** `ChecklistPanel` (5 items)
-  - [ ] **8.3** `POST /publish` + track-record insert
-  - [ ] **8.4** `POST /regenerate` w/ editor notes
-  - [ ] **8.5** Editor time-on-page log
-  - [ ] **8.6** Publish + checklist-gate tests
+- [x] **8.0** Editorial review interface for drafts
+  - [x] **8.1** Reuse Thread components in read-only
+  - [x] **8.2** `ChecklistPanel` (5 items)
+  - [x] **8.3** `POST /publish` + track-record insert
+  - [x] **8.4** `POST /regenerate` w/ editor notes
+  - [x] **8.5** Editor time-on-page log
+  - [x] **8.6** Publish + checklist-gate tests
 - [x] **13.0** Bias audit log + bias flags rendered in Thread aside
   - [x] **13.1** `card_bias_flags` migration
   - [x] **13.2** Detector wiring post-publish
