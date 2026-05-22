@@ -6,6 +6,18 @@ from fastapi import HTTPException
 from app.core.auth import User, get_current_user, verify_supabase_token
 
 
+@pytest.fixture(autouse=True)
+def _auth_settings(monkeypatch: pytest.MonkeyPatch) -> None:
+    """CI has no .env.local; auth tests must not depend on local Supabase config."""
+    monkeypatch.setenv("SUPABASE_URL", "https://test-project.supabase.co")
+    monkeypatch.setenv("SUPABASE_ANON_KEY", "test-anon-key")
+    from app.core.settings import get_settings
+
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
+
+
 @pytest.mark.asyncio
 async def test_verify_supabase_token_valid() -> None:
     mock_response = MagicMock()
