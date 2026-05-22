@@ -80,7 +80,10 @@ def test_original_view_keeps_day_one_copy_while_current_mutates(db_connection):
     finally:
         db_connection.rollback()
         with db_connection.cursor() as cur:
-            cur.execute("DELETE FROM public.in_app_notifications WHERE card_id = %s", (str(card_id),))
+            cur.execute(
+                "DELETE FROM public.in_app_notifications WHERE card_id = %s",
+                (str(card_id),),
+            )
             cur.execute("DELETE FROM public.cards WHERE id = %s", (str(card_id),))
             cur.execute("DELETE FROM public.events WHERE id = %s", (str(event_id),))
         db_connection.commit()

@@ -1,12 +1,14 @@
 """Tester acceptance gate — blocks API use until briefing accepted (P1-S14)."""
 
+from datetime import UTC
 from uuid import uuid4
 
 import pytest
 from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
 
-from app.api.tester_acceptance import require_tester_acceptance, router as acceptance_router
+from app.api.tester_acceptance import require_tester_acceptance
+from app.api.tester_acceptance import router as acceptance_router
 from app.core.auth import User, get_current_user
 
 app = FastAPI()
@@ -14,7 +16,10 @@ app.include_router(acceptance_router, prefix="/api")
 
 
 @app.get("/api/protected/feature")
-def protected_feature(_: None = Depends(require_tester_acceptance), user: User = Depends(get_current_user)):
+def protected_feature(
+    _: None = Depends(require_tester_acceptance),
+    user: User = Depends(get_current_user),
+):
     return {"ok": True, "user_id": user.id}
 
 
@@ -44,9 +49,9 @@ def test_post_tester_accept_records_row(monkeypatch):
     def _record(*, user_id: str, ip: str | None):
         seen["user_id"] = user_id
         seen["ip"] = ip
-        from datetime import datetime, timezone
+        from datetime import datetime
 
-        return datetime.now(timezone.utc)
+        return datetime.now(UTC)
 
     monkeypatch.setattr("app.api.tester_acceptance.has_accepted", lambda _uid: False)
     monkeypatch.setattr("app.api.tester_acceptance.record_acceptance", _record)

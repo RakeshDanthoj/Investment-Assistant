@@ -2,7 +2,11 @@
 
 from app.services.predictions import (
     DuplicatePredictionError,
+)
+from app.services.predictions import (
     PredictionError as PredictionLogError,
+)
+from app.services.predictions import (
     log as log_prediction,
 )
 
