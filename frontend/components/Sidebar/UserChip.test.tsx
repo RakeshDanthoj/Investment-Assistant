@@ -1,4 +1,5 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 import UserChip from "./UserChip";
 
@@ -18,6 +19,7 @@ describe("UserChip", () => {
   });
 
   it("calls onSignOut from the menu", async () => {
+    const user = userEvent.setup();
     const onSignOut = jest.fn().mockResolvedValue(undefined);
     render(
       <UserChip
@@ -27,9 +29,9 @@ describe("UserChip", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /Sam Lee/i }));
-    fireEvent.click(await screen.findByRole("menuitem", { name: /sign out/i }));
+    await user.click(screen.getByRole("button", { name: /Sam Lee/i }));
+    await user.click(await screen.findByRole("menuitem", { name: /sign out/i }));
 
-    await waitFor(() => expect(onSignOut).toHaveBeenCalledTimes(1));
+    expect(onSignOut).toHaveBeenCalledTimes(1);
   });
 });

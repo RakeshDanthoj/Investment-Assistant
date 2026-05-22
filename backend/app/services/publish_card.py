@@ -10,6 +10,7 @@ from psycopg.rows import dict_row
 
 from app.db.connection import connection
 from app.models.enums import LifecycleState
+from app.services.bias_detector import build_bias_audit, detect_all
 from app.services.card_repository import (
     fetch_card_detail_for_review,
     fetch_instrument_assessments_for_card,
@@ -44,24 +45,17 @@ def publish_draft_card(
     if not isinstance(ev_layer, dict):
         ev_layer = {}
 
-    payload_obj: dict[str, Any] = {
-        "kind": "initial_publish",
-        "editor_review_seconds": seconds,
-        "card_title": detail["title"],
-        "event_category": detail["event_category"],
-        "signals_snapshot": signals,
-        "ice_snapshot": {
-            "title": detail["title"],
-            "insight_layer": detail["insight_layer"],
-            "context_layer": detail["context_layer"],
-            "evidence_layer": ev_layer,
-            "dissenting_view": detail["dissenting_view"],
-            "framework_behind_this": detail["framework_behind_this"],
-            "instruments": instruments_snapshot,
-            "event_title": detail["event_title"],
-            "event_confidence_score": detail["event_confidence_score"],
-            "lifecycle_state": str(detail["lifecycle_state"]),
-        },
+    ice_snapshot: dict[str, Any] = {
+        "title": detail["title"],
+        "insight_layer": detail["insight_layer"],
+        "context_layer": detail["context_layer"],
+        "evidence_layer": ev_layer,
+        "dissenting_view": detail["dissenting_view"],
+        "framework_behind_this": detail["framework_behind_this"],
+        "instruments": instruments_snapshot,
+        "event_title": detail["event_title"],
+        "event_confidence_score": detail["event_confidence_score"],
+        "lifecycle_state": LifecycleState.PUBLISHED.value,
     }
     notify_payload = json.dumps(
         {
@@ -99,6 +93,20 @@ def publish_draft_card(
                 (LifecycleState.PUBLISHED.value, str(detail["event_id"])),
             )
 
+    findings = detect_all(card_id)
+    bias_audit = build_bias_audit(findings)
+    payload_obj: dict[str, Any] = {
+        "kind": "initial_publish",
+        "editor_review_seconds": seconds,
+        "card_title": detail["title"],
+        "event_category": detail["event_category"],
+        "signals_snapshot": signals,
+        "ice_snapshot": ice_snapshot,
+        "bias_audit": bias_audit,
+    }
+
+    with connection() as conn, conn.cursor(row_factory=dict_row) as cur:
+        with conn.transaction():
             cur.execute(
                 """
                 INSERT INTO public.track_record (card_id, payload)
@@ -122,7 +130,11 @@ def publish_draft_card(
                 (str(card_id), notify_payload, category),
             )
 
-    return {"card_id": str(card_id), "lifecycle_state": LifecycleState.PUBLISHED.value}
+    return {
+        "card_id": str(card_id),
+        "lifecycle_state": LifecycleState.PUBLISHED.value,
+        "bias_audit": bias_audit,
+    }
 
 
 __all__ = ["PublishCardError", "publish_draft_card"]

@@ -1,16 +1,18 @@
 import { Suspense } from "react";
 
+import { Skeleton } from "@/components/ui/skeleton";
+
 import PulseClient from "./_components/PulseClient";
 
 function PulseFallback() {
   return (
     <div className="flex flex-1 flex-col">
-      <div className="border-b border-slate-200 bg-white px-4 py-4">
-        <div className="h-7 w-40 animate-pulse rounded bg-slate-200" />
+      <div className="border-b border-border bg-background px-4 py-4">
+        <Skeleton className="h-7 w-40" />
       </div>
       <div className="mx-auto mt-6 w-full max-w-6xl space-y-4 px-4">
-        <div className="h-40 animate-pulse rounded-lg bg-slate-200/80" />
-        <div className="h-40 animate-pulse rounded-lg bg-slate-200/80" />
+        <Skeleton className="h-40 rounded-lg" />
+        <Skeleton className="h-40 rounded-lg" />
       </div>
     </div>
   );

@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
+from app.services.bias_detector import build_bias_audit
 from app.services.card_repository import (
     fetch_card_detail_for_review,
     fetch_instrument_assessments_for_card,
@@ -236,10 +237,14 @@ def build_card_detail(card_id: UUID, *, view: str) -> dict[str, Any] | None:
         return None
 
     track: dict[str, Any] | None = None
+    bias_audit: dict[str, Any] | None = None
     if view == "original":
         track = fetch_track_record_initial_publish(card_id)
         if track is None:
             return None
+        stored = track.get("bias_audit")
+        if isinstance(stored, dict):
+            bias_audit = stored
         ice = track.get("ice_snapshot") or {}
         if not isinstance(ice, dict):
             ice = {}
@@ -327,7 +332,7 @@ def build_card_detail(card_id: UUID, *, view: str) -> dict[str, Any] | None:
         "instruments": instruments_out,
         "signals": signals_out,
         "confidence_composition": comp,
-        "bias_audit": bias_audit_placeholder(),
+        "bias_audit": bias_audit if bias_audit is not None else build_bias_audit(card_id=card_id),
         "published_at": detail.get("card_created_at"),
     }
 

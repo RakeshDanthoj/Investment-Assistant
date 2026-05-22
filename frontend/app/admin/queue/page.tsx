@@ -1,7 +1,17 @@
 "use client";
 
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { getApiBaseUrl } from "@/lib/api";
-import { Suspense, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 
 type QueueEventRow = {
   id: string;
@@ -111,42 +121,52 @@ function EditorialQueueInner() {
         </p>
       </header>
 
-      <section className="flex flex-wrap gap-2">
-        <FilterGroup ariaLabel="Categories">
+      <section aria-label="Categories">
+        <ToggleGroup
+          type="single"
+          value={category}
+          onValueChange={(value) => {
+            if (value) setCategory(value);
+          }}
+          variant="outline"
+          className="flex flex-wrap"
+        >
           {CATEGORY_OPTIONS.map((opt) => (
-            <FilterPill
-              key={opt.value}
-              selected={category === opt.value}
-              onClick={() => setCategory(opt.value)}
-            >
+            <ToggleGroupItem key={opt.value} value={opt.value} className="rounded-full px-4">
               {opt.label}
-            </FilterPill>
+            </ToggleGroupItem>
           ))}
-        </FilterGroup>
+        </ToggleGroup>
       </section>
 
-      <section className="flex flex-wrap gap-2">
-        <FilterGroup ariaLabel="Sources">
+      <section aria-label="Sources">
+        <ToggleGroup
+          type="single"
+          value={source}
+          onValueChange={(value) => {
+            if (value) setSource(value);
+          }}
+          variant="outline"
+          className="flex flex-wrap"
+        >
           {SOURCE_FILTERS.map((opt) => (
-            <FilterPill
-              key={opt.value}
-              selected={source === opt.value}
-              onClick={() => setSource(opt.value)}
-            >
+            <ToggleGroupItem key={opt.value} value={opt.value} className="rounded-full px-4">
               {opt.label}
-            </FilterPill>
+            </ToggleGroupItem>
           ))}
-        </FilterGroup>
+        </ToggleGroup>
       </section>
 
       {error ? (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          <p>{error}</p>
-          <p className="mt-2 text-xs text-amber-800">
-            Hint: confirm <code>NEXT_PUBLIC_API_BASE_URL</code> in <code>.env.local</code> reaches
-            the FastAPI backend and CORS permits this origin.
-          </p>
-        </div>
+        <Alert variant="destructive" className="border-amber-200 bg-amber-50 text-amber-900">
+          <AlertDescription>
+            <p>{error}</p>
+            <p className="mt-2 text-xs text-amber-800">
+              Hint: confirm <code>NEXT_PUBLIC_API_BASE_URL</code> in <code>.env.local</code> reaches
+              the FastAPI backend and CORS permits this origin.
+            </p>
+          </AlertDescription>
+        </Alert>
       ) : null}
 
       <EventsTable loading={loading} rows={rows} />
@@ -158,45 +178,6 @@ function EditorialQueueInner() {
         </p>
       </footer>
     </main>
-  );
-}
-
-function FilterGroup({
-  children,
-  ariaLabel,
-}: {
-  children: ReactNode;
-  ariaLabel: string;
-}) {
-  return (
-    <div className="flex flex-wrap items-center gap-2" aria-label={ariaLabel} role="group">
-      {children}
-    </div>
-  );
-}
-
-function FilterPill({
-  children,
-  selected,
-  onClick,
-}: {
-  children: ReactNode;
-  selected: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={[
-        "rounded-full border px-4 py-1.5 text-sm transition",
-        selected
-          ? "border-finnwise-blue bg-finnwise-blue text-white shadow-sm"
-          : "border-slate-200 bg-white text-slate-700 hover:border-finnwise-blue hover:text-finnwise-blue",
-      ].join(" ")}
-    >
-      {children}
-    </button>
   );
 }
 
@@ -223,34 +204,36 @@ function EventsTable({
 
   return (
     <div className="overflow-auto rounded-xl border border-slate-200 bg-white shadow-sm">
-      <table className="min-w-full border-collapse text-left text-sm">
-        <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-600">
-          <tr>
-            <th className="px-4 py-3 font-medium">Confidence</th>
-            <th className="px-4 py-3 font-medium">Title</th>
-            <th className="px-4 py-3 font-medium">Category</th>
-            <th className="px-4 py-3 font-medium">Source</th>
-            <th className="px-4 py-3 font-medium">Link</th>
-          </tr>
-        </thead>
-        <tbody>
+      <Table className="min-w-full border-collapse text-left text-sm">
+        <TableHeader className="bg-slate-50 text-xs uppercase tracking-wide text-slate-600">
+          <TableRow className="hover:bg-transparent">
+            <TableHead className="px-4 py-3 font-medium">Confidence</TableHead>
+            <TableHead className="px-4 py-3 font-medium">Title</TableHead>
+            <TableHead className="px-4 py-3 font-medium">Category</TableHead>
+            <TableHead className="px-4 py-3 font-medium">Source</TableHead>
+            <TableHead className="px-4 py-3 font-medium">Link</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {rows.map((ev) => (
-            <tr key={ev.id} className="border-t border-slate-100 hover:bg-slate-50/80">
-              <td className="px-4 py-3 font-mono text-finnwise-green">
+            <TableRow key={ev.id} className="border-t border-slate-100 hover:bg-slate-50/80">
+              <TableCell className="px-4 py-3 font-mono text-finnwise-green">
                 {ev.confidence_score}
-              </td>
-              <td className="max-w-xl px-4 py-3 text-slate-900">{ev.title}</td>
-              <td className="px-4 py-3 text-xs uppercase tracking-wide text-slate-600">
+              </TableCell>
+              <TableCell className="max-w-xl px-4 py-3 whitespace-normal text-slate-900">
+                {ev.title}
+              </TableCell>
+              <TableCell className="px-4 py-3 text-xs uppercase tracking-wide text-slate-600">
                 {ev.category.replaceAll("_", " ")}
-              </td>
-              <td className="px-4 py-3 text-xs text-slate-500">{ev.event_source}</td>
-              <td className="px-4 py-3">
+              </TableCell>
+              <TableCell className="px-4 py-3 text-xs text-slate-500">{ev.event_source}</TableCell>
+              <TableCell className="px-4 py-3">
                 <QueueLink canonical={ev.canonical_url} fallback={ev.source_url} />
-              </td>
-            </tr>
+              </TableCell>
+            </TableRow>
           ))}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
     </div>
   );
 }

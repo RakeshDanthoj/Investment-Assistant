@@ -1,5 +1,15 @@
 "use client";
 
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import type { EvidenceRow } from "@/lib/cards/threadTypes";
 
 function FreshDot({ tone }: { tone: EvidenceRow["freshness"] }) {
@@ -17,11 +27,11 @@ function FreshDot({ tone }: { tone: EvidenceRow["freshness"] }) {
   );
 }
 
-function mmjPill(mmj: string): string {
+function mmjVariant(mmj: string): "measured" | "modelled" | "judged" {
   const k = mmj.toUpperCase();
-  if (k === "MODELLED") return "bg-finnwise-modelled-bg text-finnwise-green";
-  if (k === "JUDGED") return "bg-finnwise-judged-bg text-finnwise-amber";
-  return "bg-finnwise-blue-tint text-finnwise-blue";
+  if (k === "MODELLED") return "modelled";
+  if (k === "JUDGED") return "judged";
+  return "measured";
 }
 
 type EvidenceLayerProps = {
@@ -46,53 +56,65 @@ export function EvidenceLayer({ rows, markdown, macroStub }: EvidenceLayerProps)
         ];
 
   return (
-    <div className="space-y-4 rounded-[10px] border border-slate-200 bg-white p-6">
-      <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-slate-400">Evidence</p>
-      <p className="text-[12px] leading-relaxed text-slate-600">
-        Human-sourced references only — model outputs never appear as rows in this table (PRD §5).
-      </p>
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[560px] border-collapse text-left text-[12px]">
-          <thead>
-            <tr className="border-b border-slate-200 bg-slate-50 font-mono text-[10px] uppercase tracking-wide text-slate-500">
-              <th className="px-2 py-2">Claim</th>
-              <th className="px-2 py-2">Source</th>
-              <th className="px-2 py-2">Date</th>
-              <th className="px-2 py-2">Fresh</th>
-              <th className="px-2 py-2">MMJ</th>
-            </tr>
-          </thead>
-          <tbody>
-            {tableRows.map((r, idx) => (
-              <tr key={`${idx}-${r.claim.slice(0, 24)}`} className="border-b border-slate-100">
-                <td className="px-2 py-2 align-top font-medium text-slate-800">{r.claim}</td>
-                <td className="px-2 py-2 align-top text-slate-600">{r.source_name}</td>
-                <td className="px-2 py-2 align-top text-slate-600">{r.date_label}</td>
-                <td className="px-2 py-2 align-top">
-                  <FreshDot tone={r.freshness} />
-                </td>
-                <td className="px-2 py-2 align-top">
-                  <span
-                    className={`inline-flex rounded px-2 py-0.5 font-mono text-[10px] font-semibold ${mmjPill(r.mmj)}`}
-                  >
-                    {r.mmj.toLowerCase()}
-                  </span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      {markdown.trim() ? (
-        <div className="rounded-lg border border-slate-100 bg-slate-50 p-4 font-mono text-[11px] leading-relaxed text-slate-700 whitespace-pre-wrap">
-          {markdown}
-        </div>
-      ) : null}
-      {macroStub.trim() ? (
-        <p className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-[12px] leading-relaxed text-slate-600">
-          {macroStub}
+    <Card className="w-full min-w-0 rounded-[10px] py-0 shadow-none ring-slate-200">
+      <CardContent className="min-w-0 space-y-4 p-6">
+        <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-slate-400">Evidence</p>
+        <p className="text-[12px] leading-relaxed text-slate-600">
+          Human-sourced references only — model outputs never appear as rows in this table (PRD §5).
         </p>
-      ) : null}
-    </div>
+        <Table className="min-w-[560px] text-[12px]">
+          <TableHeader>
+            <TableRow className="border-slate-200 bg-slate-50 hover:bg-slate-50">
+              <TableHead className="px-2 py-2 font-mono text-[10px] uppercase tracking-wide text-slate-500">
+                Claim
+              </TableHead>
+              <TableHead className="px-2 py-2 font-mono text-[10px] uppercase tracking-wide text-slate-500">
+                Source
+              </TableHead>
+              <TableHead className="px-2 py-2 font-mono text-[10px] uppercase tracking-wide text-slate-500">
+                Date
+              </TableHead>
+              <TableHead className="px-2 py-2 font-mono text-[10px] uppercase tracking-wide text-slate-500">
+                Fresh
+              </TableHead>
+              <TableHead className="px-2 py-2 font-mono text-[10px] uppercase tracking-wide text-slate-500">
+                MMJ
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {tableRows.map((r, idx) => (
+              <TableRow key={`${idx}-${r.claim.slice(0, 24)}`} className="border-slate-100">
+                <TableCell className="px-2 py-2 align-top font-medium whitespace-normal text-slate-800">
+                  {r.claim}
+                </TableCell>
+                <TableCell className="px-2 py-2 align-top whitespace-normal text-slate-600">
+                  {r.source_name}
+                </TableCell>
+                <TableCell className="px-2 py-2 align-top whitespace-normal text-slate-600">
+                  {r.date_label}
+                </TableCell>
+                <TableCell className="px-2 py-2 align-top">
+                  <FreshDot tone={r.freshness} />
+                </TableCell>
+                <TableCell className="px-2 py-2 align-top">
+                  <Badge variant={mmjVariant(r.mmj)}>{r.mmj.toLowerCase()}</Badge>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+        {markdown.trim() ? (
+          <div className="rounded-lg border border-slate-100 bg-slate-50 p-4 font-mono text-[11px] leading-relaxed whitespace-pre-wrap text-slate-700">
+            {markdown}
+          </div>
+        ) : null}
+        {macroStub.trim() ? (
+          <p className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-[12px] leading-relaxed text-slate-600">
+            {macroStub}
+          </p>
+        ) : null}
+      </CardContent>
+    </Card>
   );
 }

@@ -1,5 +1,9 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { useMemo, useState } from "react";
 
 export type ChecklistPanelProps = {
@@ -76,29 +80,34 @@ export default function ChecklistPanel({
       <ul className="flex flex-col gap-4">
         {ITEM_KEYS.map((key) => (
           <li key={key}>
-            <label className="flex cursor-pointer gap-3 text-sm leading-snug text-slate-800">
-              <input
-                type="checkbox"
+            <div className="flex items-start gap-3">
+              <Checkbox
+                id={`checklist-${key}`}
                 checked={checks[key]}
-                onChange={() => toggle(key)}
-                className="mt-1 h-4 w-4 shrink-0 rounded border-slate-300 text-finnwise-blue focus:ring-finnwise-blue"
+                onCheckedChange={() => toggle(key)}
+                className="mt-0.5"
               />
-              <span>{LABELS[key]}</span>
-            </label>
+              <Label
+                htmlFor={`checklist-${key}`}
+                className="cursor-pointer text-sm leading-snug font-normal text-slate-800"
+              >
+                {LABELS[key]}
+              </Label>
+            </div>
           </li>
         ))}
       </ul>
 
       <div className="flex flex-col gap-3 border-t border-slate-200 pt-6">
-        <button
+        <Button
           type="button"
           data-testid="publish-draft-btn"
           disabled={!allChecked || publishing || regenerating}
           onClick={() => void handlePublish()}
-          className="rounded-lg bg-finnwise-blue px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:opacity-95 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500"
+          className="h-auto rounded-lg py-3 font-semibold"
         >
           {publishing ? "Publishing…" : "Publish card"}
-        </button>
+        </Button>
         {!allChecked ? (
           <p className="text-[11px] text-slate-500">
             Publish stays disabled until all five checklist items are confirmed.
@@ -107,25 +116,30 @@ export default function ChecklistPanel({
       </div>
 
       <div className="flex flex-col gap-3 border-t border-slate-200 pt-6">
-        <label className="font-mono text-[10px] uppercase tracking-[0.14em] text-slate-400">
+        <Label
+          htmlFor="regenerate-notes"
+          className="font-mono text-[10px] uppercase tracking-[0.14em] text-slate-400"
+        >
           Send back — editor notes for regeneration
-        </label>
-        <textarea
+        </Label>
+        <Textarea
+          id="regenerate-notes"
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           rows={5}
           placeholder="Concrete fixes you want synthesis to honour…"
-          className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 shadow-inner outline-none focus:border-finnwise-blue"
+          className="rounded-lg shadow-inner"
         />
-        <button
+        <Button
           type="button"
+          variant="outline"
           data-testid="regenerate-draft-btn"
           disabled={regenerating || publishing}
           onClick={() => void onRegenerate(notes)}
-          className="rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-800 hover:border-finnwise-blue hover:text-finnwise-blue disabled:cursor-not-allowed disabled:opacity-60"
+          className="h-auto rounded-lg py-2.5 font-medium"
         >
           {regenerating ? "Regenerating…" : "Regenerate draft"}
-        </button>
+        </Button>
       </div>
     </div>
   );

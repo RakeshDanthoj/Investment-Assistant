@@ -3,6 +3,9 @@
 import type { ReactNode } from "react";
 import { useState } from "react";
 
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
+
 const TABS = [
   { id: "insight" as const, label: "Insight", tier: 0 },
   { id: "context" as const, label: "Context", tier: 1 },
@@ -57,35 +60,44 @@ export function IceTabs({
   }
 
   return (
-    <div>
-      <nav className="flex gap-0 border-b border-slate-200" aria-label="ICE layers">
+    <Tabs
+      value={active}
+      className="w-full min-w-0"
+      onValueChange={(value) => {
+        const tab = TABS.find((t) => t.id === value);
+        if (tab) handleSelect(tab.id, tab.tier);
+      }}
+    >
+      <TabsList
+        variant="line"
+        aria-label="ICE layers"
+        className="h-auto w-full justify-start gap-0 rounded-none border-b border-slate-200 bg-transparent p-0"
+      >
         {TABS.map((t) => {
           const locked = t.tier > maxUnlockedTier;
           return (
-            <button
+            <TabsTrigger
               key={t.id}
-              type="button"
-              onClick={() => {
-                handleSelect(t.id, t.tier);
-              }}
-              className={[
-                "-mb-px border-b-2 px-5 py-2.5 font-mono text-[11px] font-semibold uppercase tracking-wide transition-colors",
-                active === t.id
-                  ? "border-finnwise-blue text-finnwise-blue"
-                  : "border-transparent text-slate-500 hover:text-slate-700",
-                locked ? "opacity-60" : "",
-              ].join(" ")}
+              value={t.id}
+              className={cn(
+                "-mb-px flex-none rounded-none border-b-2 border-transparent px-5 py-2.5 font-mono text-[11px] font-semibold uppercase tracking-wide shadow-none after:hidden data-[state=active]:border-finnwise-blue data-[state=active]:bg-transparent data-[state=active]:text-finnwise-blue data-[state=active]:shadow-none",
+                locked ? "opacity-60" : "text-slate-500 hover:text-slate-700",
+              )}
             >
               {t.label}
               {locked && t.tier > 0 ? (
                 <span className="ml-1 text-[9px] font-normal normal-case text-slate-400">locked</span>
               ) : null}
-            </button>
+            </TabsTrigger>
           );
         })}
-      </nav>
+      </TabsList>
       {hint ? <p className="mt-2 font-mono text-[10px] text-amber-700">{hint}</p> : null}
-      <div className="mt-6">{panels[active]}</div>
-    </div>
+      {TABS.map((t) => (
+        <TabsContent key={t.id} value={t.id} className="mt-6 w-full min-w-0 outline-none">
+          {panels[t.id]}
+        </TabsContent>
+      ))}
+    </Tabs>
   );
 }

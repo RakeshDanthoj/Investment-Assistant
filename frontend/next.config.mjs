@@ -36,12 +36,6 @@ function resolveSupabaseUrl(raw) {
 
 const supabaseUrl = resolveSupabaseUrl(process.env.SUPABASE_URL);
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY ?? "";
-const apiBaseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "").trim().replace(/\/$/, "");
-
-function isLoopbackApiUrl(url) {
-  if (!url) return true;
-  return /\/\/(localhost|127\.0\.0\.1)(:|\/|$)/i.test(url);
-}
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -49,11 +43,6 @@ const nextConfig = {
   env: {
     NEXT_PUBLIC_SUPABASE_URL: supabaseUrl,
     NEXT_PUBLIC_SUPABASE_ANON_KEY: supabaseAnonKey,
-    NEXT_PUBLIC_API_BASE_URL: apiBaseUrl,
-  },
-  async rewrites() {
-    if (!apiBaseUrl || isLoopbackApiUrl(apiBaseUrl)) return [];
-    return [{ source: "/backend/:path*", destination: `${apiBaseUrl}/:path*` }];
   },
 };
 

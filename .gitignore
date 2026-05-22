@@ -18,3 +18,5 @@ venv/
 .ruff_cache/
 htmlcov/
 .coverage
+notes/
+docs/plans/phase1-go-no-go.md

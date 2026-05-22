@@ -1,7 +1,11 @@
 "use client";
 
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import type { PulseCard } from "@/lib/cards/pulseTypes";
 import { categoryLabel, categoryPillClass } from "@/lib/cards/categories";
+import { cn } from "@/lib/utils";
 
 function dotClass(tier: string): string {
   if (tier === "high") return "bg-finnwise-blue";
@@ -16,6 +20,21 @@ function chipClass(signalType: string): string {
   return "bg-finnwise-judged-bg text-finnwise-amber";
 }
 
+function categoryBadgeVariant(
+  category: string,
+): "measured" | "modelled" | "judged" | "outline" {
+  switch (category) {
+    case "macro":
+      return "measured";
+    case "rbi_policy":
+      return "modelled";
+    case "regulatory":
+      return "judged";
+    default:
+      return "outline";
+  }
+}
+
 type EventCardProps = {
   card: PulseCard;
   selected: boolean;
@@ -24,75 +43,101 @@ type EventCardProps = {
 
 export function EventCard({ card, selected, onSelect }: EventCardProps) {
   const resolved = card.lifecycle_state === "resolved";
+  const badgeVariant = categoryBadgeVariant(card.category);
 
   return (
-    <article>
-      <button
-        type="button"
+    <Button
+      asChild
+      variant="ghost"
+      className="block h-auto w-full rounded-lg p-0 hover:bg-transparent"
+    >
+      <Card
+        role="button"
+        tabIndex={0}
         onClick={onSelect}
-        className={`w-full rounded-lg border border-slate-200 bg-white p-4 text-left transition-all duration-150 ease-in-out hover:border-slate-300 ${
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            onSelect();
+          }
+        }}
+        className={cn(
+          "w-full cursor-pointer gap-0 rounded-lg border border-border bg-background py-0 text-left shadow-none ring-0 transition-all duration-150 ease-in-out hover:border-border/80",
           selected
             ? "border-l-[3px] border-l-finnwise-blue bg-finnwise-blue-tint/50 shadow-sm"
-            : "border-l-[3px] border-l-transparent"
-        }`}
+            : "border-l-[3px] border-l-transparent",
+        )}
       >
-        <div className="mb-2 flex flex-wrap items-center gap-2">
-          <span
-            className={`rounded px-2 py-0.5 font-mono text-[9px] font-medium uppercase tracking-wide ${categoryPillClass(card.category)}`}
-          >
-            {categoryLabel(card.category)}
-          </span>
-          {resolved ? (
-            <span className="rounded-full bg-finnwise-modelled-bg px-2 py-0.5 font-mono text-[9px] font-medium uppercase tracking-wide text-finnwise-green">
-              Resolved
-            </span>
-          ) : null}
-        </div>
-        <h2 className="font-display text-[15px] font-bold leading-snug text-slate-900">
-          {card.headline}
-        </h2>
-        <p className="mt-2 text-xs italic leading-relaxed text-slate-500">
-          {card.event_context}
-        </p>
-        <div className="mt-3 flex flex-wrap items-center gap-4">
-          <div className="flex items-center gap-2">
-            <span className="font-mono text-[9px] uppercase tracking-wide text-slate-400">
-              Direction
-            </span>
-            <span className="flex items-center gap-1.5 font-mono text-[9px] text-slate-600">
-              <span
-                className={`inline-block h-2 w-2 shrink-0 rounded-full ${dotClass(card.direction_confidence.tier)}`}
-                aria-hidden
-              />
-              {card.direction_confidence.label}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="font-mono text-[9px] uppercase tracking-wide text-slate-400">
-              Magnitude
-            </span>
-            <span className="flex items-center gap-1.5 font-mono text-[9px] text-slate-600">
-              <span
-                className={`inline-block h-2 w-2 shrink-0 rounded-full ${dotClass(card.magnitude_confidence.tier)}`}
-                aria-hidden
-              />
-              {card.magnitude_confidence.label}
-            </span>
-          </div>
-        </div>
-        {card.instruments?.length ? (
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {card.instruments.slice(0, 4).map((i) => (
-              <span
-                key={`${card.id}-${i.instrument_id}`}
-                className={`rounded px-2 py-0.5 font-mono text-[9px] ${chipClass(i.signal_type)}`}
+        <CardContent className="p-4">
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            <Badge
+              variant={badgeVariant}
+              className={cn(
+                "rounded px-2 py-0.5 font-mono text-[9px] font-medium uppercase tracking-wide",
+                badgeVariant === "outline" && cn("border-0", categoryPillClass(card.category)),
+              )}
+            >
+              {categoryLabel(card.category)}
+            </Badge>
+            {resolved ? (
+              <Badge
+                variant="modelled"
+                className="rounded-full px-2 py-0.5 font-mono text-[9px] font-medium uppercase tracking-wide"
               >
-                {i.instrument_id}
-              </span>
-            ))}
+                Resolved
+              </Badge>
+            ) : null}
           </div>
-        ) : null}
-      </button>
-    </article>
+          <h2 className="font-display text-[15px] font-bold leading-snug text-foreground">
+            {card.headline}
+          </h2>
+          <p className="mt-2 text-xs italic leading-relaxed text-muted-foreground">
+            {card.event_context}
+          </p>
+          <div className="mt-3 flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-[9px] uppercase tracking-wide text-muted-foreground">
+                Direction
+              </span>
+              <span className="flex items-center gap-1.5 font-mono text-[9px] text-foreground/80">
+                <span
+                  className={`inline-block h-2 w-2 shrink-0 rounded-full ${dotClass(card.direction_confidence.tier)}`}
+                  aria-hidden
+                />
+                {card.direction_confidence.label}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-[9px] uppercase tracking-wide text-muted-foreground">
+                Magnitude
+              </span>
+              <span className="flex items-center gap-1.5 font-mono text-[9px] text-foreground/80">
+                <span
+                  className={`inline-block h-2 w-2 shrink-0 rounded-full ${dotClass(card.magnitude_confidence.tier)}`}
+                  aria-hidden
+                />
+                {card.magnitude_confidence.label}
+              </span>
+            </div>
+          </div>
+          {card.instruments?.length ? (
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {card.instruments.slice(0, 4).map((i) => (
+                <Badge
+                  key={`${card.id}-${i.instrument_id}`}
+                  variant="outline"
+                  className={cn(
+                    "rounded border-0 px-2 py-0.5 font-mono text-[9px] font-normal normal-case tracking-normal",
+                    chipClass(i.signal_type),
+                  )}
+                >
+                  {i.instrument_id}
+                </Badge>
+              ))}
+            </div>
+          ) : null}
+        </CardContent>
+      </Card>
+    </Button>
   );
 }

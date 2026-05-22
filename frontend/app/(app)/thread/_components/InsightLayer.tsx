@@ -2,6 +2,8 @@
 
 import type { CardDetailResponse } from "@/lib/cards/threadTypes";
 
+import { Card, CardContent } from "@/components/ui/card";
+
 import { DissentingView } from "./DissentingView";
 import { FrameworkBehindThis } from "./FrameworkBehindThis";
 import { InstrumentCard } from "./InstrumentCard";
@@ -12,30 +14,34 @@ type InsightLayerProps = Pick<
   "insight_layer" | "instruments" | "dissenting_view" | "framework_behind_this"
 > & {
   cardId: string;
+  showPredictionLogger?: boolean;
 };
 
 export function InsightLayer({
   cardId,
+  showPredictionLogger = true,
   insight_layer,
   instruments,
   dissenting_view,
   framework_behind_this,
 }: InsightLayerProps) {
   return (
-    <div className="space-y-8">
-      <section className="rounded-[10px] border border-slate-200 bg-white p-6">
-        <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-slate-400">Insight</p>
-        <div className="mt-4 whitespace-pre-wrap text-[15px] font-light leading-[1.75] text-slate-700">
-          {insight_layer.trim() || "—"}
-        </div>
-      </section>
+    <div className="w-full min-w-0 space-y-8">
+      <Card className="w-full min-w-0 rounded-[10px] py-0 shadow-none ring-slate-200">
+        <CardContent className="p-6">
+          <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-slate-400">Insight</p>
+          <div className="mt-4 text-[15px] leading-[1.75] font-light whitespace-pre-wrap text-slate-700">
+            {insight_layer.trim() || "—"}
+          </div>
+        </CardContent>
+      </Card>
 
       {instruments.length ? (
         <section>
           <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-slate-400">
             Instrument assessments
           </p>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <div className="mt-4 grid min-w-0 gap-3 sm:grid-cols-2">
             {instruments.map((row) => (
               <InstrumentCard key={`${row.instrument_id}-${row.signal_label}`} row={row} />
             ))}
@@ -45,7 +51,7 @@ export function InsightLayer({
 
       <DissentingView text={dissenting_view} />
 
-      <PredictionLogger cardId={cardId} />
+      {showPredictionLogger ? <PredictionLogger cardId={cardId} /> : null}
 
       <FrameworkBehindThis text={framework_behind_this} />
     </div>

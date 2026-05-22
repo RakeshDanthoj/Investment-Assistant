@@ -28,10 +28,10 @@ export function Topbar({
   onCategoriesChange,
 }: TopbarProps) {
   return (
-    <header className="sticky top-0 z-10 border-b border-slate-200 bg-white">
+    <header className="sticky top-0 z-10 border-b border-border bg-background">
       <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-3 min-[860px]:flex-row min-[860px]:items-center min-[860px]:justify-between">
         <div className="flex flex-wrap items-baseline gap-4">
-          <h1 className="font-display text-xl font-semibold text-slate-900">The Pulse</h1>
+          <h1 className="font-display text-xl font-semibold text-foreground">The Pulse</h1>
           <div className="min-w-0 flex-1">
             <FilterPills
               options={categoryOptions}
@@ -40,7 +40,7 @@ export function Topbar({
             />
           </div>
         </div>
-        <div className="flex shrink-0 flex-col items-end gap-0.5 font-mono text-[10px] text-slate-400 min-[860px]:text-right">
+        <div className="flex shrink-0 flex-col items-end gap-0.5 font-mono text-[10px] text-muted-foreground min-[860px]:text-right">
           <span>
             {counts} event{counts === 1 ? "" : "s"}
           </span>

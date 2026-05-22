@@ -1,0 +1,59 @@
+---
+description: Production incident triage — decision tree, one branch at a time, config-format checks before credential rabbit holes
+alwaysApply: true
+---
+
+# Production incident triage
+
+When debugging production failures (API errors, CORS, "Failed to fetch", 500s):
+
+## 1. Build a decision tree before changing code
+
+Map symptoms to branches. Validate **one branch at a time**. If a fix fails, **revert** and move to the next branch. Do not stack speculative fixes.
+
+Example tree for cross-origin API failure:
+
+```
+Request fails
+├── Network / DNS / wrong URL?
+├── Browser symptom (CORS) vs server status (4xx/5xx)?
+│   └── 500 without CORS headers → often masks upstream failure; reproduce with curl first
+├── Env var **format** mismatch? (see §2 — check early)
+├── Credential / permission wrong?
+└── Application logic / schema / migration?
+```
+
+## 2. Check env var **format** before credential swaps
+
+Do not fixate on "wrong key" (anon vs service role) when the codebase shows inconsistent URL handling.
+
+**Always verify early:**
+- Is the value the **full URL** or a **bare project ref**? (e.g. Supabase: `https://<ref>.supabase.co` vs `<ref>`)
+- Does **every** code path normalize the value, or only some? Grep for the helper (e.g. `normalize_supabase_url`) — a path that skips it is a prime suspect.
+- Trailing slashes, quotes, whitespace, `http` vs `https`, pooler vs direct host.
+
+**Signal from code:** If `auth.py` normalizes `SUPABASE_URL` but `session_profile_store.py` does not, a bare ref breaks only one endpoint — match that to the failing route.
+
+## 3. Separate browser symptom from root cause
+
+| Observation | Often means |
+|-------------|-------------|
+| CORS error + 500 in Network tab | Server crashed; 500 response may omit CORS headers — **not** necessarily misconfigured CORS |
+| CORS error + 200/4xx with no ACAO | True CORS misconfiguration |
+| "Failed to fetch" | Network block, CORS mask, or unreachable host — reproduce outside the browser |
+
+Use `curl` with `-i` and an `Origin` header before blaming CORS config.
+
+## 4. Avoid obvious-only hypotheses
+
+Do not repeat the same credential check across turns. Rank branches by **code evidence**:
+- Which handler fails?
+- Which env vars does that path read?
+- Which normalization or validation does it skip?
+- Does curl reproduce without the browser?
+
+Less obvious branches to include: bare ref vs full URL, partial normalization across services, duplicate PK on retry, undeployed local fixes vs production bundle.
+
+## 5. Minimal diffs after root cause is known
+
+Fix only what the validated branch requires. Revert diagnostic/error-handling/CORS/proxy changes if the user fixed it via config. Prefer one durable fix (e.g. settings-level URL normalization) over scattered workarounds.

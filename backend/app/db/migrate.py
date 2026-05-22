@@ -11,6 +11,9 @@ MIGRATION_FILES = (
     "0008_cards_llm_budget.sql",
     "0009_editorial_publish_notifications.sql",
     "0010_signal_monitoring.sql",
+    "0011_card_bias_flags.sql",
+    "0012_user_predictions_unique.sql",
+    "0013_tester_acceptances.sql",
 )
 
 _SCHEMA_MIGRATIONS_DDL = """

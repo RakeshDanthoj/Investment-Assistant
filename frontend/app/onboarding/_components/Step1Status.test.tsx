@@ -11,8 +11,9 @@ describe("Step1Status", () => {
     expect(onSelect).toHaveBeenCalledWith("starting_fresh");
 
     rerender(<Step1Status selected="starting_fresh" onSelect={onSelect} />);
-    expect(screen.getByRole("button", { name: /Starting fresh/i }).className).toContain(
-      "border-finnwise-blue",
+    expect(screen.getByRole("button", { name: /Starting fresh/i })).toHaveAttribute(
+      "aria-pressed",
+      "true",
     );
   });
 });

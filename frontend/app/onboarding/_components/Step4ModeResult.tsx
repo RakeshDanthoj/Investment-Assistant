@@ -3,8 +3,12 @@
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import type { SessionApiResult } from "@/lib/onboarding/state";
 import { setStoredSessionId } from "@/lib/sessionProfile";
+import { cn } from "@/lib/utils";
 
 const SURFACES = [
   {
@@ -65,7 +69,7 @@ export function Step4ModeResult({ result }: Step4ModeResultProps) {
   return (
     <div className="flex flex-col gap-6">
       <div className="text-center">
-        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-finnwise-blue-tint">
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-secondary">
           <svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden>
             <title>Complete</title>
             <path
@@ -77,54 +81,53 @@ export function Step4ModeResult({ result }: Step4ModeResultProps) {
             />
           </svg>
         </div>
-        <h2 className="font-display mt-4 text-xl font-medium leading-snug text-slate-900">
+        <h2 className="font-display mt-4 text-xl font-medium leading-snug text-foreground">
           You&apos;re {modeHeadline(result.mode)}
         </h2>
-        <p className="mt-3 text-sm leading-relaxed text-slate-600">{result.rationale}</p>
+        <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{result.rationale}</p>
       </div>
 
       <div>
-        <p className="font-mono text-[9px] font-medium uppercase tracking-wider text-slate-400">
+        <p className="font-mono text-[9px] font-medium uppercase tracking-wider text-muted-foreground">
           Your surfaces
         </p>
-        <p className="mt-1 text-xs text-slate-500">
+        <p className="mt-1 text-xs text-muted-foreground">
           Preview of what&apos;s inside — your starting surface is{" "}
-          <span className="font-medium text-slate-700">{startingLabel}</span>.
+          <span className="font-medium text-foreground">{startingLabel}</span>.
         </p>
         <ul className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
           {SURFACES.map((s) => {
             const isStarting = s.slug === result.starting_surface;
             return (
-              <li
-                key={s.name}
-                className={`rounded-lg border bg-white px-3 py-2.5 text-left ${
-                  isStarting
-                    ? "border-finnwise-blue ring-2 ring-finnwise-blue/20"
-                    : "border-slate-200"
-                }`}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <p className="text-xs font-semibold text-slate-900">{s.name}</p>
-                  {isStarting ? (
-                    <span className="shrink-0 rounded bg-finnwise-blue-tint px-1.5 py-0.5 font-mono text-[8px] uppercase tracking-wide text-finnwise-blue">
-                      Starts here
-                    </span>
-                  ) : null}
-                </div>
-                <p className="mt-0.5 text-[11px] text-slate-500">{s.description}</p>
+              <li key={s.name}>
+                <Card
+                  size="sm"
+                  className={cn(
+                    "py-0 shadow-none",
+                    isStarting && "ring-2 ring-primary/20",
+                  )}
+                >
+                  <CardContent className="px-3 py-2.5">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-xs font-semibold text-foreground">{s.name}</p>
+                      {isStarting ? (
+                        <Badge variant="secondary" className="shrink-0 px-1.5 py-0.5 text-[8px]">
+                          Starts here
+                        </Badge>
+                      ) : null}
+                    </div>
+                    <p className="mt-0.5 text-[11px] text-muted-foreground">{s.description}</p>
+                  </CardContent>
+                </Card>
               </li>
             );
           })}
         </ul>
       </div>
 
-      <button
-        type="button"
-        onClick={handleEnter}
-        className="rounded-lg bg-[#185FA5] px-8 py-3.5 text-sm font-medium text-[#E6F1FB] transition-colors hover:bg-[#144a84]"
-      >
+      <Button size="lg" onClick={handleEnter}>
         Go to {startingLabel} →
-      </button>
+      </Button>
     </div>
   );
 }

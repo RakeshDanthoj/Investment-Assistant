@@ -1,5 +1,8 @@
 import type { InvestmentStatus } from "@/lib/onboarding/state";
 
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+
 const OPTIONS: {
   id: InvestmentStatus;
   title: string;
@@ -33,19 +36,22 @@ export function Step1Status({ selected, onSelect }: Step1StatusProps) {
       {OPTIONS.map((opt) => {
         const isSelected = selected === opt.id;
         return (
-          <button
+          <Button
             key={opt.id}
             type="button"
+            variant={isSelected ? "selected" : "outline"}
             onClick={() => onSelect(opt.id)}
-            className={`w-full rounded-xl border px-5 py-3.5 text-left transition-colors ${
-              isSelected
-                ? "border-[1.5px] border-finnwise-blue bg-finnwise-blue-tint"
-                : "border border-slate-200 bg-white hover:border-finnwise-blue/60"
-            } `}
+            aria-pressed={isSelected}
+            className={cn(
+              "h-auto w-full justify-start rounded-xl px-5 py-3.5 text-left",
+              !isSelected && "hover:border-primary/60",
+            )}
           >
-            <p className="text-sm font-medium text-slate-900">{opt.title}</p>
-            <span className="mt-1 block text-xs text-slate-500">{opt.subtitle}</span>
-          </button>
+            <span className="flex flex-col items-start gap-1">
+              <span className="text-sm font-medium text-foreground">{opt.title}</span>
+              <span className="text-xs font-normal text-muted-foreground">{opt.subtitle}</span>
+            </span>
+          </Button>
         );
       })}
     </div>

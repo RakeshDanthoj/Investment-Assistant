@@ -11,6 +11,15 @@ export function useCard(cardId: string, view: "current" | "original") {
   const [status, setStatus] = useState<CardDetailStatus>("idle");
   const [data, setData] = useState<CardDetailResponse | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [contextRevealed, setContextRevealed] = useState(false);
+
+  useEffect(() => {
+    setContextRevealed(false);
+  }, [cardId, view]);
+
+  const revealContext = useCallback(() => {
+    setContextRevealed(true);
+  }, []);
 
   const load = useCallback(async () => {
     setStatus("loading");
@@ -39,5 +48,5 @@ export function useCard(cardId: string, view: "current" | "original") {
     void load();
   }, [load]);
 
-  return { status, data, errorMessage, refetch: load };
+  return { status, data, errorMessage, refetch: load, contextRevealed, revealContext };
 }

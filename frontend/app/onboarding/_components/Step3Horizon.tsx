@@ -1,5 +1,8 @@
 import type { Horizon } from "@/lib/onboarding/state";
 
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+
 const CELLS: { id: Horizon; title: string; subtitle: string }[] = [
   {
     id: "under_1y",
@@ -34,21 +37,24 @@ export function Step3Horizon({ selected, onSelect }: Step3HorizonProps) {
       {CELLS.map((cell) => {
         const isSelected = selected === cell.id;
         return (
-          <button
+          <Button
             key={cell.id}
             type="button"
+            variant={isSelected ? "selected" : "outline"}
             onClick={() => onSelect(cell.id)}
-            className={`rounded-xl border px-4 py-3 text-left transition-colors ${
-              isSelected
-                ? "border-[1.5px] border-finnwise-blue bg-finnwise-blue-tint"
-                : "border border-slate-200 bg-white hover:border-finnwise-blue/60"
-            }`}
+            aria-pressed={isSelected}
+            className={cn(
+              "h-auto justify-start rounded-xl px-4 py-3 text-left",
+              !isSelected && "hover:border-primary/60",
+            )}
           >
-            <p className="text-sm font-semibold text-slate-900">{cell.title}</p>
-            <p className="mt-1 font-mono text-[10px] uppercase tracking-wide text-slate-500">
-              {cell.subtitle}
-            </p>
-          </button>
+            <span className="flex flex-col items-start gap-1">
+              <span className="text-sm font-semibold text-foreground">{cell.title}</span>
+              <span className="font-mono text-[10px] font-normal uppercase tracking-wide text-muted-foreground">
+                {cell.subtitle}
+              </span>
+            </span>
+          </Button>
         );
       })}
     </div>

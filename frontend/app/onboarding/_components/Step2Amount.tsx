@@ -1,5 +1,8 @@
 import type { Cadence } from "@/lib/onboarding/state";
 
+import { Input } from "@/components/ui/input";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+
 type Step2AmountProps = {
   amountDigits: string;
   cadence: Cadence;
@@ -17,48 +20,41 @@ export function Step2Amount({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex gap-1 rounded-lg bg-slate-100 p-0.5">
-        <button
-          type="button"
-          className={`flex-1 rounded-md px-4 py-1.5 text-xs font-medium transition-colors ${
-            cadence === "monthly"
-              ? "border border-slate-200 bg-white text-slate-900 shadow-sm"
-              : "text-slate-500"
-          }`}
-          onClick={() => onCadenceChange("monthly")}
-        >
+      <ToggleGroup
+        type="single"
+        value={cadence}
+        onValueChange={(value) => {
+          if (value === "monthly" || value === "one_time") onCadenceChange(value);
+        }}
+        variant="outline"
+        className="w-full rounded-lg bg-muted p-0.5"
+        spacing={0}
+      >
+        <ToggleGroupItem value="monthly" className="flex-1 rounded-md text-xs">
           monthly
-        </button>
-        <button
-          type="button"
-          className={`flex-1 rounded-md px-4 py-1.5 text-xs font-medium transition-colors ${
-            cadence === "one_time"
-              ? "border border-slate-200 bg-white text-slate-900 shadow-sm"
-              : "text-slate-500"
-          }`}
-          onClick={() => onCadenceChange("one_time")}
-        >
+        </ToggleGroupItem>
+        <ToggleGroupItem value="one_time" className="flex-1 rounded-md text-xs">
           one-time
-        </button>
-      </div>
+        </ToggleGroupItem>
+      </ToggleGroup>
 
       <div className="flex items-center gap-2">
-        <span className="text-base text-slate-500">₹</span>
-        <input
+        <span className="text-base text-muted-foreground">₹</span>
+        <Input
           type="text"
           inputMode="numeric"
           autoComplete="off"
           placeholder="15,000"
           value={display}
           onChange={(e) => onAmountChange(e.target.value)}
-          className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none ring-finnwise-blue focus:ring-2"
+          className="min-w-0 flex-1 rounded-lg py-3"
           aria-label="Investment amount in rupees"
         />
-        <span className="whitespace-nowrap text-xs text-slate-500">
+        <span className="whitespace-nowrap text-xs text-muted-foreground">
           {cadence === "monthly" ? "/ month" : "one-time"}
         </span>
       </div>
-      <p className="text-xs text-slate-400">minimum ₹1,000 · no maximum</p>
+      <p className="text-xs text-muted-foreground">minimum ₹1,000 · no maximum</p>
     </div>
   );
 }

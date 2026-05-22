@@ -7,7 +7,7 @@ from uuid import UUID
 
 import httpx
 
-from app.core.settings import get_settings, normalize_supabase_url
+from app.core.settings import get_settings
 
 
 def persist_session_profile(
@@ -24,7 +24,7 @@ def persist_session_profile(
     Returns True if a row was written, False if Supabase is not configured (local dev).
     """
     settings = get_settings()
-    base = normalize_supabase_url(settings.supabase_url.strip()).rstrip("/")
+    base = settings.supabase_url.strip().rstrip("/")
     key = settings.supabase_service_role_key.strip()
     if not base or not key:
         return False

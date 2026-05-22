@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { Button } from "@/components/ui/button";
 import { getApiBaseUrl } from "@/lib/api";
 import { createClient } from "@/lib/supabase/client";
 
@@ -44,16 +45,17 @@ export function NotificationBadge() {
   if (!targetCardId) return null;
 
   return (
-    <button
-      type="button"
+    <Button
+      variant="outline"
+      size="icon-sm"
       onClick={() => router.push(`/thread/${targetCardId}`)}
-      className="relative flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-600 shadow-sm hover:bg-slate-50"
       aria-label="Open thread for signal alert"
+      className="relative"
     >
       <span
-        className="inline-block h-2.5 w-2.5 animate-pulse rounded-full bg-finnwise-blue"
+        className="inline-block h-2.5 w-2.5 animate-pulse rounded-full bg-primary"
         style={{ animationDuration: "1.5s" }}
       />
-    </button>
+    </Button>
   );
 }

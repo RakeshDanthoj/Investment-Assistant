@@ -3,6 +3,8 @@
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useMemo } from "react";
 
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { PULSE_CATEGORY_OPTIONS } from "@/lib/cards/categories";
 import { usePulseFeed } from "@/lib/cards/usePulseFeed";
 
@@ -15,10 +17,7 @@ function FeedSkeleton() {
   return (
     <div className="mx-auto max-w-6xl space-y-4 px-4 py-6">
       {[1, 2, 3].map((k) => (
-        <div
-          key={k}
-          className="h-40 animate-pulse rounded-lg border border-slate-200 bg-white"
-        />
+        <Skeleton key={k} className="h-40 rounded-lg border border-border" />
       ))}
     </div>
   );
@@ -71,21 +70,17 @@ export default function PulseClient() {
 
       {status === "error" ? (
         <div className="mx-auto max-w-xl px-4 py-12 text-center">
-          <p className="text-sm text-slate-700">{errorMessage}</p>
-          <button
-            type="button"
-            onClick={() => void refetch()}
-            className="mt-4 rounded-md bg-finnwise-blue px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-finnwise-blue/90"
-          >
+          <p className="text-sm text-foreground">{errorMessage}</p>
+          <Button type="button" onClick={() => void refetch()} className="mt-4">
             Retry
-          </button>
+          </Button>
         </div>
       ) : null}
 
       {status === "success" && data && data.cards.length === 0 ? (
         <div className="mx-auto max-w-xl px-4 py-16 text-center">
-          <p className="font-display text-lg text-slate-800">No events match your filters</p>
-          <p className="mt-2 text-sm text-slate-500">
+          <p className="font-display text-lg text-foreground">No events match your filters</p>
+          <p className="mt-2 text-sm text-muted-foreground">
             Try clearing category filters or check back after the next editorial publish.
           </p>
         </div>

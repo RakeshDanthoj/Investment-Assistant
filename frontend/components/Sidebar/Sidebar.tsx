@@ -4,6 +4,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { NotificationBadge } from "@/components/Topbar/NotificationBadge";
+import { PhaseBadge } from "@/components/Topbar/PhaseBadge";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
 
 import UserChipContainer from "./UserChipContainer";
 
@@ -30,22 +35,26 @@ export default function Sidebar({ userName, userEmail }: SidebarProps) {
   const pathname = usePathname();
 
   return (
-    <aside className="flex h-full w-[220px] shrink-0 flex-col border-r border-slate-200 bg-white">
-      <div className="border-b border-slate-200 p-6">
+    <aside className="flex h-svh w-[220px] shrink-0 flex-col border-r border-border bg-sidebar">
+      <div className="p-6">
         <div className="flex items-start justify-between gap-2">
           <div>
-            <p className="font-display text-[18px] font-bold leading-tight text-slate-900">
+            <p className="font-display text-[18px] font-bold leading-tight text-sidebar-foreground">
               FinnWise
             </p>
-            <p className="mt-1 font-mono text-[10px] text-slate-400">
+            <p className="mt-1 font-mono text-[10px] text-muted-foreground">
               Event intelligence
             </p>
           </div>
-          <NotificationBadge />
+          <div className="flex items-center gap-2">
+            <PhaseBadge />
+            <NotificationBadge />
+          </div>
         </div>
       </div>
+      <Separator />
       <nav className="flex-1 px-2.5 py-4">
-        <p className="px-2 font-mono text-[9px] font-medium uppercase tracking-[0.06em] text-slate-400">
+        <p className="px-2 font-mono text-[9px] font-medium uppercase tracking-[0.06em] text-muted-foreground">
           Surfaces
         </p>
         <ul className="mt-2 space-y-0.5">
@@ -54,21 +63,24 @@ export default function Sidebar({ userName, userEmail }: SidebarProps) {
               pathname === item.href || pathname.startsWith(`${item.href}/`);
             return (
               <li key={item.href}>
-                <Link
-                  href={item.href}
-                  className={`flex min-h-[36px] items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] transition-all duration-150 ease-in-out ${
-                    isActive
-                      ? "bg-finnwise-blue-tint font-medium text-finnwise-blue"
-                      : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"
-                  }`}
+                <Button
+                  variant="ghost"
+                  asChild
+                  className={cn(
+                    "h-9 w-full justify-start gap-2.5 px-2.5 text-[13px] font-normal",
+                    isActive &&
+                      "bg-sidebar-accent font-medium text-sidebar-accent-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                  )}
                 >
-                  <span className="min-w-0 flex-1">{item.label}</span>
-                  {item.phase2 ? (
-                    <span className="ml-auto shrink-0 rounded px-1.5 py-0.5 font-mono text-[9px] text-[#6B21A8] bg-[#F3E8FF]">
-                      Phase 2
-                    </span>
-                  ) : null}
-                </Link>
+                  <Link href={item.href}>
+                    <span className="min-w-0 flex-1">{item.label}</span>
+                    {item.phase2 ? (
+                      <Badge variant="phase2" className="ml-auto shrink-0 px-1.5 py-0.5 text-[9px]">
+                        Phase 2
+                      </Badge>
+                    ) : null}
+                  </Link>
+                </Button>
               </li>
             );
           })}

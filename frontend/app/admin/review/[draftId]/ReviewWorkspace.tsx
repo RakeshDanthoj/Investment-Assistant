@@ -4,6 +4,8 @@ import IceCardReader, {
   type InstrumentAssessmentRow,
 } from "@/components/thread/IceCardReader";
 import ThreadReviewShell from "@/components/thread/ThreadReviewShell";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Skeleton } from "@/components/ui/skeleton";
 import { getApiBaseUrl } from "@/lib/api";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
@@ -112,8 +114,13 @@ export default function ReviewWorkspace({ draftId }: { draftId: string }) {
 
   if (loading && !card) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-finnwise-surface">
-        <p className="text-sm text-slate-600">Loading draft…</p>
+      <main className="flex min-h-screen items-center justify-center bg-finnwise-surface px-6">
+        <div className="flex w-full max-w-md flex-col gap-4" aria-busy="true" aria-label="Loading draft">
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-8 w-full" />
+          <Skeleton className="h-48 w-full" />
+          <Skeleton className="h-32 w-full" />
+        </div>
       </main>
     );
   }
@@ -122,7 +129,9 @@ export default function ReviewWorkspace({ draftId }: { draftId: string }) {
     return (
       <main className="mx-auto max-w-lg px-6 py-16">
         <h1 className="font-display text-xl text-slate-900">Draft not available</h1>
-        <p className="mt-2 text-sm text-slate-600">{error ?? "Unknown error."}</p>
+        <Alert variant="destructive" className="mt-4">
+          <AlertDescription>{error ?? "Unknown error."}</AlertDescription>
+        </Alert>
       </main>
     );
   }
@@ -157,9 +166,12 @@ export default function ReviewWorkspace({ draftId }: { draftId: string }) {
       }
     >
       {error ? (
-        <div className="mx-8 mt-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
-          {error}
-        </div>
+        <Alert
+          variant="destructive"
+          className="mx-8 mt-6 border-amber-200 bg-amber-50 text-amber-950"
+        >
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       ) : null}
       <IceCardReader
         title={card.title}

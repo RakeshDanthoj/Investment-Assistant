@@ -76,6 +76,7 @@ def test_publish_writes_track_record_and_sets_lifecycle(db_connection):
             assert isinstance(payload, dict)
             assert payload.get("kind") == "initial_publish"
             assert payload.get("editor_review_seconds") == 123
+            assert isinstance(payload.get("bias_audit"), dict)
             ice = payload.get("ice_snapshot")
             assert isinstance(ice, dict)
             assert ice.get("title") == "Pytest card"
@@ -85,6 +86,10 @@ def test_publish_writes_track_record_and_sets_lifecycle(db_connection):
 
     finally:
         with db_connection.cursor() as cur:
+            cur.execute(
+                "DELETE FROM public.card_bias_flags WHERE card_id = %s",
+                (str(card_id),),
+            )
             cur.execute(
                 "DELETE FROM public.in_app_notifications WHERE card_id = %s",
                 (str(card_id),),

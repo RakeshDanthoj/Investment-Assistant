@@ -1,6 +1,8 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { Badge } from "@/components/ui/badge";
+
 type ThreadReviewShellProps = {
   categoryLabel: string;
   lifecycleLabel: string;
@@ -24,12 +26,18 @@ export default function ThreadReviewShell({
           ← Editorial queue
         </Link>
         <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-full bg-violet-100 px-2.5 py-0.5 font-mono text-[11px] font-medium uppercase tracking-wide text-violet-800">
+          <Badge
+            variant="phase2"
+            className="rounded-full px-2.5 py-0.5 font-mono text-[11px] font-medium uppercase tracking-wide"
+          >
             {categoryLabel.replaceAll("_", " ")}
-          </span>
-          <span className="rounded-full bg-slate-100 px-2.5 py-0.5 font-mono text-[11px] uppercase tracking-wide text-slate-600">
+          </Badge>
+          <Badge
+            variant="secondary"
+            className="rounded-full px-2.5 py-0.5 font-mono text-[11px] uppercase tracking-wide text-slate-600"
+          >
             {lifecycleLabel}
-          </span>
+          </Badge>
         </div>
       </header>
 

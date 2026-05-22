@@ -2,6 +2,10 @@
 
 import { FormEvent, useState } from "react";
 
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { createClient } from "@/lib/supabase/client";
 
 type SignInFormProps = {
@@ -42,26 +46,20 @@ export default function SignInForm({ nextPath }: SignInFormProps) {
 
   if (state === "sent") {
     return (
-      <div
-        className="rounded-md border border-finnwise-green/20 bg-green-50 px-4 py-3 text-sm text-finnwise-green"
-        role="status"
-      >
-        Check your inbox for <strong>{email}</strong>. The magic link expires in
-        a few minutes.
-      </div>
+      <Alert className="border-finnwise-green/20 bg-green-50 text-finnwise-green">
+        <AlertDescription>
+          Check your inbox for <strong>{email}</strong>. The magic link expires in
+          a few minutes.
+        </AlertDescription>
+      </Alert>
     );
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <label
-          htmlFor="email"
-          className="block text-sm font-medium text-slate-700"
-        >
-          Email address
-        </label>
-        <input
+      <div className="space-y-2">
+        <Label htmlFor="email">Email address</Label>
+        <Input
           id="email"
           name="email"
           type="email"
@@ -70,21 +68,16 @@ export default function SignInForm({ nextPath }: SignInFormProps) {
           value={email}
           onChange={(event) => setEmail(event.target.value)}
           placeholder="you@example.com"
-          className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-900 outline-none ring-finnwise-blue focus:border-finnwise-blue focus:ring-2"
         />
       </div>
       {errorMessage ? (
-        <p className="text-sm text-finnwise-red" role="alert">
-          {errorMessage}
-        </p>
+        <Alert variant="destructive">
+          <AlertDescription>{errorMessage}</AlertDescription>
+        </Alert>
       ) : null}
-      <button
-        type="submit"
-        disabled={state === "loading"}
-        className="w-full rounded-md bg-finnwise-blue px-4 py-2.5 text-sm font-medium text-white transition hover:bg-finnwise-blue/90 disabled:cursor-not-allowed disabled:opacity-60"
-      >
+      <Button type="submit" disabled={state === "loading"} className="w-full">
         {state === "loading" ? "Sending link…" : "Send magic link"}
-      </button>
+      </Button>
     </form>
   );
 }

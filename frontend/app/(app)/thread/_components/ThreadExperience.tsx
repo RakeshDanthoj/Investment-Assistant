@@ -3,6 +3,11 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { categoryLabel, categoryPillClass } from "@/lib/cards/categories";
 import { useCard } from "@/lib/cards/useCard";
 
@@ -29,7 +34,10 @@ type ThreadExperienceProps = {
 
 export default function ThreadExperience({ cardId }: ThreadExperienceProps) {
   const [view, setView] = useState<"current" | "original">("current");
-  const { status, data, errorMessage, refetch } = useCard(cardId, view);
+  const { status, data, errorMessage, refetch, contextRevealed, revealContext } = useCard(
+    cardId,
+    view,
+  );
 
   const [iceTab, setIceTab] = useState<IceTabId>("insight");
   const [maxTier, setMaxTier] = useState(0);
@@ -47,8 +55,8 @@ export default function ThreadExperience({ cardId }: ThreadExperienceProps) {
   if (status === "loading" || status === "idle") {
     return (
       <div className="mx-auto max-w-6xl px-4 py-10">
-        <div className="h-10 w-64 animate-pulse rounded bg-slate-200" />
-        <div className="mt-6 h-96 animate-pulse rounded-lg bg-slate-100" />
+        <Skeleton className="h-10 w-64" />
+        <Skeleton className="mt-6 h-96 rounded-lg" />
       </div>
     );
   }
@@ -56,16 +64,19 @@ export default function ThreadExperience({ cardId }: ThreadExperienceProps) {
   if (status === "error" || !data) {
     return (
       <main className="mx-auto max-w-3xl p-6 md:p-8">
-        <p className="text-sm text-finnwise-red">{errorMessage ?? "Could not load card."}</p>
-        <button
+        <Alert variant="destructive">
+          <AlertDescription>{errorMessage ?? "Could not load card."}</AlertDescription>
+        </Alert>
+        <Button
           type="button"
-          className="mt-4 text-sm font-medium text-finnwise-blue hover:underline"
+          variant="link"
+          className="mt-4 h-auto p-0 text-sm font-medium text-finnwise-blue"
           onClick={() => {
             void refetch();
           }}
         >
           Retry
-        </button>
+        </Button>
         <Link href="/pulse" className="mt-6 block text-sm text-slate-600 hover:underline">
           ← Back to The Pulse
         </Link>
@@ -79,9 +90,9 @@ export default function ThreadExperience({ cardId }: ThreadExperienceProps) {
       : data.lifecycle_state.replace(/_/g, " ");
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col bg-[#F8FAFC]">
-      <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur md:px-8">
-        <div className="mx-auto flex max-w-6xl flex-col gap-3 md:flex-row md:items-center md:justify-between">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden bg-[#F8FAFC]">
+      <header className="sticky top-0 z-10 shrink-0 border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur md:px-8">
+        <div className="flex min-w-0 flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="flex flex-wrap items-center gap-3">
             <Link
               href="/pulse"
@@ -93,8 +104,9 @@ export default function ThreadExperience({ cardId }: ThreadExperienceProps) {
               /
             </span>
             <span className="font-mono text-[11px] text-slate-500">The Thread</span>
-            <span
-              className={`inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 font-mono text-[10px] font-semibold uppercase tracking-wide text-slate-700`}
+            <Badge
+              variant="outline"
+              className="gap-2 rounded-full border-slate-200 bg-slate-50 px-3 py-1 font-mono text-[10px] font-semibold uppercase tracking-wide text-slate-700"
             >
               {pulseLifecycle ? (
                 <span className="thread-lifecycle-pulse h-2 w-2 rounded-full bg-finnwise-blue" />
@@ -102,52 +114,54 @@ export default function ThreadExperience({ cardId }: ThreadExperienceProps) {
                 <span className="h-2 w-2 rounded-full bg-slate-300" />
               )}
               {lifeBadge}
-            </span>
-            <span className={`rounded-full px-2 py-0.5 font-mono text-[10px] font-semibold ${categoryPillClass(data.category)}`}>
+            </Badge>
+            <Badge className={`rounded-full px-2 py-0.5 font-mono text-[10px] font-semibold ${categoryPillClass(data.category)}`}>
               {categoryLabel(data.category)}
-            </span>
+            </Badge>
           </div>
           <CurrentOriginalToggle view={view} onChange={setView} />
         </div>
       </header>
 
-      <div className="mx-auto grid w-full max-w-6xl flex-1 grid-cols-1 gap-0 lg:grid-cols-[1fr_340px]">
-        <article className="border-slate-200 px-4 py-8 md:px-10 lg:border-r">
+      <div className="grid w-full min-w-0 flex-1 grid-cols-1 gap-0 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <article className="min-w-0 border-slate-200 px-4 py-8 md:px-10 lg:border-r">
           <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-slate-400">
             Event Intelligence Card
           </p>
-          <h1 className="font-display mt-2 text-[26px] font-semibold leading-snug text-slate-900 md:text-[28px]">
+          <h1 className="font-display mt-2 text-[26px] leading-snug font-semibold text-slate-900 md:text-[28px]">
             {data.title}
           </h1>
-          <p className="mt-3 text-[15px] font-light italic leading-relaxed text-slate-600">
+          <p className="mt-3 text-[15px] leading-relaxed font-light italic text-slate-600">
             {data.event_title}
           </p>
 
-          <div className="mt-8 flex gap-0 overflow-hidden rounded-lg border border-slate-200">
-            <div className="flex-1 border-r border-slate-200 bg-white px-4 py-3">
-              <p className="font-mono text-[10px] uppercase tracking-wide text-slate-400">
-                Direction confidence
-              </p>
-              <p className="mt-1 flex items-center gap-2 text-[13px] font-medium text-slate-800">
-                <span className={`h-2 w-2 rounded-full ${dotClass(data.direction_confidence.tier)}`} />
-                {data.direction_confidence.label}
-              </p>
-            </div>
-            <div className="flex-1 bg-white px-4 py-3">
-              <p className="font-mono text-[10px] uppercase tracking-wide text-slate-400">
-                Magnitude confidence
-              </p>
-              <p className="mt-1 flex items-center gap-2 text-[13px] font-medium text-slate-800">
-                <span className={`h-2 w-2 rounded-full ${dotClass(data.magnitude_confidence.tier)}`} />
-                {data.magnitude_confidence.label}
-                {data.event_confidence_score != null ? (
-                  <span className="font-normal text-slate-400">
-                    ({data.event_confidence_score}/100)
-                  </span>
-                ) : null}
-              </p>
-            </div>
-          </div>
+          <Card className="mt-8 w-full min-w-0 overflow-hidden rounded-lg py-0 shadow-none ring-slate-200">
+            <CardContent className="flex min-w-0 flex-col gap-0 p-0 sm:flex-row">
+              <div className="min-w-0 flex-1 border-slate-200 bg-white px-4 py-3 sm:border-r">
+                <p className="font-mono text-[10px] uppercase tracking-wide text-slate-400">
+                  Direction confidence
+                </p>
+                <p className="mt-1 flex items-center gap-2 text-[13px] font-medium text-slate-800">
+                  <span className={`h-2 w-2 rounded-full ${dotClass(data.direction_confidence.tier)}`} />
+                  {data.direction_confidence.label}
+                </p>
+              </div>
+              <div className="min-w-0 flex-1 bg-white px-4 py-3">
+                <p className="font-mono text-[10px] uppercase tracking-wide text-slate-400">
+                  Magnitude confidence
+                </p>
+                <p className="mt-1 flex items-center gap-2 text-[13px] font-medium text-slate-800">
+                  <span className={`h-2 w-2 rounded-full ${dotClass(data.magnitude_confidence.tier)}`} />
+                  {data.magnitude_confidence.label}
+                  {data.event_confidence_score != null ? (
+                    <span className="font-normal text-slate-400">
+                      ({data.event_confidence_score}/100)
+                    </span>
+                  ) : null}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
 
           <div className="mt-10">
             <IceTabs
@@ -156,11 +170,15 @@ export default function ThreadExperience({ cardId }: ThreadExperienceProps) {
               maxUnlockedTier={maxTier}
               onUnlockTier={(tier) => {
                 setMaxTier((m) => Math.max(m, tier));
+                if (tier >= 1) {
+                  revealContext();
+                }
               }}
               panels={{
                 insight: (
                   <InsightLayer
                     cardId={data.card_id}
+                    showPredictionLogger={!contextRevealed}
                     insight_layer={data.insight_layer}
                     instruments={data.instruments}
                     dissenting_view={data.dissenting_view}
@@ -182,8 +200,8 @@ export default function ThreadExperience({ cardId }: ThreadExperienceProps) {
           </div>
         </article>
 
-        <aside className="hidden bg-[#F8FAFC] px-4 py-8 lg:block">
-          <div className="sticky top-24 space-y-4">
+        <aside className="hidden min-w-0 bg-[#F8FAFC] px-6 py-6 lg:block">
+          <div className="sticky top-6 min-w-0 space-y-4">
             <LifecycleTracker steps={data.lifecycle_tracker} pulseActive={pulseLifecycle} />
             <SignalsToWatch signals={data.signals} instruments={data.instruments} />
             <ConfidenceComposition

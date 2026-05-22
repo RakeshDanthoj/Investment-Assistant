@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import FactorMatrix, { type SensitivityCell } from "./_components/FactorMatrix";
 
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { getApiBaseUrl } from "@/lib/api";
 import { isFactorDbAdmin, normalizedAdminEmailsFromEnv } from "@/lib/factor-db-admin";
 import { createClient } from "@/lib/supabase/server";
@@ -75,11 +76,13 @@ export default async function FactorDbAdminPage({
   if (!isFactorDbAdmin(email, allowEnv)) {
     return (
       <main className="mx-auto max-w-3xl px-6 py-16">
-        <p className="font-mono text-sm text-red-700">403 — Factor DB viewer is restricted.</p>
-        <p className="mt-2 text-sm text-slate-600">
-          Signed in as {email ?? "unknown"}. Ask the Product Owner to add your email to{" "}
-          <code>FACTOR_DB_ADMIN_EMAILS</code>.
-        </p>
+        <Alert variant="destructive">
+          <AlertTitle>403 — Factor DB viewer is restricted.</AlertTitle>
+          <AlertDescription>
+            Signed in as {email ?? "unknown"}. Ask the Product Owner to add your email to{" "}
+            <code>FACTOR_DB_ADMIN_EMAILS</code>.
+          </AlertDescription>
+        </Alert>
         <Link href="/pulse" className="mt-6 inline-block text-sm text-blue-800 underline">
           Back to the app
         </Link>
@@ -95,10 +98,12 @@ export default async function FactorDbAdminPage({
     if (fetched === null) {
       return (
         <main className="mx-auto max-w-3xl px-6 py-16">
-          <p className="font-mono text-sm text-red-700">403 — API rejected Factor DB matrix access.</p>
-          <p className="mt-2 text-sm text-slate-600">
-            Ensure <code>FACTOR_DB_ADMIN_EMAILS</code> matches on the FastAPI service and reload.
-          </p>
+          <Alert variant="destructive">
+            <AlertTitle>403 — API rejected Factor DB matrix access.</AlertTitle>
+            <AlertDescription>
+              Ensure <code>FACTOR_DB_ADMIN_EMAILS</code> matches on the FastAPI service and reload.
+            </AlertDescription>
+          </Alert>
         </main>
       );
     }
@@ -106,10 +111,12 @@ export default async function FactorDbAdminPage({
   } catch (err) {
     return (
       <main className="mx-auto max-w-3xl px-6 py-16">
-        <h1 className="font-serif text-2xl text-slate-900">Could not load matrix</h1>
-        <p className="mt-3 whitespace-pre-wrap text-sm text-red-700">
-          {err instanceof Error ? err.message : "Unknown error"}
-        </p>
+        <Alert variant="destructive">
+          <AlertTitle>Could not load matrix</AlertTitle>
+          <AlertDescription className="whitespace-pre-wrap">
+            {err instanceof Error ? err.message : "Unknown error"}
+          </AlertDescription>
+        </Alert>
       </main>
     );
   }

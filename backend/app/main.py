@@ -1,7 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.core.cors_config import parse_cors_origins
 from app.api.admin_queue import router as admin_router
 from app.api.admin_review import router as admin_review_router
 from app.api.admin_signal_queue import router as admin_signal_queue_router
@@ -12,17 +11,17 @@ from app.api.feed import router as feed_router
 from app.api.notifications import router as notifications_router
 from app.api.predictions import router as predictions_router
 from app.api.onboarding import router as onboarding_router
+from app.api.tester_acceptance import router as tester_acceptance_router
 from app.core.settings import get_settings
 
 app = FastAPI(title="FinnWise API", version="0.1.0")
 
 settings = get_settings()
-_cors_exact, _cors_regex = parse_cors_origins(settings.cors_origins)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=_cors_exact,
-    allow_origin_regex=_cors_regex,
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origin_regex=r"https://[\w-]+\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -39,6 +38,7 @@ app.include_router(cards_router, prefix="/api/cards", tags=["cards"])
 app.include_router(notifications_router, prefix="/api", tags=["notifications"])
 app.include_router(cards_detail_router, prefix="/api/cards", tags=["cards"])
 app.include_router(predictions_router, prefix="/api", tags=["predictions"])
+app.include_router(tester_acceptance_router, prefix="/api", tags=["tester"])
 
 
 @app.get("/health")

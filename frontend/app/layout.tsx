@@ -33,7 +33,7 @@ export default function RootLayout({
       lang="en"
       className={`${inter.variable} ${playfair.variable} ${dmMono.variable}`}
     >
-      <body className="min-h-screen bg-finnwise-surface antialiased">
+      <body className="h-svh overflow-hidden bg-background antialiased">
         {children}
       </body>
     </html>

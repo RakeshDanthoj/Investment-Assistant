@@ -93,7 +93,7 @@ def fetch_fog_of_war_flag() -> bool:
     SELECT c.lifecycle_state::text AS lifecycle_state, e.category::text AS category
     FROM public.cards c
     INNER JOIN public.events e ON e.id = c.event_id
-    WHERE c.lifecycle_state = ANY(%s::text[])
+    WHERE c.lifecycle_state::text = ANY(%s::text[])
       AND e.confidence_score >= %s
     """
     states = list(FOG_LIFECYCLE)
@@ -156,7 +156,7 @@ def fetch_pulse_rows(
       e.confidence_score AS confidence_score
     FROM public.cards c
     INNER JOIN public.events e ON e.id = c.event_id
-    WHERE c.lifecycle_state = ANY(%s::text[])
+    WHERE c.lifecycle_state::text = ANY(%s::text[])
     """
     params: list[Any] = [list(VISIBLE_CARD_STATES)]
 

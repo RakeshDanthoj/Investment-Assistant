@@ -639,12 +639,12 @@ _Stand up the foundation surfaces (Pulse + Thread + Onboarding), the LLM card pi
 
 **Acceptance criteria**
 
-- [ ] `POST /api/predictions` requires auth, records user_id + card_id + prediction_text + logged_at.
-- [ ] One prediction per (user, card) — second attempt returns 409 with the previously logged value.
-- [ ] Prediction logger UI only appears when the Context tab has not yet been revealed for this session.
-- [ ] After submission, logger collapses to a "Your view logged — reviewed in The Mirror when this resolves." confirmation block.
-- [ ] Predictions log to the append-only `track_record` table as well (user-level entries clearly tagged).
-- [ ] Disclaimer text exactly matches PRD §5 Screen 3 Prediction Logger spec.
+- [x] `POST /api/predictions` requires auth, records user_id + card_id + prediction_text + logged_at.
+- [x] One prediction per (user, card) — second attempt returns 409 with the previously logged value.
+- [x] Prediction logger UI only appears when the Context tab has not yet been revealed for this session.
+- [x] After submission, logger collapses to a "Your view logged — reviewed in The Mirror when this resolves." confirmation block.
+- [x] Predictions log to the append-only `track_record` table as well (user-level entries clearly tagged).
+- [x] Disclaimer text exactly matches PRD §5 Screen 3 Prediction Logger spec.
 
 #### Relevant files
 
@@ -660,14 +660,14 @@ _Stand up the foundation surfaces (Pulse + Thread + Onboarding), the LLM card pi
 
 #### Tasks (checkboxes)
 
-- [ ] **12.0** Prediction logger + user track-record entries
-  - [ ] **12.1** Migration: unique constraint on `user_predictions(user_id, card_id)`.
-  - [ ] **12.2** `predictions.log(...)` service writes to `user_predictions` and inserts append-only row in `track_record`.
-  - [ ] **12.3** `POST /api/predictions` route + Pydantic schemas; `GET /api/predictions/me` returns the current user's predictions (used by Mirror later).
-  - [ ] **12.4** Wire `PredictionLogger.tsx` to the API; on success replace component with confirmation block.
-  - [ ] **12.5** Gate: hide logger if Context tab has already been revealed in this card-view session (state in `useCard`).
-  - [ ] **12.6** Assert exact disclaimer copy (snapshot test).
-  - [ ] **12.7** Test: 409 on duplicate; both tables written; UI gating + disclaimer.
+- [x] **12.0** Prediction logger + user track-record entries
+  - [x] **12.1** Migration: unique constraint on `user_predictions(user_id, card_id)`.
+  - [x] **12.2** `predictions.log(...)` service writes to `user_predictions` and inserts append-only row in `track_record`.
+  - [x] **12.3** `POST /api/predictions` route + Pydantic schemas; `GET /api/predictions/me` returns the current user's predictions (used by Mirror later).
+  - [x] **12.4** Wire `PredictionLogger.tsx` to the API; on success replace component with confirmation block.
+  - [x] **12.5** Gate: hide logger if Context tab has already been revealed in this card-view session (state in `useCard`).
+  - [x] **12.6** Assert exact disclaimer copy (snapshot test).
+  - [x] **12.7** Test: 409 on duplicate; both tables written; UI gating + disclaimer.
 
 ---
 
@@ -685,13 +685,13 @@ _Stand up the foundation surfaces (Pulse + Thread + Onboarding), the LLM card pi
 
 **Acceptance criteria**
 
-- [ ] Six bias types tracked: recency, sector concentration, narrative, editorial coverage (weekly), survivorship, anchoring.
-- [ ] Recency bias flagged when >60% of Evidence sources are from the last 30 days.
-- [ ] Sector concentration flagged when 3 consecutive published cards cover the same sector.
-- [ ] Narrative bias flagged when direction confidence is high but Evidence layer has fewer than 3 sources.
-- [ ] Bias detector runs as a post-generation pipeline step; results persist to `card_bias_flags`.
-- [ ] `BiasFlags` aside component renders flagged (amber) and monitored (grey) flags with plain-English descriptions.
-- [ ] Weekly editorial-coverage report generated as a markdown export under `gitignore`d `notes/` folder.
+- [x] Six bias types tracked: recency, sector concentration, narrative, editorial coverage (weekly), survivorship, anchoring.
+- [x] Recency bias flagged when >60% of Evidence sources are from the last 30 days.
+- [x] Sector concentration flagged when 3 consecutive published cards cover the same sector.
+- [x] Narrative bias flagged when direction confidence is high but Evidence layer has fewer than 3 sources.
+- [x] Bias detector runs as a post-generation pipeline step; results persist to `card_bias_flags`.
+- [x] `BiasFlags` aside component renders flagged (amber) and monitored (grey) flags with plain-English descriptions.
+- [x] Weekly editorial-coverage report generated as a markdown export under `gitignore`d `notes/` folder.
 
 #### Relevant files
 
@@ -706,14 +706,14 @@ _Stand up the foundation surfaces (Pulse + Thread + Onboarding), the LLM card pi
 
 #### Tasks (checkboxes)
 
-- [ ] **13.0** Bias audit log + bias flags rendered in Thread aside
-  - [ ] **13.1** Migration: `card_bias_flags(card_id, bias_type, severity, description, detected_at)`.
-  - [ ] **13.2** `bias_detector.detect_all(card_id)` runs after pipeline publish/regenerate.
-  - [ ] **13.3** Implement recency / sector-concentration / narrative detectors.
-  - [ ] **13.4** Implement survivorship + anchoring detectors (lightweight V1 — anchoring monitored via separate-prompt confirmation only).
-  - [ ] **13.5** Weekly cron: emit `notes/bias-report-YYYY-WW.md` editorial-coverage rollup (gitignored).
-  - [ ] **13.6** Wire `BiasFlags.tsx` to fetch flags via card detail API and render amber (flagged) vs grey (monitored).
-  - [ ] **13.7** Test: per-detector unit tests with fixture cards; UI test for amber/grey states.
+- [x] **13.0** Bias audit log + bias flags rendered in Thread aside
+  - [x] **13.1** Migration: `card_bias_flags(card_id, bias_type, severity, description, detected_at)`.
+  - [x] **13.2** `bias_detector.detect_all(card_id)` runs after pipeline publish/regenerate.
+  - [x] **13.3** Implement recency / sector-concentration / narrative detectors.
+  - [x] **13.4** Implement survivorship + anchoring detectors (lightweight V1 — anchoring monitored via separate-prompt confirmation only).
+  - [x] **13.5** Weekly cron: emit `notes/bias-report-YYYY-WW.md` editorial-coverage rollup (gitignored).
+  - [x] **13.6** Wire `BiasFlags.tsx` to fetch flags via card detail API and render amber (flagged) vs grey (monitored).
+  - [x] **13.7** Test: per-detector unit tests with fixture cards; UI test for amber/grey states.
 
 ---
 
@@ -731,9 +731,9 @@ _Stand up the foundation surfaces (Pulse + Thread + Onboarding), the LLM card pi
 
 **Acceptance criteria**
 
-- [ ] Tester briefing PDF + acceptance flow (e-signature surrogate is a checkbox + timestamp + IP for V1).
-- [ ] In-app "Phase 1 tester" pill in topbar; cannot be hidden.
-- [ ] Phase 1 go/no-go checklist exists in `docs/plans/phase1-go-no-go.md` (gitignored) with all PRD §13 success metrics.
+- [x] Tester briefing PDF + acceptance flow (e-signature surrogate is a checkbox + timestamp + IP for V1).
+- [x] In-app "Phase 1 tester" pill in topbar; cannot be hidden.
+- [x] Phase 1 go/no-go checklist exists in `docs/plans/phase1-go-no-go.md` (gitignored) with all PRD §13 success metrics.
 - [ ] First real event card published + first `track_record` row visible in DB.
 
 #### Relevant files
@@ -743,21 +743,21 @@ _Stand up the foundation surfaces (Pulse + Thread + Onboarding), the LLM card pi
 | `docs/plans/phase1-go-no-go.md` | create | Checklist |
 | `notes/tester-briefing.md` | create | Briefing source (gitignored) |
 | `frontend/app/(app)/tester-briefing/page.tsx` | create | Acceptance flow |
-| `backend/db/migrations/0009_tester_acceptance.sql` | create | `tester_acceptances(user_id, accepted_at, ip)` |
+| `backend/db/migrations/0013_tester_acceptances.sql` | create | `tester_acceptances(user_id, accepted_at, ip)` |
 | `backend/app/api/tester_acceptance.py` | create | `POST /api/tester/accept` |
 | `frontend/components/Topbar/PhaseBadge.tsx` | create | "Phase 1 tester" pill |
 | `backend/tests/test_tester_acceptance_required.py` | create | Blocks access if not accepted |
 
 #### Tasks (checkboxes)
 
-- [ ] **14.0** Tester launch kit + Phase 1 go/no-go checklist
-  - [ ] **14.1** Draft `notes/tester-briefing.md` (gitignored): scope, SEBI framing, no real-money decisions, feedback channel.
-  - [ ] **14.2** `/tester-briefing` page — read briefing, scroll to confirm, checkbox + Accept button.
-  - [ ] **14.3** Migration: `tester_acceptances` + RLS.
-  - [ ] **14.4** Middleware: invited users who have not accepted are redirected to `/tester-briefing`.
-  - [ ] **14.5** `PhaseBadge` "Phase 1 tester" pill always visible in topbar.
-  - [ ] **14.6** Author `docs/plans/phase1-go-no-go.md` covering all PRD §13 metrics + sign-off lines.
-  - [ ] **14.7** Test: acceptance-required middleware test.
+- [x] **14.0** Tester launch kit + Phase 1 go/no-go checklist
+  - [x] **14.1** Draft `notes/tester-briefing.md` (gitignored): scope, SEBI framing, no real-money decisions, feedback channel.
+  - [x] **14.2** `/tester-briefing` page — read briefing, scroll to confirm, checkbox + Accept button.
+  - [x] **14.3** Migration: `tester_acceptances` + RLS.
+  - [x] **14.4** Middleware: invited users who have not accepted are redirected to `/tester-briefing`.
+  - [x] **14.5** `PhaseBadge` "Phase 1 tester" pill always visible in topbar.
+  - [x] **14.6** Author `docs/plans/phase1-go-no-go.md` covering all PRD §13 metrics + sign-off lines.
+  - [x] **14.7** Test: acceptance-required middleware test.
 
 ---
 
@@ -775,11 +775,11 @@ _Stand up the foundation surfaces (Pulse + Thread + Onboarding), the LLM card pi
 
 **Acceptance criteria**
 
-- [ ] Admin route (e.g. `frontend/app/admin/signal-queue/page.tsx` or a section on an existing admin index) lists **pending** rows from the backend queue API.
-- [ ] Each row shows at minimum: **card title** (or id), **signal excerpt / reason**, **gate**, **queued at**, and a **link** to `/admin/review/[cardId]` (or current review URL pattern).
-- [ ] **Empty state** when there are no pending items.
-- [ ] **Loading and error** states (retry) consistent with other admin pages.
-- [ ] **Test:** RTL or smoke test that pending rows render and the review link href is correct.
+- [x] Admin route (e.g. `frontend/app/admin/signal-queue/page.tsx` or a section on an existing admin index) lists **pending** rows from the backend queue API.
+- [x] Each row shows at minimum: **card title** (or id), **signal excerpt / reason**, **gate**, **queued at**, and a **link** to `/admin/review/[cardId]` (or current review URL pattern).
+- [x] **Empty state** when there are no pending items.
+- [x] **Loading and error** states (retry) consistent with other admin pages.
+- [x] **Test:** RTL or smoke test that pending rows render and the review link href is correct.
 
 #### Relevant files
 
@@ -791,11 +791,11 @@ _Stand up the foundation surfaces (Pulse + Thread + Onboarding), the LLM card pi
 
 #### Tasks (checkboxes)
 
-- [ ] **15.0** Admin signal queue UX
-  - [ ] **15.1** Server or client fetch of `/api/admin/signal-queue` with `status=pending`.
-  - [ ] **15.2** Table or card list + empty state + error UI.
-  - [ ] **15.3** Deep link to existing `admin/review/[draftId]` (card id).
-  - [ ] **15.4** RTL: at least one row renders with expected `href`.
+- [x] **15.0** Admin signal queue UX
+  - [x] **15.1** Server or client fetch of `/api/admin/signal-queue` with `status=pending`.
+  - [x] **15.2** Table or card list + empty state + error UI.
+  - [x] **15.3** Deep link to existing `admin/review/[draftId]` (card id).
+  - [x] **15.4** RTL: at least one row renders with expected `href`.
 
 ---
 
@@ -946,14 +946,14 @@ Parallel-safe pairs at every week boundary: `S2/S3/S5`, `S6/S7`, `S8/S9/S10`, `S
   - [x] **10.11** `PredictionLogger` before C tab
   - [x] **10.12** `CurrentOriginalToggle` reads `track_record`
   - [x] **10.13** Language-rule + dissent-required + immutable tests
-- [ ] **12.0** Prediction logger + user track-record entries
-  - [ ] **12.1** Unique constraint migration
-  - [ ] **12.2** `predictions.log()` dual-write
-  - [ ] **12.3** Prediction API routes
-  - [ ] **12.4** Wire `PredictionLogger`
-  - [ ] **12.5** Gating before C tab
-  - [ ] **12.6** Disclaimer snapshot
-  - [ ] **12.7** Dup + dual-write + UI tests
+- [x] **12.0** Prediction logger + user track-record entries
+  - [x] **12.1** Unique constraint migration
+  - [x] **12.2** `predictions.log()` dual-write
+  - [x] **12.3** Prediction API routes
+  - [x] **12.4** Wire `PredictionLogger`
+  - [x] **12.5** Gating before C tab
+  - [x] **12.6** Disclaimer snapshot
+  - [x] **12.7** Dup + dual-write + UI tests
 
 ### Tasks by developer — Riley
 
@@ -993,19 +993,19 @@ Parallel-safe pairs at every week boundary: `S2/S3/S5`, `S6/S7`, `S8/S9/S10`, `S
   - [ ] **8.4** `POST /regenerate` w/ editor notes
   - [ ] **8.5** Editor time-on-page log
   - [ ] **8.6** Publish + checklist-gate tests
-- [ ] **13.0** Bias audit log + bias flags rendered in Thread aside
-  - [ ] **13.1** `card_bias_flags` migration
-  - [ ] **13.2** Detector wiring post-publish
-  - [ ] **13.3** Recency / concentration / narrative detectors
-  - [ ] **13.4** Survivorship + anchoring detectors
-  - [ ] **13.5** Weekly editorial-coverage report (`notes/`)
-  - [ ] **13.6** Wire `BiasFlags.tsx`
-  - [ ] **13.7** Per-detector + UI tests
-- [ ] **14.0** Tester launch kit + Phase 1 go/no-go checklist
-  - [ ] **14.1** Draft briefing in `notes/`
-  - [ ] **14.2** `/tester-briefing` acceptance page
-  - [ ] **14.3** `tester_acceptances` migration
-  - [ ] **14.4** Middleware gate
-  - [ ] **14.5** `PhaseBadge` pill
-  - [ ] **14.6** `docs/plans/phase1-go-no-go.md`
-  - [ ] **14.7** Acceptance middleware test
+- [x] **13.0** Bias audit log + bias flags rendered in Thread aside
+  - [x] **13.1** `card_bias_flags` migration
+  - [x] **13.2** Detector wiring post-publish
+  - [x] **13.3** Recency / concentration / narrative detectors
+  - [x] **13.4** Survivorship + anchoring detectors
+  - [x] **13.5** Weekly editorial-coverage report (`notes/`)
+  - [x] **13.6** Wire `BiasFlags.tsx`
+  - [x] **13.7** Per-detector + UI tests
+- [x] **14.0** Tester launch kit + Phase 1 go/no-go checklist
+  - [x] **14.1** Draft briefing in `notes/`
+  - [x] **14.2** `/tester-briefing` acceptance page
+  - [x] **14.3** `tester_acceptances` migration
+  - [x] **14.4** Middleware gate
+  - [x] **14.5** `PhaseBadge` pill
+  - [x] **14.6** `docs/plans/phase1-go-no-go.md`
+  - [x] **14.7** Acceptance middleware test
