@@ -1,5 +1,7 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from psycopg import Error as PsycopgError
 
 from app.api.admin_queue import router as admin_router
 from app.api.admin_review import router as admin_review_router
@@ -13,8 +15,23 @@ from app.api.onboarding import router as onboarding_router
 from app.api.predictions import router as predictions_router
 from app.api.tester_acceptance import router as tester_acceptance_router
 from app.core.settings import get_settings
+from app.db.connection import connection
 
 app = FastAPI(title="FinnWise API", version="0.1.0")
+
+
+@app.exception_handler(PsycopgError)
+async def psycopg_error_handler(_request: Request, exc: PsycopgError) -> JSONResponse:
+    return JSONResponse(
+        status_code=503,
+        content={
+            "detail": {
+                "code": "db_unavailable",
+                "message": f"Database query failed: {exc}",
+            }
+        },
+    )
+
 
 settings = get_settings()
 
@@ -44,3 +61,24 @@ app.include_router(tester_acceptance_router, prefix="/api", tags=["tester"])
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.get("/health/db")
+def health_db() -> dict[str, object]:
+    """Check direct Postgres connectivity (Pulse, Thread, Factor DB)."""
+    db_url = get_settings().supabase_db_url.strip()
+    if not db_url:
+        return {
+            "status": "error",
+            "code": "db_unconfigured",
+            "message": "SUPABASE_DB_URL is not set on this service.",
+        }
+    try:
+        with connection() as conn, conn.cursor() as cur:
+            cur.execute("SELECT COUNT(*) FROM public.cards")
+            card_count = int(cur.fetchone()[0])
+        return {"status": "ok", "cards": card_count}
+    except RuntimeError as exc:
+        return {"status": "error", "code": "db_unavailable", "message": str(exc)}
+    except PsycopgError as exc:
+        return {"status": "error", "code": "db_unavailable", "message": str(exc)}

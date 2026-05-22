@@ -6,6 +6,8 @@ Shared automation for the FinnWise monorepo.
 
 1. In Supabase → **Project Settings → Database**, copy the **Connection string** (URI).
 2. Add to repo-root `.env.local` as `SUPABASE_DB_URL=postgresql://...` (do not commit).
+   - **Local / migrations:** use the **Direct connection** URI (`db.<ref>.supabase.co:5432`).
+   - **Render / other IPv4 hosts:** use the **Session pooler** URI (`…pooler.supabase.com:5432`) from Supabase → Database → Connect. Direct `:5432` often fails from Render while REST API still works.
 3. From repo root:
 
 ```bash
