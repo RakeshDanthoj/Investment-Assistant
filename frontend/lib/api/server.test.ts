@@ -26,7 +26,7 @@ describe("fetchCardDetail", () => {
     expect(data.title).toBe("Test card");
     expect(global.fetch).toHaveBeenCalledWith(
       "https://api.example.com/api/cards/abc?view=current",
-      { cache: "no-store" },
+      { next: { revalidate: 60 } },
     );
   });
 

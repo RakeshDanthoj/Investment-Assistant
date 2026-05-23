@@ -31,7 +31,7 @@ export async function fetchPulseFeed(options?: PulseFeedFetchOptions): Promise<P
 
   let response: Response;
   try {
-    response = await fetch(endpoint, { cache: "no-store" });
+    response = await fetch(endpoint, { next: { revalidate: 60 } });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Could not load feed.";
     throw new Error(message);
@@ -54,7 +54,7 @@ export async function fetchCardDetail(
 
   let response: Response;
   try {
-    response = await fetch(endpoint, { cache: "no-store" });
+    response = await fetch(endpoint, { next: { revalidate: 60 } });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Could not load card.";
     throw new CardDetailFetchError(message, 0);

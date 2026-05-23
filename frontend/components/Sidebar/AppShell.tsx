@@ -1,16 +1,24 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { SebiFooter } from "@/components/SebiFooter";
-import { NotificationBadge } from "@/components/Topbar/NotificationBadge";
 import { PhaseBadge } from "@/components/Topbar/PhaseBadge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 import Sidebar, { SIDEBAR_NAV_ITEMS } from "./Sidebar";
+
+const NotificationBadge = dynamic(
+  () =>
+    import("@/components/Topbar/NotificationBadge").then((m) => ({
+      default: m.NotificationBadge,
+    })),
+  { ssr: false },
+);
 
 type AppShellProps = {
   children: ReactNode;

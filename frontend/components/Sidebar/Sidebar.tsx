@@ -1,9 +1,9 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { NotificationBadge } from "@/components/Topbar/NotificationBadge";
 import { PhaseBadge } from "@/components/Topbar/PhaseBadge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,14 @@ import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 
 import UserChipContainer from "./UserChipContainer";
+
+const NotificationBadge = dynamic(
+  () =>
+    import("@/components/Topbar/NotificationBadge").then((m) => ({
+      default: m.NotificationBadge,
+    })),
+  { ssr: false },
+);
 
 export type SidebarNavItem = {
   href: string;

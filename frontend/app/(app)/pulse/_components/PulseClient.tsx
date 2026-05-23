@@ -1,7 +1,8 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -10,9 +11,17 @@ import type { PulseFeedResponse } from "@/lib/cards/pulseTypes";
 import { usePulseFeed } from "@/lib/cards/usePulseFeed";
 
 import { EventCard } from "./EventCard";
-import { FogOfWarBanner } from "./FogOfWarBanner";
-import { InsightPanel } from "./InsightPanel";
 import { Topbar } from "./Topbar";
+
+const FogOfWarBanner = dynamic(
+  () => import("./FogOfWarBanner").then((m) => ({ default: m.FogOfWarBanner })),
+  { ssr: false },
+);
+
+const InsightPanel = dynamic(
+  () => import("./InsightPanel").then((m) => ({ default: m.InsightPanel })),
+  { ssr: false },
+);
 
 function FeedSkeletonRow() {
   return (
@@ -47,11 +56,13 @@ function FeedSkeleton() {
 type PulseClientProps = {
   initialData?: PulseFeedResponse | null;
   initialCategoryQuery?: string;
+  children?: ReactNode;
 };
 
 export default function PulseClient({
   initialData = null,
   initialCategoryQuery = "",
+  children = null,
 }: PulseClientProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -115,8 +126,10 @@ export default function PulseClient({
         </div>
       ) : null}
 
+      {children}
+
       {data?.cards?.length ? (
-        <div className="mx-auto flex w-full max-w-6xl flex-1 gap-0 min-[860px]:gap-0">
+        <div className="mx-auto hidden w-full max-w-6xl flex-1 gap-0 min-[860px]:flex">
           <section
             className="min-w-0 flex-1 space-y-4 px-4 py-6 min-[860px]:basis-[60%]"
             aria-label="Event feed"

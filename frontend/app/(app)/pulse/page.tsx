@@ -4,6 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { fetchPulseFeed } from "@/lib/api/server";
 
 import PulseClient from "./_components/PulseClient";
+import { PulseFeedList } from "./_components/PulseFeedList";
 
 function PulseFallback() {
   return (
@@ -47,7 +48,13 @@ export default async function PulsePage({
 
   return (
     <Suspense fallback={<PulseFallback />}>
-      <PulseClient initialData={initialData} initialCategoryQuery={categoryQuery} />
+      <PulseClient
+        key={categoryQuery}
+        initialData={initialData}
+        initialCategoryQuery={categoryQuery}
+      >
+        {initialData?.cards?.length ? <PulseFeedList cards={initialData.cards} /> : null}
+      </PulseClient>
     </Suspense>
   );
 }
