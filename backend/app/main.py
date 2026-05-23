@@ -16,6 +16,7 @@ from app.api.predictions import router as predictions_router
 from app.api.tester_acceptance import router as tester_acceptance_router
 from app.core.settings import get_settings
 from app.db.connection import connection
+from app.diagnostics.timing import DbRequestTimer
 
 app = FastAPI(title="FinnWise API", version="0.1.0")
 
@@ -74,10 +75,17 @@ def health_db() -> dict[str, object]:
             "message": "SUPABASE_DB_URL is not set on this service.",
         }
     try:
-        with connection() as conn, conn.cursor() as cur:
+        with DbRequestTimer() as timer, connection() as conn, conn.cursor() as cur:
             cur.execute("SELECT COUNT(*) FROM public.cards")
             card_count = int(cur.fetchone()[0])
-        return {"status": "ok", "cards": card_count}
+        timing = timer.snapshot()
+        return {
+            "status": "ok",
+            "cards": card_count,
+            "connect_ms": timing["db_connect_ms"],
+            "query_ms": timing["db_query_ms"],
+            "total_ms": timing["total_ms"],
+        }
     except RuntimeError as exc:
         return {"status": "error", "code": "db_unavailable", "message": str(exc)}
     except PsycopgError as exc:

@@ -26,12 +26,25 @@ def test_health_db_ok(mock_connection: MagicMock) -> None:
     mock_cm = MagicMock()
     mock_cm.__enter__.return_value = mock_conn
     mock_cm.__exit__.return_value = None
-    mock_connection.return_value = mock_cm
+
+    def side_effect() -> MagicMock:
+        from app.diagnostics.timing import record_db_connect, record_db_query
+
+        record_db_connect(12.5)
+        record_db_query(3.2)
+        return mock_cm
+
+    mock_connection.side_effect = side_effect
 
     client = TestClient(app)
     response = client.get("/health/db")
     assert response.status_code == 200
-    assert response.json() == {"status": "ok", "cards": 3}
+    body = response.json()
+    assert body["status"] == "ok"
+    assert body["cards"] == 3
+    assert body["connect_ms"] == 12.5
+    assert body["query_ms"] == 3.2
+    assert body["total_ms"] > 0
 
 
 @patch("app.main.get_settings")

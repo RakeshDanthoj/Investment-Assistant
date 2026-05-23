@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
+import time
 from collections.abc import Generator
 from contextlib import contextmanager
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 import psycopg
-from psycopg import Connection, Error as PsycopgError
+from psycopg import Connection
+from psycopg import Error as PsycopgError
 
 from app.core.settings import get_settings
+from app.diagnostics.timing import record_db_connect, record_db_query
 
 _DB_URL_HINT = (
     "SUPABASE_DB_URL must be a full PostgreSQL URI "
@@ -67,11 +70,15 @@ def _require_db_url(url: str) -> str:
 @contextmanager
 def connection() -> Generator[Connection, None, None]:
     url = _require_db_url(get_settings().supabase_db_url)
+    connect_start = time.perf_counter()
     try:
         conn = psycopg.connect(url, **_connect_kwargs(url))
     except PsycopgError as exc:
         raise RuntimeError(f"SUPABASE_DB_URL connection failed: {exc}") from exc
+    record_db_connect((time.perf_counter() - connect_start) * 1000)
+    query_start = time.perf_counter()
     try:
         yield conn
     finally:
+        record_db_query((time.perf_counter() - query_start) * 1000)
         conn.close()

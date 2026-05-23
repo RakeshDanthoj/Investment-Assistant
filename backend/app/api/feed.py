@@ -5,7 +5,9 @@ from __future__ import annotations
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, status
+from fastapi.responses import JSONResponse
 
+from app.diagnostics.timing import DbRequestTimer, json_response_with_timing
 from app.services.feed import build_feed_response
 
 router = APIRouter()
@@ -25,7 +27,7 @@ def get_feed(
         default=None,
         description="Onboarding session id for profile join (horizon default).",
     ),
-) -> dict:
+) -> JSONResponse:
     if horizon is not None and horizon not in {
         "under_1y",
         "1_3y",
@@ -36,12 +38,18 @@ def get_feed(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail={"code": "invalid_horizon", "message": "Unknown horizon value"},
         )
-    try:
-        return build_feed_response(session_id=session_id, horizon=horizon, category=category)
-    except RuntimeError as exc:
-        if "SUPABASE_DB_URL" in str(exc):
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail={"code": "db_unavailable", "message": str(exc)},
-            ) from exc
-        raise
+    with DbRequestTimer() as timer:
+        try:
+            payload = build_feed_response(
+                session_id=session_id,
+                horizon=horizon,
+                category=category,
+            )
+        except RuntimeError as exc:
+            if "SUPABASE_DB_URL" in str(exc):
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail={"code": "db_unavailable", "message": str(exc)},
+                ) from exc
+            raise
+    return json_response_with_timing(payload, timer)

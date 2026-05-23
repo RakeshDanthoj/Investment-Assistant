@@ -6,7 +6,9 @@ from typing import Literal
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, status
+from fastapi.responses import JSONResponse
 
+from app.diagnostics.timing import DbRequestTimer, json_response_with_timing, timing_headers
 from app.services.card_detail import build_card_detail
 
 router = APIRouter()
@@ -19,26 +21,28 @@ def get_card_detail(
         default="current",
         description="current = live card; original = Day-1 track_record snapshot.",
     ),
-) -> dict:
-    try:
-        payload = build_card_detail(card_id, view=view)
-    except RuntimeError as exc:
-        if "SUPABASE_DB_URL" in str(exc):
+) -> JSONResponse:
+    with DbRequestTimer() as timer:
+        try:
+            payload = build_card_detail(card_id, view=view)
+        except RuntimeError as exc:
+            if "SUPABASE_DB_URL" in str(exc):
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail={"code": "db_unavailable", "message": str(exc)},
+                ) from exc
+            raise
+        if payload is None:
             raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail={"code": "db_unavailable", "message": str(exc)},
-            ) from exc
-        raise
-    if payload is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={
-                "code": "card_not_found"
-                if view == "current"
-                else "original_view_unavailable",
-                "message": "Card not found"
-                if view == "current"
-                else "Original view exists after publish — no snapshot yet.",
-            },
-        )
-    return payload
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "code": "card_not_found"
+                    if view == "current"
+                    else "original_view_unavailable",
+                    "message": "Card not found"
+                    if view == "current"
+                    else "Original view exists after publish — no snapshot yet.",
+                },
+                headers=timing_headers(timer.snapshot()),
+            )
+    return json_response_with_timing(payload, timer)
