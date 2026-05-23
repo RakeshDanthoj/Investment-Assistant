@@ -9,9 +9,8 @@ from uuid import UUID
 
 from app.services.bias_detector import build_bias_audit
 from app.services.card_repository import (
+    fetch_card_detail_bundle,
     fetch_card_detail_for_review,
-    fetch_instrument_assessments_for_card,
-    fetch_signals_for_card,
     fetch_track_record_initial_publish,
 )
 from app.services.factor_db import freshness_for_retrieved_at
@@ -232,13 +231,14 @@ def week_number_hint(card_created_at: Any) -> int | None:
 
 
 def build_card_detail(card_id: UUID, *, view: str) -> dict[str, Any] | None:
-    detail = fetch_card_detail_for_review(card_id)
-    if detail is None:
-        return None
-
     track: dict[str, Any] | None = None
     bias_audit: dict[str, Any] | None = None
+    bias_rows: list[dict[str, Any]] | None = None
+
     if view == "original":
+        detail = fetch_card_detail_for_review(card_id)
+        if detail is None:
+            return None
         track = fetch_track_record_initial_publish(card_id)
         if track is None:
             return None
@@ -260,9 +260,14 @@ def build_card_detail(card_id: UUID, *, view: str) -> dict[str, Any] | None:
         event_score = ice.get("event_confidence_score")
         lifecycle_for_tracker = str(ice.get("lifecycle_state") or "published")
     else:
+        bundle = fetch_card_detail_bundle(card_id)
+        if bundle is None:
+            return None
+        detail = bundle.detail
+        bias_rows = bundle.bias_flags
         ice = {}
-        signals_raw = fetch_signals_for_card(card_id)
-        instruments_raw = fetch_instrument_assessments_for_card(card_id)
+        signals_raw = bundle.signals
+        instruments_raw = bundle.instruments
         title = str(detail["title"])
         insight_layer = str(detail["insight_layer"])
         context_layer = str(detail["context_layer"])
@@ -332,7 +337,11 @@ def build_card_detail(card_id: UUID, *, view: str) -> dict[str, Any] | None:
         "instruments": instruments_out,
         "signals": signals_out,
         "confidence_composition": comp,
-        "bias_audit": bias_audit if bias_audit is not None else build_bias_audit(card_id=card_id),
+        "bias_audit": (
+            bias_audit
+            if bias_audit is not None
+            else build_bias_audit(card_id=card_id, bias_rows=bias_rows)
+        ),
         "published_at": detail.get("card_created_at"),
     }
 

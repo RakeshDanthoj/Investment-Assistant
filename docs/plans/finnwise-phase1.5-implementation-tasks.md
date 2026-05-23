@@ -107,12 +107,12 @@ _Fix the ~8s API path and client-side data waterfall so Pulse and Thread reach m
 
 **Acceptance criteria**
 
-- [ ] `psycopg-pool` added to `backend/pyproject.toml`.
-- [ ] `ConnectionPool` initialized on FastAPI lifespan startup; closed on shutdown.
-- [ ] Existing `connection()` context manager acquires from pool (API unchanged for callers).
-- [ ] `prepare_threshold=None` preserved for port 6543 (transaction pooler).
-- [ ] Warm `/health/db` connect time drops sharply vs P1.5-S1 baseline.
-- [ ] All existing backend DB tests pass.
+- [x] `psycopg-pool` added to `backend/pyproject.toml`.
+- [x] `ConnectionPool` initialized on FastAPI lifespan startup; closed on shutdown.
+- [x] Existing `connection()` context manager acquires from pool (API unchanged for callers).
+- [x] `prepare_threshold=None` preserved for port 6543 (transaction pooler).
+- [x] Warm `/health/db` connect time drops sharply vs P1.5-S1 baseline.
+- [x] All existing backend DB tests pass.
 
 **Tech notes**
 
@@ -129,12 +129,12 @@ _Fix the ~8s API path and client-side data waterfall so Pulse and Thread reach m
 
 #### Tasks (checkboxes)
 
-- [ ] **1.5.2** Postgres connection pool
-  - [ ] **1.5.2.1** Add `psycopg-pool` to dependencies; reinstall backend editable.
-  - [ ] **1.5.2.2** Implement pool singleton + lifespan hooks in `main.py`.
-  - [ ] **1.5.2.3** Refactor `connection()` to use pool without changing call-site signatures.
-  - [ ] **1.5.2.4** Re-run bench script; confirm connect_ms drop on warm requests.
-  - [ ] **1.5.2.5** Run `pytest -q` — all green.
+- [x] **1.5.2** Postgres connection pool
+  - [x] **1.5.2.1** Add `psycopg-pool` to dependencies; reinstall backend editable.
+  - [x] **1.5.2.2** Implement pool singleton + lifespan hooks in `main.py`.
+  - [x] **1.5.2.3** Refactor `connection()` to use pool without changing call-site signatures.
+  - [x] **1.5.2.4** Re-run bench script; confirm connect_ms drop on warm requests.
+  - [x] **1.5.2.5** Run `pytest -q` — all green.
 
 ---
 
@@ -152,13 +152,13 @@ _Fix the ~8s API path and client-side data waterfall so Pulse and Thread reach m
 
 **Acceptance criteria**
 
-- [ ] `build_feed_response` runs all feed queries in **one** connection scope (session profile, pulse rows, instrument assessments, fog-of-war).
-- [ ] `build_card_detail` (current view) uses a new `fetch_card_detail_bundle(card_id)` — card + signals + instruments + bias flags in one connection.
-- [ ] `build_bias_audit` accepts pre-fetched rows when `card_id` is passed (no extra connection).
-- [ ] `view=original` track_record snapshot path unchanged.
-- [ ] Warm feed API p95 **<800ms**; warm card detail p95 **<800ms** (bench script).
-- [ ] Timing headers show **1 connection** per request.
-- [ ] Feed + card detail response JSON shapes unchanged (existing tests pass).
+- [x] `build_feed_response` runs all feed queries in **one** connection scope (session profile, pulse rows, instrument assessments, fog-of-war).
+- [x] `build_card_detail` (current view) uses a new `fetch_card_detail_bundle(card_id)` — card + signals + instruments + bias flags in one connection.
+- [x] `build_bias_audit` accepts pre-fetched rows when `card_id` is passed (no extra connection).
+- [x] `view=original` track_record snapshot path unchanged.
+- [x] Warm feed API p95 **<800ms**; warm card detail p95 **<800ms** (bench script).
+- [x] Timing headers show **1 connection** per request.
+- [x] Feed + card detail response JSON shapes unchanged (existing tests pass).
 
 **Tech notes**
 
@@ -178,13 +178,13 @@ _Fix the ~8s API path and client-side data waterfall so Pulse and Thread reach m
 
 #### Tasks (checkboxes)
 
-- [ ] **1.5.3** Consolidate feed and card-detail queries
-  - [ ] **1.5.3.1** Refactor `build_feed_response` to optional shared `conn`; collapse to one `with connection()` block.
-  - [ ] **1.5.3.2** Add `fetch_card_detail_bundle(card_id)` in `card_repository.py`.
-  - [ ] **1.5.3.3** Wire bundle into `build_card_detail`; pass bias rows to `build_bias_audit`.
-  - [ ] **1.5.3.4** Verify timing headers: one connect per request.
-  - [ ] **1.5.3.5** Run bench script — p95 <800ms warm on Render.
-  - [ ] **1.5.3.6** Run feed + card detail pytest suites.
+- [x] **1.5.3** Consolidate feed and card-detail queries
+  - [x] **1.5.3.1** Refactor `build_feed_response` to optional shared `conn`; collapse to one `with connection()` block.
+  - [x] **1.5.3.2** Add `fetch_card_detail_bundle(card_id)` in `card_repository.py`.
+  - [x] **1.5.3.3** Wire bundle into `build_card_detail`; pass bias rows to `build_bias_audit`.
+  - [x] **1.5.3.4** Verify timing headers: one connect per request.
+  - [x] **1.5.3.5** Run bench script — p95 <800ms warm on Render.
+  - [x] **1.5.3.6** Run feed + card detail pytest suites.
 
 ---
 
@@ -202,10 +202,10 @@ _Fix the ~8s API path and client-side data waterfall so Pulse and Thread reach m
 
 **Acceptance criteria**
 
-- [ ] Published/active lifecycle feed and card detail responses include `Cache-Control: private, max-age=60, stale-while-revalidate=300`.
-- [ ] Draft/admin paths retain `no-store`.
-- [ ] Client refetch paths (filter change, view toggle, retry) still use `cache: "no-store"`.
-- [ ] bf-cache Lighthouse warning documented as acceptable (freshness trade-off).
+- [x] Published/active lifecycle feed and card detail responses include `Cache-Control: private, max-age=60, stale-while-revalidate=300`.
+- [x] Draft/admin paths retain `no-store`.
+- [x] Client refetch paths (filter change, view toggle, retry) still use `cache: "no-store"`.
+- [x] bf-cache Lighthouse warning documented as acceptable (freshness trade-off).
 
 #### Relevant files
 
@@ -217,11 +217,11 @@ _Fix the ~8s API path and client-side data waterfall so Pulse and Thread reach m
 
 #### Tasks (checkboxes)
 
-- [ ] **1.5.4** HTTP caching for published read paths
-  - [ ] **1.5.4.1** Add cache header helper keyed on lifecycle state.
-  - [ ] **1.5.4.2** Apply to feed + card detail routes only for published/active cards.
-  - [ ] **1.5.4.3** Confirm admin/draft routes unchanged.
-  - [ ] **1.5.4.4** Test: second request within 60s shows cache hit (browser or curl `-H 'Cache-Control:'`).
+- [x] **1.5.4** HTTP caching for published read paths
+  - [x] **1.5.4.1** Add cache header helper keyed on lifecycle state.
+  - [x] **1.5.4.2** Apply to feed + card detail routes only for published/active cards.
+  - [x] **1.5.4.3** Confirm admin/draft routes unchanged.
+  - [x] **1.5.4.4** Test: second request within 60s shows cache hit (browser or curl `-H 'Cache-Control:'`).
 
 ---
 
@@ -239,11 +239,11 @@ _Fix the ~8s API path and client-side data waterfall so Pulse and Thread reach m
 
 **Acceptance criteria**
 
-- [ ] `pulse/page.tsx` is an async Server Component that fetches feed data server-side.
-- [ ] `PulseClient` receives `initialData` prop; no mount-time skeleton when data present.
-- [ ] Category filter changes still trigger client refetch via `usePulseFeed`.
-- [ ] Server fetch calls Render directly via `NEXT_PUBLIC_API_BASE_URL` (not browser `/backend` rewrite).
-- [ ] Pattern follows precedent in `frontend/app/admin/factor-db/page.tsx`.
+- [x] `pulse/page.tsx` is an async Server Component that fetches feed data server-side.
+- [x] `PulseClient` receives `initialData` prop; no mount-time skeleton when data present.
+- [x] Category filter changes still trigger client refetch via `usePulseFeed`.
+- [x] Server fetch calls Render directly via `NEXT_PUBLIC_API_BASE_URL` (not browser `/backend` rewrite).
+- [x] Pattern follows precedent in `frontend/app/admin/factor-db/page.tsx`.
 
 **Tech notes**
 
@@ -261,12 +261,12 @@ _Fix the ~8s API path and client-side data waterfall so Pulse and Thread reach m
 
 #### Tasks (checkboxes)
 
-- [ ] **1.5.5** Server-side data loading for Pulse
-  - [ ] **1.5.5.1** Create `frontend/lib/api/server.ts` with server-side fetch helpers.
-  - [ ] **1.5.5.2** Refactor `pulse/page.tsx` to fetch feed and pass to `PulseClient`.
-  - [ ] **1.5.5.3** Update `usePulseFeed` to accept optional `initialData`.
-  - [ ] **1.5.5.4** Verify filter pill changes still refetch client-side.
-  - [ ] **1.5.5.5** Test: Pulse page renders cards without client fetch on first load (network tab).
+- [x] **1.5.5** Server-side data loading for Pulse
+  - [x] **1.5.5.1** Create `frontend/lib/api/server.ts` with server-side fetch helpers.
+  - [x] **1.5.5.2** Refactor `pulse/page.tsx` to fetch feed and pass to `PulseClient`.
+  - [x] **1.5.5.3** Update `usePulseFeed` to accept optional `initialData`.
+  - [x] **1.5.5.4** Verify filter pill changes still refetch client-side.
+  - [x] **1.5.5.5** Test: Pulse page renders cards without client fetch on first load (network tab).
 
 ---
 
@@ -284,11 +284,11 @@ _Fix the ~8s API path and client-side data waterfall so Pulse and Thread reach m
 
 **Acceptance criteria**
 
-- [ ] `thread/[cardId]/page.tsx` async RSC fetches card detail server-side (`view=current`).
-- [ ] `ThreadExperience` receives `initialData`; no loading skeleton when data present.
-- [ ] Current/Original toggle still client-fetches the alternate view.
-- [ ] Route-level `loading.tsx` provides skeleton for slow SSR fallback only.
-- [ ] 404/error paths unchanged for unknown card IDs.
+- [x] `thread/[cardId]/page.tsx` async RSC fetches card detail server-side (`view=current`).
+- [x] `ThreadExperience` receives `initialData`; no loading skeleton when data present.
+- [x] Current/Original toggle still client-fetches the alternate view.
+- [x] Route-level `loading.tsx` provides skeleton for slow SSR fallback only.
+- [x] 404/error paths unchanged for unknown card IDs.
 
 #### Relevant files
 
@@ -302,13 +302,13 @@ _Fix the ~8s API path and client-side data waterfall so Pulse and Thread reach m
 
 #### Tasks (checkboxes)
 
-- [ ] **1.5.6** Server-side data loading for Thread
-  - [ ] **1.5.6.1** Add `fetchCardDetail` to `server.ts`.
-  - [ ] **1.5.6.2** Refactor `[cardId]/page.tsx` to server-fetch and pass props.
-  - [ ] **1.5.6.3** Update `useCard` for `initialData` hydration.
-  - [ ] **1.5.6.4** Add `loading.tsx` for slow SSR edge case.
-  - [ ] **1.5.6.5** Verify Current/Original toggle still works.
-  - [ ] **1.5.6.6** Test: card title visible on first paint without client API wait.
+- [x] **1.5.6** Server-side data loading for Thread
+  - [x] **1.5.6.1** Add `fetchCardDetail` to `server.ts`.
+  - [x] **1.5.6.2** Refactor `[cardId]/page.tsx` to server-fetch and pass props.
+  - [x] **1.5.6.3** Update `useCard` for `initialData` hydration.
+  - [x] **1.5.6.4** Add `loading.tsx` for slow SSR edge case.
+  - [x] **1.5.6.5** Verify Current/Original toggle still works.
+  - [x] **1.5.6.6** Test: card title visible on first paint without client API wait.
 
 ---
 
@@ -504,40 +504,40 @@ flowchart TD
 
 ### Tasks by developer — Jordan
 
-- [ ] **1.5.2** Postgres connection pool
-  - [ ] **1.5.2.1** Add `psycopg-pool`
-  - [ ] **1.5.2.2** Lifespan pool init/close
-  - [ ] **1.5.2.3** Refactor `connection()` context manager
-  - [ ] **1.5.2.4** Bench warm connect improvement
-  - [ ] **1.5.2.5** pytest green
-- [ ] **1.5.3** Consolidate feed and card-detail queries
-  - [ ] **1.5.3.1** Single-connection feed
-  - [ ] **1.5.3.2** `fetch_card_detail_bundle`
-  - [ ] **1.5.3.3** Wire bundle + bias audit injection
-  - [ ] **1.5.3.4** One connect per request verified
-  - [ ] **1.5.3.5** p95 under 800ms
-  - [ ] **1.5.3.6** Feed + card detail tests
-- [ ] **1.5.4** HTTP caching for published read paths
-  - [ ] **1.5.4.1** Cache header helper
-  - [ ] **1.5.4.2** Feed + card detail headers
-  - [ ] **1.5.4.3** Draft/admin unchanged
-  - [ ] **1.5.4.4** Cache hit verification
+- [x] **1.5.2** Postgres connection pool
+  - [x] **1.5.2.1** Add `psycopg-pool`
+  - [x] **1.5.2.2** Lifespan pool init/close
+  - [x] **1.5.2.3** Refactor `connection()` context manager
+  - [x] **1.5.2.4** Bench warm connect improvement
+  - [x] **1.5.2.5** pytest green
+- [x] **1.5.3** Consolidate feed and card-detail queries
+  - [x] **1.5.3.1** Single-connection feed
+  - [x] **1.5.3.2** `fetch_card_detail_bundle`
+  - [x] **1.5.3.3** Wire bundle + bias audit injection
+  - [x] **1.5.3.4** One connect per request verified
+  - [x] **1.5.3.5** p95 under 800ms
+  - [x] **1.5.3.6** Feed + card detail tests
+- [x] **1.5.4** HTTP caching for published read paths
+  - [x] **1.5.4.1** Cache header helper
+  - [x] **1.5.4.2** Feed + card detail headers
+  - [x] **1.5.4.3** Draft/admin unchanged
+  - [x] **1.5.4.4** Cache hit verification
 
 ### Tasks by developer — Sam
 
-- [ ] **1.5.5** Server-side data loading for Pulse
-  - [ ] **1.5.5.1** `frontend/lib/api/server.ts`
-  - [ ] **1.5.5.2** RSC `pulse/page.tsx`
-  - [ ] **1.5.5.3** `usePulseFeed` initialData
-  - [ ] **1.5.5.4** Filter refetch works
-  - [ ] **1.5.5.5** First paint without client fetch
-- [ ] **1.5.6** Server-side data loading for Thread
-  - [ ] **1.5.6.1** `fetchCardDetail` in server.ts
-  - [ ] **1.5.6.2** RSC `[cardId]/page.tsx`
-  - [ ] **1.5.6.3** `useCard` initialData
-  - [ ] **1.5.6.4** `loading.tsx`
-  - [ ] **1.5.6.5** Current/Original toggle
-  - [ ] **1.5.6.6** First paint test
+- [x] **1.5.5** Server-side data loading for Pulse
+  - [x] **1.5.5.1** `frontend/lib/api/server.ts`
+  - [x] **1.5.5.2** RSC `pulse/page.tsx`
+  - [x] **1.5.5.3** `usePulseFeed` initialData
+  - [x] **1.5.5.4** Filter refetch works
+  - [x] **1.5.5.5** First paint without client fetch
+- [x] **1.5.6** Server-side data loading for Thread
+  - [x] **1.5.6.1** `fetchCardDetail` in server.ts
+  - [x] **1.5.6.2** RSC `[cardId]/page.tsx`
+  - [x] **1.5.6.3** `useCard` initialData
+  - [x] **1.5.6.4** `loading.tsx`
+  - [x] **1.5.6.5** Current/Original toggle
+  - [x] **1.5.6.6** First paint test
 - [ ] **1.5.7** Thread bundle and font diet
   - [ ] **1.5.7.1** Dynamic ICE layers
   - [ ] **1.5.7.2** Dynamic aside widgets

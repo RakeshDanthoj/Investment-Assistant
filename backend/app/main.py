@@ -1,7 +1,10 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from psycopg import Error as PsycopgError
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 
 from app.api.admin_queue import router as admin_router
 from app.api.admin_review import router as admin_review_router
@@ -15,10 +18,32 @@ from app.api.onboarding import router as onboarding_router
 from app.api.predictions import router as predictions_router
 from app.api.tester_acceptance import router as tester_acceptance_router
 from app.core.settings import get_settings
-from app.db.connection import connection
+from app.db.connection import close_db_pool, connection, init_db_pool
 from app.diagnostics.timing import DbRequestTimer
+from app.http.cache_control import NO_STORE_CACHE
 
-app = FastAPI(title="FinnWise API", version="0.1.0")
+
+class AdminNoStoreCacheMiddleware(BaseHTTPMiddleware):
+    """Editorial/admin paths must never be cached (P1.5-S4)."""
+
+    async def dispatch(
+        self, request: Request, call_next: RequestResponseEndpoint
+    ) -> Response:
+        response = await call_next(request)
+        path = request.url.path
+        if path.startswith("/api/admin") or path.startswith("/admin"):
+            response.headers["Cache-Control"] = NO_STORE_CACHE
+        return response
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    init_db_pool()
+    yield
+    close_db_pool()
+
+
+app = FastAPI(title="FinnWise API", version="0.1.0", lifespan=lifespan)
 
 
 @app.exception_handler(PsycopgError)
@@ -36,6 +61,7 @@ async def psycopg_error_handler(_request: Request, exc: PsycopgError) -> JSONRes
 
 settings = get_settings()
 
+app.add_middleware(AdminNoStoreCacheMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],

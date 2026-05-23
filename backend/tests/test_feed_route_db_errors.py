@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import os
-
 from fastapi.testclient import TestClient
 
 from app.core.settings import get_settings
@@ -12,22 +10,22 @@ from app.main import app
 _ORIGIN = "https://investment-assistant-frontend.vercel.app"
 
 
-def _client_with_db_url(db_url: str) -> TestClient:
-    os.environ["SUPABASE_DB_URL"] = db_url
+def _client_with_db_url(db_url: str, monkeypatch) -> TestClient:
+    monkeypatch.setenv("SUPABASE_DB_URL", db_url)
     get_settings.cache_clear()
     return TestClient(app)
 
 
-def test_feed_missing_db_url_returns_503_with_cors() -> None:
-    client = _client_with_db_url("")
+def test_feed_missing_db_url_returns_503_with_cors(monkeypatch) -> None:
+    client = _client_with_db_url("", monkeypatch)
     response = client.get("/api/feed", headers={"Origin": _ORIGIN})
     assert response.status_code == 503
     assert response.headers.get("access-control-allow-origin") == _ORIGIN
     assert response.json()["detail"]["code"] == "db_unavailable"
 
 
-def test_feed_bare_project_ref_returns_503_with_cors() -> None:
-    client = _client_with_db_url("coqihzykxemmyewakasj")
+def test_feed_bare_project_ref_returns_503_with_cors(monkeypatch) -> None:
+    client = _client_with_db_url("coqihzykxemmyewakasj", monkeypatch)
     response = client.get("/api/feed", headers={"Origin": _ORIGIN})
     assert response.status_code == 503
     assert response.headers.get("access-control-allow-origin") == _ORIGIN

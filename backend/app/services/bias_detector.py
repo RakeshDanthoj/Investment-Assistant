@@ -295,6 +295,7 @@ def build_bias_audit(
     findings: Sequence[BiasFinding] | Sequence[dict[str, Any]] | None = None,
     *,
     card_id: UUID | None = None,
+    bias_rows: Sequence[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Shape bias flags for Thread `bias_audit` JSON."""
     rows: list[dict[str, Any]]
@@ -310,6 +311,8 @@ def build_bias_audit(
             ]
         else:
             rows = list(findings)
+    elif bias_rows is not None:
+        rows = list(bias_rows)
     elif card_id is not None:
         rows = fetch_bias_flag_rows(card_id)
     else:

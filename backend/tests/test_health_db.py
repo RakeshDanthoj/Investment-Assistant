@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 
 from fastapi.testclient import TestClient
 
+from app.db.connection import close_db_pool, init_db_pool
 from app.main import app
 
 
@@ -56,3 +57,46 @@ def test_health_db_unconfigured(mock_get_settings: MagicMock) -> None:
     body = response.json()
     assert body["status"] == "error"
     assert body["code"] == "db_unconfigured"
+
+
+def test_db_pool_lifecycle_init_and_close() -> None:
+    import app.db.connection as conn_module
+
+    close_db_pool()
+    with patch("app.db.connection.get_settings") as mock_get_settings:
+        mock_get_settings.return_value.supabase_db_url = ""
+        init_db_pool()
+        assert conn_module._pool is None
+
+    with patch("app.db.connection.ConnectionPool") as mock_pool_cls:
+        mock_pool = MagicMock()
+        mock_pool_cls.return_value = mock_pool
+        with patch("app.db.connection.get_settings") as mock_get_settings:
+            mock_get_settings.return_value.supabase_db_url = (
+                "postgresql://postgres:secret@db.example.supabase.co:5432/postgres"
+            )
+            init_db_pool()
+            mock_pool_cls.assert_called_once()
+            kwargs = mock_pool_cls.call_args.kwargs
+            assert kwargs["min_size"] == 1
+            assert kwargs["max_size"] == 10
+            assert kwargs["kwargs"]["connect_timeout"] == 10
+            close_db_pool()
+            mock_pool.close.assert_called_once()
+            assert conn_module._pool is None
+
+    close_db_pool()
+
+
+def test_health_db_with_lifespan_skips_pool_when_unconfigured() -> None:
+    """Lifespan startup/shutdown must not break /health/db when DB URL is unset."""
+    empty_settings = MagicMock()
+    empty_settings.supabase_db_url = ""
+    with (
+        patch("app.db.connection.get_settings", return_value=empty_settings),
+        patch("app.main.get_settings", return_value=empty_settings),
+        TestClient(app) as client,
+    ):
+        response = client.get("/health/db")
+        assert response.status_code == 200
+        assert response.json()["code"] == "db_unconfigured"

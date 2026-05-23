@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { getApiBaseUrl } from "@/lib/api";
 import type { PulseCard, PulseFeedResponse } from "@/lib/cards/pulseTypes";
@@ -8,16 +8,32 @@ import { getStoredSessionId } from "@/lib/sessionProfile";
 
 export type PulseFeedStatus = "idle" | "loading" | "success" | "error";
 
-export function usePulseFeed(selectedCategories: string[]) {
-  const [status, setStatus] = useState<PulseFeedStatus>("idle");
-  const [data, setData] = useState<PulseFeedResponse | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+export type UsePulseFeedOptions = {
+  initialData?: PulseFeedResponse | null;
+  initialCategoryQuery?: string;
+};
 
+export function usePulseFeed(selectedCategories: string[], options?: UsePulseFeedOptions) {
   const categoryQuery = useMemo(() => {
     if (!selectedCategories.length) return "";
     return selectedCategories.slice().sort().join(",");
   }, [selectedCategories]);
+
+  const skipInitialFetchRef = useRef(
+    options?.initialData != null &&
+      (options.initialCategoryQuery ?? "") === categoryQuery,
+  );
+
+  const [status, setStatus] = useState<PulseFeedStatus>(() =>
+    options?.initialData ? "success" : "idle",
+  );
+  const [data, setData] = useState<PulseFeedResponse | null>(options?.initialData ?? null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(() => {
+    const cards = options?.initialData?.cards;
+    if (!cards?.length) return null;
+    return cards[0].id;
+  });
 
   const load = useCallback(async () => {
     setStatus("loading");
@@ -53,6 +69,10 @@ export function usePulseFeed(selectedCategories: string[]) {
   }, [categoryQuery]);
 
   useEffect(() => {
+    if (skipInitialFetchRef.current) {
+      skipInitialFetchRef.current = false;
+      return;
+    }
     void load();
   }, [load]);
 

@@ -8,6 +8,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
+from psycopg import Connection
 from psycopg.rows import dict_row
 
 from app.db.connection import connection
@@ -71,16 +72,17 @@ def detect_fog_of_war(
     return max(cat_counts.values(), default=0) >= 2
 
 
-def fetch_session_profile(session_id: UUID | None) -> SessionProfileRow | None:
-    if session_id is None:
-        return None
+def _fetch_session_profile_conn(
+    conn: Connection,
+    session_id: UUID,
+) -> SessionProfileRow | None:
     stmt = """
     SELECT horizon, mode
     FROM public.session_profiles
     WHERE session_id = %s
     LIMIT 1
     """
-    with connection() as conn, conn.cursor(row_factory=dict_row) as cur:
+    with conn.cursor(row_factory=dict_row) as cur:
         cur.execute(stmt, (str(session_id),))
         row = cur.fetchone()
     if not row:
@@ -88,7 +90,14 @@ def fetch_session_profile(session_id: UUID | None) -> SessionProfileRow | None:
     return SessionProfileRow(horizon=str(row["horizon"]), mode=str(row["mode"]))
 
 
-def fetch_fog_of_war_flag() -> bool:
+def fetch_session_profile(session_id: UUID | None) -> SessionProfileRow | None:
+    if session_id is None:
+        return None
+    with connection() as conn:
+        return _fetch_session_profile_conn(conn, session_id)
+
+
+def _fetch_fog_of_war_conn(conn: Connection) -> bool:
     stmt = """
     SELECT c.lifecycle_state::text AS lifecycle_state, e.category::text AS category
     FROM public.cards c
@@ -97,14 +106,22 @@ def fetch_fog_of_war_flag() -> bool:
       AND e.confidence_score >= %s
     """
     states = list(FOG_LIFECYCLE)
-    with connection() as conn, conn.cursor(row_factory=dict_row) as cur:
+    with conn.cursor(row_factory=dict_row) as cur:
         cur.execute(stmt, (states, MAJOR_EVENT_MIN_CONFIDENCE))
         rows = cur.fetchall()
     tuples = [(str(r["lifecycle_state"]), str(r["category"])) for r in rows]
     return detect_fog_of_war(major_active_cards=tuples)
 
 
-def _assessments_for_cards(card_ids: list[str]) -> dict[str, list[dict[str, str]]]:
+def fetch_fog_of_war_flag() -> bool:
+    with connection() as conn:
+        return _fetch_fog_of_war_conn(conn)
+
+
+def _assessments_for_cards_conn(
+    conn: Connection,
+    card_ids: list[str],
+) -> dict[str, list[dict[str, str]]]:
     if not card_ids:
         return {}
     stmt = """
@@ -114,7 +131,7 @@ def _assessments_for_cards(card_ids: list[str]) -> dict[str, list[dict[str, str]
       AND version = 1
     ORDER BY instrument_id
     """
-    with connection() as conn, conn.cursor(row_factory=dict_row) as cur:
+    with conn.cursor(row_factory=dict_row) as cur:
         cur.execute(stmt, (card_ids,))
         rows = cur.fetchall()
     out: dict[str, list[dict[str, str]]] = {cid: [] for cid in card_ids}
@@ -129,16 +146,18 @@ def _assessments_for_cards(card_ids: list[str]) -> dict[str, list[dict[str, str]
     return out
 
 
-def fetch_pulse_rows(
+def _assessments_for_cards(card_ids: list[str]) -> dict[str, list[dict[str, str]]]:
+    with connection() as conn:
+        return _assessments_for_cards_conn(conn, card_ids)
+
+
+def _fetch_pulse_rows_conn(
+    conn: Connection,
     *,
     profile: SessionProfileRow | None,
     horizon_override: str | None,
     categories: list[str] | None,
 ) -> tuple[list[dict[str, Any]], SessionProfileRow | None]:
-    """
-    Return card rows for the Pulse plus the effective profile (requested horizon
-    wins over stored profile).
-    """
     eff_horizon = horizon_override or (profile.horizon if profile else None)
     cutoff = horizon_cutoff(eff_horizon) if eff_horizon else None
 
@@ -170,16 +189,35 @@ def fetch_pulse_rows(
 
     base_sql += " ORDER BY c.created_at DESC LIMIT 100"
 
-    with connection() as conn, conn.cursor(row_factory=dict_row) as cur:
+    with conn.cursor(row_factory=dict_row) as cur:
         cur.execute(base_sql, params)
         rows = [dict(r) for r in cur.fetchall()]
 
     card_ids = [r["id"] for r in rows]
-    inst_map = _assessments_for_cards(card_ids)
+    inst_map = _assessments_for_cards_conn(conn, card_ids)
     for r in rows:
         r["instruments"] = inst_map.get(r["id"], [])
 
     return rows, profile
+
+
+def fetch_pulse_rows(
+    *,
+    profile: SessionProfileRow | None,
+    horizon_override: str | None,
+    categories: list[str] | None,
+) -> tuple[list[dict[str, Any]], SessionProfileRow | None]:
+    """
+    Return card rows for the Pulse plus the effective profile (requested horizon
+    wins over stored profile).
+    """
+    with connection() as conn:
+        return _fetch_pulse_rows_conn(
+            conn,
+            profile=profile,
+            horizon_override=horizon_override,
+            categories=categories,
+        )
 
 
 def confidence_tier(score: int | None) -> str:
@@ -235,17 +273,24 @@ def build_feed_response(
     horizon: str | None,
     category: str | None,
 ) -> dict[str, Any]:
-    profile = fetch_session_profile(session_id)
     cat_list: list[str] | None = None
     if category:
         cat_list = [c.strip() for c in category.split(",") if c.strip()]
 
-    rows, _ = fetch_pulse_rows(
-        profile=profile,
-        horizon_override=horizon,
-        categories=cat_list,
-    )
-    fog = fetch_fog_of_war_flag()
+    with connection() as conn:
+        profile = (
+            _fetch_session_profile_conn(conn, session_id)
+            if session_id is not None
+            else None
+        )
+        rows, _ = _fetch_pulse_rows_conn(
+            conn,
+            profile=profile,
+            horizon_override=horizon,
+            categories=cat_list,
+        )
+        fog = _fetch_fog_of_war_conn(conn)
+
     cards = [build_card_payload(r) for r in rows]
 
     eff_horizon = horizon or (profile.horizon if profile else None)

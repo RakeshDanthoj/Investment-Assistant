@@ -36,39 +36,47 @@ def test_build_card_payload_direction_and_magnitude_differ() -> None:
     assert len(out["insight_excerpt"]) <= 323
 
 
-@patch("app.services.feed.fetch_fog_of_war_flag", return_value=True)
-@patch("app.services.feed.fetch_pulse_rows")
-@patch("app.services.feed.fetch_session_profile")
+@patch("app.services.feed._fetch_fog_of_war_conn", return_value=True)
+@patch("app.services.feed._fetch_pulse_rows_conn")
+@patch("app.services.feed._fetch_session_profile_conn")
+@patch("app.services.feed.connection")
 def test_build_feed_splits_category_param(
+    mock_connection: MagicMock,
     mock_profile: MagicMock,
     mock_rows: MagicMock,
     mock_fog: MagicMock,
 ) -> None:
+    mock_conn = MagicMock()
+    mock_connection.return_value.__enter__.return_value = mock_conn
     mock_profile.return_value = None
     mock_rows.return_value = ([], None)
     out = build_feed_response(session_id=None, horizon=None, category="macro, rbi_policy ")
     mock_rows.assert_called_once()
     assert mock_rows.call_args.kwargs["categories"] == ["macro", "rbi_policy"]
     assert out["fog_of_war"] is True
-    mock_fog.assert_called_once()
+    mock_fog.assert_called_once_with(mock_conn)
 
 
-@patch("app.services.feed.fetch_fog_of_war_flag", return_value=False)
-@patch("app.services.feed.fetch_pulse_rows")
-@patch("app.services.feed.fetch_session_profile")
+@patch("app.services.feed._fetch_fog_of_war_conn", return_value=False)
+@patch("app.services.feed._fetch_pulse_rows_conn")
+@patch("app.services.feed._fetch_session_profile_conn")
+@patch("app.services.feed.connection")
 def test_build_feed_loads_session_profile(
+    mock_connection: MagicMock,
     mock_profile: MagicMock,
     mock_rows: MagicMock,
     mock_fog: MagicMock,
 ) -> None:
+    mock_conn = MagicMock()
+    mock_connection.return_value.__enter__.return_value = mock_conn
     sid = uuid4()
     prof = SessionProfileRow(horizon="1_3y", mode="portfolio_protector")
     mock_profile.return_value = prof
     mock_rows.return_value = ([], prof)
     out = build_feed_response(session_id=sid, horizon=None, category=None)
-    mock_profile.assert_called_once_with(sid)
+    mock_profile.assert_called_once_with(mock_conn, sid)
     mock_rows.assert_called_once()
     assert mock_rows.call_args.kwargs["profile"] == prof
     assert mock_rows.call_args.kwargs["horizon_override"] is None
     assert out["profile"]["horizon"] == "1_3y"
-    mock_fog.assert_called_once()
+    mock_fog.assert_called_once_with(mock_conn)

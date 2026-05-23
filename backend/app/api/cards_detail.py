@@ -9,6 +9,7 @@ from fastapi import APIRouter, HTTPException, Query, status
 from fastapi.responses import JSONResponse
 
 from app.diagnostics.timing import DbRequestTimer, json_response_with_timing, timing_headers
+from app.http.cache_control import NO_STORE_CACHE, cache_control_for_card_detail
 from app.services.card_detail import build_card_detail
 
 router = APIRouter()
@@ -33,6 +34,8 @@ def get_card_detail(
                 ) from exc
             raise
         if payload is None:
+            not_found_headers = timing_headers(timer.snapshot())
+            not_found_headers["Cache-Control"] = NO_STORE_CACHE
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
@@ -43,6 +46,13 @@ def get_card_detail(
                     if view == "current"
                     else "Original view exists after publish — no snapshot yet.",
                 },
-                headers=timing_headers(timer.snapshot()),
+                headers=not_found_headers,
             )
-    return json_response_with_timing(payload, timer)
+    return json_response_with_timing(
+        payload,
+        timer,
+        cache_control=cache_control_for_card_detail(
+            view=view,
+            lifecycle_state=str(payload.get("lifecycle_state") or ""),
+        ),
+    )

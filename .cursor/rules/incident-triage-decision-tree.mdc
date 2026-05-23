@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Production incident triage
 
-When debugging production failures (API errors, CORS, "Failed to fetch", 500s):
+When debugging production failures 
 
 ## 1. Build a decision tree before changing code
 

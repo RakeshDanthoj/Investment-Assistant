@@ -1,6 +1,17 @@
 import pytest
 
 from app.core.settings import get_settings
+from app.db.connection import close_db_pool
+
+
+@pytest.fixture(autouse=True)
+def _reset_settings_and_db_pool():
+    """Prevent cross-test pollution from cached settings or a stale connection pool."""
+    get_settings.cache_clear()
+    close_db_pool()
+    yield
+    get_settings.cache_clear()
+    close_db_pool()
 
 
 @pytest.fixture(scope="session")

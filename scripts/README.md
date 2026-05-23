@@ -83,7 +83,7 @@ curl -s http://127.0.0.1:8000/health/db | jq
 
 ### P1.5-S1 baseline (2026-05-23, pre-remediation)
 
-Lighthouse mobile traces (`Page Load Performance/`) showed ~8s API wait via Vercel proxy. Local bench with S1 instrumentation (direct Supabase `:5432`, no pool) on 2026-05-23:
+Lighthouse mobile traces (`Page Load Performance/`) showed ~8s API wait via Vercel proxy. Local bench with S1 - instrumentation (direct Supabase `:5432`, no pool) on 2026-05-23:
 
 | Endpoint | Path | wall p95 (ms) | db_connect p95 (ms) | db_query p95 (ms) | connections |
 |----------|------|---------------|---------------------|-------------------|-------------|
@@ -92,7 +92,50 @@ Lighthouse mobile traces (`Page Load Performance/`) showed ~8s API wait via Verc
 | Card | direct (local) | 1285 | 1029 | 249 | 4 |
 | Card | proxy (prod) | 8599 | — (pre-S1 deploy) | — | — |
 
-**Signal:** `db_connect_ms` dominates `db_query_ms`; multiple connections per request (3 feed / 4 card). Re-run after S2 (pool) and S3 (query consolidation) deploy.
+**Signal:** `db_connect_ms` dominated `db_query_ms`; multiple connections per request (3 feed / 4 card). Re-run after S2 (pool) and S3 (query consolidation) deploy.
+
+### P1.5-S3 post-consolidation (2026-05-23, local direct + pool)
+
+Local bench with S2 pool + S3 single-connection queries (`127.0.0.1:8000`, direct Supabase `:5432`):
+
+| Endpoint | Path | wall p95 (ms) | db_connect p95 (ms) | db_query p95 (ms) | connections |
+|----------|------|---------------|---------------------|-------------------|-------------|
+| Feed | direct (local) | 207 | 0.0 | 144 | 1 |
+| Card | direct (local) | 226 | 0.1 | 194 | 1 |
+
+Production proxy paths still reflect pre-S3 Render deploy (3–4 connections); redeploy backend to pick up S3.
+
+## HTTP caching (P1.5-S4)
+
+Published Pulse feed and Thread card detail responses include:
+
+```http
+Cache-Control: private, max-age=60, stale-while-revalidate=300
+```
+
+Draft cards, admin/editorial routes (`/api/admin/*`, `/admin/*`), and 404 card responses use `Cache-Control: no-store`. Client refetch paths (Pulse category filter, Thread Current/Original toggle, retry) intentionally keep `fetch(..., { cache: "no-store" })` so interactive updates bypass cache.
+
+### Verify cache headers (local)
+
+```bash
+curl -i http://127.0.0.1:8000/api/feed | findstr /i "cache-control"
+curl -i "http://127.0.0.1:8000/api/cards/<published-card-id>" | findstr /i "cache-control"
+curl -i "http://127.0.0.1:8000/api/admin/cards/<draft-card-id>" | findstr /i "cache-control"
+```
+
+On bash/macOS, replace `findstr /i` with `grep -i`.
+
+### Verify browser cache hit
+
+1. Open DevTools → Network, disable "Disable cache".
+2. Load `/pulse` twice within 60s (or curl the Render direct feed URL twice).
+3. Second response should show `(disk cache)` or `(memory cache)` when fetched from the browser without `cache: "no-store"`.
+
+SSR fetches in P1.5-S5/S6 use `revalidate: 60` instead of `no-store` so first paint can benefit from the same freshness window.
+
+### bf-cache trade-off (acceptable)
+
+Lighthouse may flag **"Page prevented back/forward cache restoration"** because client refetch paths use `Cache-Control: no-store`. This is intentional: editorial freshness and filter/view toggles must not serve stale JSON. The warning is acceptable for Phase 1.5; published read paths still cache for 60s where safe.
 
 ## Lighthouse (P1.5-S9)
 

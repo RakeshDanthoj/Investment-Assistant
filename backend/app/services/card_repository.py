@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass
 from typing import Any
 from uuid import UUID
 
@@ -207,3 +208,79 @@ def fetch_instrument_assessments_for_card(card_id: UUID) -> list[dict[str, Any]]
         cur.execute(stmt, (str(card_id),))
         rows = cur.fetchall()
     return [dict(r) for r in rows]
+
+
+@dataclass(frozen=True)
+class CardDetailBundle:
+    detail: dict[str, Any]
+    signals: list[dict[str, Any]]
+    instruments: list[dict[str, Any]]
+    bias_flags: list[dict[str, Any]]
+
+
+def fetch_card_detail_bundle(card_id: UUID) -> CardDetailBundle | None:
+    """Fetch card detail, signals, instruments, and bias flags in one connection."""
+    detail_stmt = """
+    SELECT
+      c.id AS card_id,
+      c.event_id,
+      c.title,
+      c.insight_layer,
+      c.context_layer,
+      c.evidence_layer,
+      c.dissenting_view,
+      c.framework_behind_this,
+      c.prompt_version,
+      c.lifecycle_state,
+      c.created_at AS card_created_at,
+      e.title AS event_title,
+      e.category::text AS event_category,
+      e.confidence_score AS event_confidence_score,
+      e.lifecycle_state::text AS event_lifecycle_state,
+      e.canonical_url AS event_canonical_url
+    FROM public.cards c
+    INNER JOIN public.events e ON e.id = c.event_id
+    WHERE c.id = %s
+    LIMIT 1
+    """
+    signals_stmt = """
+    SELECT signal_text, state::text AS state
+    FROM public.signals
+    WHERE card_id = %s
+    ORDER BY created_at ASC
+    """
+    instruments_stmt = """
+    SELECT instrument_id, signal_type, reasoning, entry_conditions, exit_conditions
+    FROM public.instrument_assessments
+    WHERE card_id = %s
+    ORDER BY created_at ASC
+    """
+    bias_stmt = """
+    SELECT bias_type, severity, description, detected_at
+    FROM public.card_bias_flags
+    WHERE card_id = %s
+    ORDER BY bias_type
+    """
+    card_key = str(card_id)
+    with connection() as conn, conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(detail_stmt, (card_key,))
+        detail_row = cur.fetchone()
+        if not detail_row:
+            return None
+        detail = dict(detail_row)
+
+        cur.execute(signals_stmt, (card_key,))
+        signals = [dict(r) for r in cur.fetchall()]
+
+        cur.execute(instruments_stmt, (card_key,))
+        instruments = [dict(r) for r in cur.fetchall()]
+
+        cur.execute(bias_stmt, (card_key,))
+        bias_flags = [dict(r) for r in cur.fetchall()]
+
+    return CardDetailBundle(
+        detail=detail,
+        signals=signals,
+        instruments=instruments,
+        bias_flags=bias_flags,
+    )

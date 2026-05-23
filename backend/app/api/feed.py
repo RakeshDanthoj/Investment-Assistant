@@ -8,6 +8,7 @@ from fastapi import APIRouter, HTTPException, Query, status
 from fastapi.responses import JSONResponse
 
 from app.diagnostics.timing import DbRequestTimer, json_response_with_timing
+from app.http.cache_control import cache_control_for_feed
 from app.services.feed import build_feed_response
 
 router = APIRouter()
@@ -52,4 +53,8 @@ def get_feed(
                     detail={"code": "db_unavailable", "message": str(exc)},
                 ) from exc
             raise
-    return json_response_with_timing(payload, timer)
+    return json_response_with_timing(
+        payload,
+        timer,
+        cache_control=cache_control_for_feed(),
+    )

@@ -7,9 +7,9 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
-import psycopg
 from psycopg import Connection
 from psycopg import Error as PsycopgError
+from psycopg_pool import ConnectionPool
 
 from app.core.settings import get_settings
 from app.diagnostics.timing import record_db_connect, record_db_query
@@ -20,6 +20,8 @@ _DB_URL_HINT = (
     "For Render and other IPv4 hosts, use the Supabase Session pooler URI instead "
     "(…pooler.supabase.com:5432/postgres) from Project Settings → Database → Connect."
 )
+
+_pool: ConnectionPool | None = None
 
 
 def _strip_wrapping_quotes(value: str) -> str:
@@ -67,18 +69,58 @@ def _require_db_url(url: str) -> str:
     return normalized
 
 
+def init_db_pool() -> None:
+    """Create the shared connection pool (FastAPI lifespan startup or lazy first use)."""
+    global _pool
+    if _pool is not None:
+        return
+
+    raw_url = get_settings().supabase_db_url.strip()
+    if not raw_url:
+        return
+
+    normalized = prepare_db_url(raw_url)
+    if not normalized.startswith(("postgresql://", "postgres://")):
+        return
+
+    _pool = ConnectionPool(
+        conninfo=normalized,
+        kwargs=_connect_kwargs(normalized),
+        min_size=1,
+        max_size=10,
+        open=True,
+        name="finnwise",
+    )
+
+
+def close_db_pool() -> None:
+    """Close the shared connection pool (FastAPI lifespan shutdown)."""
+    global _pool
+    if _pool is not None:
+        _pool.close()
+        _pool = None
+
+
+def _get_pool() -> ConnectionPool:
+    if _pool is None:
+        init_db_pool()
+    if _pool is None:
+        raise RuntimeError("SUPABASE_DB_URL is not configured")
+    return _pool
+
+
 @contextmanager
 def connection() -> Generator[Connection, None, None]:
-    url = _require_db_url(get_settings().supabase_db_url)
+    _require_db_url(get_settings().supabase_db_url)
+    pool = _get_pool()
     connect_start = time.perf_counter()
     try:
-        conn = psycopg.connect(url, **_connect_kwargs(url))
+        with pool.connection() as conn:
+            record_db_connect((time.perf_counter() - connect_start) * 1000)
+            query_start = time.perf_counter()
+            try:
+                yield conn
+            finally:
+                record_db_query((time.perf_counter() - query_start) * 1000)
     except PsycopgError as exc:
         raise RuntimeError(f"SUPABASE_DB_URL connection failed: {exc}") from exc
-    record_db_connect((time.perf_counter() - connect_start) * 1000)
-    query_start = time.perf_counter()
-    try:
-        yield conn
-    finally:
-        record_db_query((time.perf_counter() - query_start) * 1000)
-        conn.close()

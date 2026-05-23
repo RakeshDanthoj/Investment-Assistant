@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 
 import { Skeleton } from "@/components/ui/skeleton";
+import { fetchPulseFeed } from "@/lib/api/server";
 
 import PulseClient from "./_components/PulseClient";
 
@@ -18,10 +19,35 @@ function PulseFallback() {
   );
 }
 
-export default function PulsePage() {
+function categoryQueryFromSearchParams(categoryParam?: string): string {
+  if (!categoryParam) return "";
+  return categoryParam
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .sort()
+    .join(",");
+}
+
+export default async function PulsePage({
+  searchParams,
+}: {
+  searchParams?: { category?: string };
+}) {
+  const categoryQuery = categoryQueryFromSearchParams(searchParams?.category);
+
+  let initialData = null;
+  try {
+    initialData = await fetchPulseFeed(
+      categoryQuery ? { category: categoryQuery } : undefined,
+    );
+  } catch {
+    initialData = null;
+  }
+
   return (
     <Suspense fallback={<PulseFallback />}>
-      <PulseClient />
+      <PulseClient initialData={initialData} initialCategoryQuery={categoryQuery} />
     </Suspense>
   );
 }

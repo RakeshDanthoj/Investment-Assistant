@@ -94,9 +94,13 @@ def json_response_with_timing(
     timer: DbRequestTimer,
     *,
     status_code: int = 200,
+    cache_control: str | None = None,
 ) -> JSONResponse:
+    headers = timing_headers(timer.snapshot())
+    if cache_control is not None:
+        headers["Cache-Control"] = cache_control
     return JSONResponse(
         content=jsonable_encoder(content),
         status_code=status_code,
-        headers=timing_headers(timer.snapshot()),
+        headers=headers,
     )

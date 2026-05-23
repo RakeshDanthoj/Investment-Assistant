@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { categoryLabel, categoryPillClass } from "@/lib/cards/categories";
+import type { CardDetailResponse } from "@/lib/cards/threadTypes";
 import { useCard } from "@/lib/cards/useCard";
 
 import { BiasFlags } from "./aside/BiasFlags";
@@ -30,13 +31,24 @@ function dotClass(tier: string): string {
 
 type ThreadExperienceProps = {
   cardId: string;
+  initialData?: CardDetailResponse | null;
+  initialError?: string | null;
 };
 
-export default function ThreadExperience({ cardId }: ThreadExperienceProps) {
+export default function ThreadExperience({
+  cardId,
+  initialData,
+  initialError,
+}: ThreadExperienceProps) {
   const [view, setView] = useState<"current" | "original">("current");
+  const initialState = useMemo(
+    () => ({ data: initialData, error: initialError }),
+    [initialData, initialError],
+  );
   const { status, data, errorMessage, refetch, contextRevealed, revealContext } = useCard(
     cardId,
     view,
+    initialState,
   );
 
   const [iceTab, setIceTab] = useState<IceTabId>("insight");
@@ -52,7 +64,7 @@ export default function ThreadExperience({ cardId }: ThreadExperienceProps) {
     return s === "active" || s === "signal_triggered";
   }, [data?.lifecycle_state]);
 
-  if (status === "loading" || status === "idle") {
+  if ((status === "loading" || status === "idle") && !initialData && !initialError) {
     return (
       <div className="mx-auto max-w-6xl px-4 py-10">
         <Skeleton className="h-10 w-64" />

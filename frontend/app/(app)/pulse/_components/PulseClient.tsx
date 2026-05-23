@@ -6,6 +6,7 @@ import { useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PULSE_CATEGORY_OPTIONS } from "@/lib/cards/categories";
+import type { PulseFeedResponse } from "@/lib/cards/pulseTypes";
 import { usePulseFeed } from "@/lib/cards/usePulseFeed";
 
 import { EventCard } from "./EventCard";
@@ -23,7 +24,15 @@ function FeedSkeleton() {
   );
 }
 
-export default function PulseClient() {
+type PulseClientProps = {
+  initialData?: PulseFeedResponse | null;
+  initialCategoryQuery?: string;
+};
+
+export default function PulseClient({
+  initialData = null,
+  initialCategoryQuery = "",
+}: PulseClientProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -34,7 +43,7 @@ export default function PulseClient() {
   }, [searchParams]);
 
   const { status, data, errorMessage, selectedId, setSelectedId, selectedCard, refetch } =
-    usePulseFeed(selectedCategories);
+    usePulseFeed(selectedCategories, { initialData, initialCategoryQuery });
 
   function onCategoriesChange(next: string[]) {
     const p = new URLSearchParams(searchParams.toString());
