@@ -90,7 +90,11 @@ def _validation_error(exc: ValueError) -> None:
     ) from exc
 
 
-@router.post("/queries", response_model=LensQueryCreateResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/queries",
+    response_model=LensQueryCreateResponse,
+    status_code=status.HTTP_201_CREATED,
+)
 def post_lens_query(
     body: LensQueryCreate,
     current_user: CurrentUser,

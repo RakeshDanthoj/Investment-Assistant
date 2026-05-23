@@ -87,7 +87,8 @@ def test_grade_on_resolve_idempotent_and_uses_original_view(db_connection) -> No
                   dissenting_view, framework_behind_this, prompt_version, lifecycle_state
                 )
                 VALUES (
-                  %s::uuid, %s::uuid, 'Grader card', 'LIVE insight [MEASURED]', 'Live ctx [MEASURED]',
+                  %s::uuid, %s::uuid, 'Grader card',
+                  'LIVE insight [MEASURED]', 'Live ctx [MEASURED]',
                   '{}'::jsonb, 'Dissent [MEASURED]', 'Fw [MEASURED]', 'pytest', 'active'
                 )
                 """,

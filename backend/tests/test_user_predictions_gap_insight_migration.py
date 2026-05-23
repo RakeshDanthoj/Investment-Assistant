@@ -3,7 +3,10 @@
 from pathlib import Path
 
 MIGRATION = (
-    Path(__file__).resolve().parents[1] / "db" / "migrations" / "0014_user_predictions_gap_insight.sql"
+    Path(__file__).resolve().parents[1]
+    / "db"
+    / "migrations"
+    / "0014_user_predictions_gap_insight.sql"
 )
 
 

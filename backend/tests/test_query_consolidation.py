@@ -143,9 +143,8 @@ def test_build_feed_live_connection_count(database_url: str) -> None:
 
 
 def test_build_card_detail_current_live_connection_count(database_url: str) -> None:
-    from psycopg.rows import dict_row
-
     import psycopg
+    from psycopg.rows import dict_row
 
     card_id: UUID | None = None
     with psycopg.connect(database_url) as conn, conn.cursor(row_factory=dict_row) as cur:
