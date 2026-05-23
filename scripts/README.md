@@ -211,7 +211,9 @@ node scripts/lighthouse.mjs --desktop --assert-report="Page Load Performance/New
 | `LIGHTHOUSE_DESKTOP_*` | Desktop budget overrides (see table above) |
 | `LIGHTHOUSE_SKIP=1` | Skip run (exit 0) |
 
-Optional GitHub secret: `LIGHTHOUSE_THREAD_CARD_ID` — overrides the default card id in CI.
+Optional GitHub secret: `LIGHTHOUSE_THREAD_CARD_ID` — overrides the default card id in CI. If the secret is **empty**, the runner falls back to the default published card (same as local).
+
+On GitHub Actions (`CI=true`), each URL is audited **twice** when the first run fails budgets (guards Lighthouse variance). Override with `LIGHTHOUSE_CI_ATTEMPTS=1` to disable.
 
 ### Run locally
 

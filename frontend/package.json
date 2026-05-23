@@ -11,7 +11,7 @@
     "test": "jest",
     "perf:lighthouse": "node ../scripts/lighthouse.mjs",
     "perf:lighthouse:desktop": "node ../scripts/lighthouse.mjs --desktop",
-    "perf:lighthouse:budget-test": "node ../scripts/lighthouse-budget.test.mjs"
+    "perf:lighthouse:budget-test": "node ../scripts/lighthouse-budget.test.mjs && node ../scripts/lighthouse-resolve.test.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.3",
