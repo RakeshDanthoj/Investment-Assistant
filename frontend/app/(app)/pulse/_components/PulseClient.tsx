@@ -14,11 +14,31 @@ import { FogOfWarBanner } from "./FogOfWarBanner";
 import { InsightPanel } from "./InsightPanel";
 import { Topbar } from "./Topbar";
 
+function FeedSkeletonRow() {
+  return (
+    <div
+      className="h-[152px] w-full rounded-lg border border-border bg-background p-4"
+      aria-hidden
+    >
+      <div className="mb-2 flex gap-2">
+        <Skeleton className="h-5 w-16 rounded" />
+        <Skeleton className="h-5 w-14 rounded-full" />
+      </div>
+      <Skeleton className="h-4 w-full max-w-md" />
+      <Skeleton className="mt-2 h-3 w-full max-w-sm" />
+      <div className="mt-3 flex gap-4">
+        <Skeleton className="h-3 w-24" />
+        <Skeleton className="h-3 w-24" />
+      </div>
+    </div>
+  );
+}
+
 function FeedSkeleton() {
   return (
     <div className="mx-auto max-w-6xl space-y-4 px-4 py-6">
       {[1, 2, 3].map((k) => (
-        <Skeleton key={k} className="h-40 rounded-lg border border-border" />
+        <FeedSkeletonRow key={k} />
       ))}
     </div>
   );

@@ -2,6 +2,10 @@
   "name": "finnwise",
   "private": true,
   "packageManager": "pnpm@9.15.0",
+  "devDependencies": {
+    "chrome-launcher": "^1.1.2",
+    "lighthouse": "^12.6.0"
+  },
   "scripts": {
     "dev": "pnpm --parallel -r run dev",
     "dev:frontend": "pnpm --filter frontend dev",
@@ -11,6 +15,9 @@
     "test": "pnpm -r run test",
     "test:backend": "python -m pytest -q backend/tests",
     "lint:backend": "python -m ruff check backend",
-    "build": "pnpm -r run build"
+    "build": "pnpm -r run build",
+    "perf:lighthouse": "pnpm --filter frontend perf:lighthouse",
+    "perf:lighthouse:desktop": "pnpm --filter frontend perf:lighthouse:desktop",
+    "perf:lighthouse:budget-test": "pnpm --filter frontend perf:lighthouse:budget-test"
   }
 }

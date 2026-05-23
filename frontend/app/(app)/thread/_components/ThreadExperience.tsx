@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
@@ -12,16 +13,55 @@ import { categoryLabel, categoryPillClass } from "@/lib/cards/categories";
 import type { CardDetailResponse } from "@/lib/cards/threadTypes";
 import { useCard } from "@/lib/cards/useCard";
 
-import { BiasFlags } from "./aside/BiasFlags";
-import { ConfidenceComposition } from "./aside/ConfidenceComposition";
-import { LifecycleTracker } from "./aside/LifecycleTracker";
-import { SignalsToWatch } from "./aside/SignalsToWatch";
-import { ContextLayer } from "./ContextLayer";
 import { CurrentOriginalToggle } from "./CurrentOriginalToggle";
-import { EvidenceLayer } from "./EvidenceLayer";
 import type { IceTabId } from "./IceTabs";
 import { IceTabs } from "./IceTabs";
 import { InsightLayer } from "./InsightLayer";
+
+const ContextLayer = dynamic(
+  () => import("./ContextLayer").then((m) => ({ default: m.ContextLayer })),
+  { loading: () => <IceLayerSkeleton /> },
+);
+
+const EvidenceLayer = dynamic(
+  () => import("./EvidenceLayer").then((m) => ({ default: m.EvidenceLayer })),
+  { loading: () => <IceLayerSkeleton /> },
+);
+
+const LifecycleTracker = dynamic(
+  () => import("./aside/LifecycleTracker").then((m) => ({ default: m.LifecycleTracker })),
+  { loading: () => <AsideBlockSkeleton />, ssr: false },
+);
+
+const SignalsToWatch = dynamic(
+  () => import("./aside/SignalsToWatch").then((m) => ({ default: m.SignalsToWatch })),
+  { loading: () => <AsideBlockSkeleton />, ssr: false },
+);
+
+const ConfidenceComposition = dynamic(
+  () =>
+    import("./aside/ConfidenceComposition").then((m) => ({ default: m.ConfidenceComposition })),
+  { loading: () => <AsideBlockSkeleton />, ssr: false },
+);
+
+const BiasFlags = dynamic(
+  () => import("./aside/BiasFlags").then((m) => ({ default: m.BiasFlags })),
+  { loading: () => <AsideBlockSkeleton />, ssr: false },
+);
+
+function IceLayerSkeleton() {
+  return (
+    <div className="space-y-3" aria-hidden>
+      <Skeleton className="h-4 w-24" />
+      <Skeleton className="h-24 w-full rounded-lg" />
+      <Skeleton className="h-24 w-full rounded-lg" />
+    </div>
+  );
+}
+
+function AsideBlockSkeleton() {
+  return <Skeleton className="h-28 w-full rounded-lg" aria-hidden />;
+}
 
 function dotClass(tier: string): string {
   if (tier === "high") return "bg-finnwise-blue";
@@ -63,6 +103,9 @@ export default function ThreadExperience({
     const s = data?.lifecycle_state ?? "";
     return s === "active" || s === "signal_triggered";
   }, [data?.lifecycle_state]);
+
+  const shouldLoadContext = maxTier >= 1 || iceTab === "context";
+  const shouldLoadEvidence = maxTier >= 2 || iceTab === "evidence";
 
   if ((status === "loading" || status === "idle") && !initialData && !initialError) {
     return (
@@ -197,16 +240,16 @@ export default function ThreadExperience({
                     framework_behind_this={data.framework_behind_this}
                   />
                 ),
-                context: (
+                context: shouldLoadContext ? (
                   <ContextLayer steps={data.context_steps} fallbackText={data.context_layer} />
-                ),
-                evidence: (
+                ) : null,
+                evidence: shouldLoadEvidence ? (
                   <EvidenceLayer
                     rows={data.evidence_rows}
                     markdown={data.evidence_markdown}
                     macroStub={data.evidence_macro_stub}
                   />
-                ),
+                ) : null,
               }}
             />
           </div>

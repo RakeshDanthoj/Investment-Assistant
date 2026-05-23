@@ -14,6 +14,9 @@ MIGRATION_FILES = (
     "0011_card_bias_flags.sql",
     "0012_user_predictions_unique.sql",
     "0013_tester_acceptances.sql",
+    "0014_user_predictions_gap_insight.sql",
+    "0015_notifications_card_graded_read_at.sql",
+    "0016_lens_queries.sql",
 )
 
 _SCHEMA_MIGRATIONS_DDL = """

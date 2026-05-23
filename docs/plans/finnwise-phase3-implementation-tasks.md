@@ -8,7 +8,20 @@ _generated for independent execution without prd-planner_
 - **Summary**: Phase 3 deepens analytical rigour and prepares FinnWise for a regulated public posture. Workstreams: an NLP pipeline that automates factor-DB extraction from quarterly filings (replacing manual weekly review), a compound-event Fog of War model that auto-suppresses confidence on interaction effects, a formal SEBI compliance audit with mandatory tester-briefing flow hardening, a productisation assessment dossier (RA-registration research, pricing model, scalability review), and — only if and when registration is obtained — a public marketing site, multi-tenant onboarding, paywall infrastructure, and the final published version of The Map. Phase 3 is **gated**: marketing, paywall, and public-launch stories cannot ship until the SEBI go/no-go (P3-S8) is green.
 - **Tech stack additions** (over Phase 2): NLP toolchain (spaCy + a small LLM extractor running on Render), background queue (e.g. RQ or Celery on Redis), Stripe-equivalent for India billing (Razorpay or similar — research as part of P3-S7), Sentry/observability for hardening. Single `.env.local` continues.
 - **Slicing approach**: vertical slices where stories ship code; for strategic/research stories (SEBI audit, productisation dossier) the deliverable is a written artefact + workflow change, not running code — these are still scoped as parent + sub-tasks. Parent task IDs are **per-phase** — this file uses `1.0`–`9.0`. All PRD §6 / §8.6 / §11 invariants remain in force.
-- **Prerequisite**: Phase 2 shipped and stable. Factor DB covers all 8 sectors. Mirror + Lens have ≥3 months of live data.
+- **Prerequisite**: Phase 2 shipped and stable, including **P2-S15** (Phase 1.5 performance debt closure + `docs/plans/cross-phase-performance-standards.md`). Factor DB covers all 8 sectors. Mirror + Lens have ≥3 months of live data.
+
+## Performance standards (inherit Phase 1.5 + Phase 2)
+
+Phase 3 adds **marketing**, **public Map**, **billing**, and higher load. Every new route MUST comply with **`docs/plans/cross-phase-performance-standards.md`** (completed in P2-S15):
+
+| Phase 3 workstream | Perf requirement |
+|--------------------|------------------|
+| **P3-S5** SLOs / k6 | Pulse p95 &lt;800 ms, Thread &lt;1.2 s — aligns with P1.5/P2-S15 API target |
+| **P3-S6** Marketing site | Static/RSC where possible; Lighthouse on key pages before gate |
+| **P3-S9** Public Map | Shared components with app Map; dynamic matrix; Lighthouse + a11y |
+| **P3-S8** Go/no-go | Checklist item: cross-phase perf standards + P2-S15 evidence linked |
+
+Do not benchmark `next dev`. Extend `scripts/lighthouse.mjs` when adding primary public or `(app)` entry routes.
 
 ## Team plan
 
@@ -267,7 +280,8 @@ _Automate the slow Phase 1/2 review loops, harden the platform for higher load, 
 **Acceptance criteria**
 
 - [ ] Load test simulates 200 concurrent users browsing Pulse + Thread + Lens; capture p95 latency, error rates, cost per hour.
-- [ ] SLOs defined in `docs/plans/phase3-slos.md`: Pulse p95 < 800ms; Thread p95 < 1.2s; Lens p95 generation time < 90s; error rate <1%.
+- [ ] SLOs defined in `docs/plans/phase3-slos.md`: Pulse p95 &lt; 800ms (same bar as P1.5/P2-S15); Thread p95 &lt; 1.2s; Lens p95 generation time &lt; 90s; error rate &lt;1%.
+- [ ] SLO doc references `docs/plans/cross-phase-performance-standards.md` and P2-S15 bench/Lighthouse evidence.
 - [ ] Sentry (or equivalent free-tier) wired to frontend + backend; release tags on every deploy.
 - [ ] Structured request logs (already from P2-S13) shipped to a hosted log store (free-tier-acceptable).
 - [ ] Alerting: error budget burn-rate alert + p95 SLO violation alert.
@@ -414,7 +428,7 @@ _Automate the slow Phase 1/2 review loops, harden the platform for higher load, 
 
 **Acceptance criteria**
 
-- [ ] Checklist covers: legal sign-off captured (P3-S3); SLOs met under load (P3-S5); productisation recommendation logged (P3-S4); tester satisfaction baseline; bias-audit health; track-record health (direction prediction accuracy ≥60% per PRD §13).
+- [ ] Checklist covers: legal sign-off captured (P3-S3); SLOs met under load (P3-S5); productisation recommendation logged (P3-S4); **cross-phase performance standards** (`cross-phase-performance-standards.md`) + P2-S15 evidence; tester satisfaction baseline; bias-audit health; track-record health (direction prediction accuracy ≥60% per PRD §13).
 - [ ] Each item has owner + status + evidence link.
 - [ ] Decision logged in the doc with timestamp and signatures.
 - [ ] P3-S6 and P3-S7 carry a `phase3-gate: green` precondition in their PR descriptions.
@@ -453,6 +467,7 @@ _Automate the slow Phase 1/2 review loops, harden the platform for higher load, 
 - [ ] Each sector has a deep-dive page: factor sensitivity matrix (interactive hover), event-history strip drawing from `track_record`, links to relevant Map modules, "how this sector tends to react" educational module.
 - [ ] All interactive visualisations are accessible (keyboard navigation + screen-reader labels).
 - [ ] No recommendation framing — every sector page passes the P3-S3 language audit.
+- [ ] Map routes meet **mobile Lighthouse** budgets per `cross-phase-performance-standards.md` (extend `scripts/lighthouse.mjs` if not already covered in P2-S15).
 
 #### Relevant files
 

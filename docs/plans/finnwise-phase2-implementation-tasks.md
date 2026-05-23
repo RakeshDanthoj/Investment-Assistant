@@ -8,7 +8,24 @@ _generated for independent execution without prd-planner_
 - **Summary**: Phase 2 introduces the engagement layer on top of the Phase 1 foundation: **The Mirror** (prediction history, three-level accuracy, reasoning-gap analysis, streak tracker), **The Lens** (on-demand ICE card generation with visible six-step pipeline), Portfolio Protector personalisation against session-only holdings, email notifications when signals fire, expansion of the Factor Exposure DB to all eight sectors plus The Map content, **stronger market/macro inputs for the signal-confidence gate** (beyond `events` titles), and a UI polish pass driven by Phase 1 tester feedback.
 - **Tech stack**: same as Phase 1 (Next.js + Tailwind, FastAPI, Supabase, Google Gemini, Vercel, Render). New additions: a lightweight email provider (Resend or Postmark free tier) and Server-Sent Events for the Lens pipeline progress stream. Tests: Jest + RTL (frontend), Pytest (backend). Single `.env.local`.
 - **Slicing approach**: every story is an end-to-end vertical slice (UI + API + DB minimum) with explicit test step(s). Parent task IDs are **per-phase** — this file uses `1.0`–`14.0`. All PRD §6 / §8.6 / §11 constraints from Phase 1 continue to apply unchanged.
-- **Prerequisite**: Phase 1 is fully shipped and stable (Onboarding, Pulse, Thread, LLM pipeline, signal monitor, track record, bias audit) and at least one tester cohort has completed three sessions.
+- **Prerequisite**: Phase 1 is fully shipped and stable (Onboarding, Pulse, Thread, LLM pipeline, signal monitor, track record, bias audit); **Phase 1.5 is closed** (performance remediation + Lighthouse CI — see `docs/Post Implementation documentation/Phase1_P1.5 - Performance remediation Pulse and Thread.md`); at least one tester cohort has completed three sessions.
+
+## Performance standards (from Phase 1.5 — apply to every Phase 2 story)
+
+All new and modified **user-facing routes** (Mirror, Lens, Map, settings, etc.) MUST follow these practices established in Phase 1.5. Formal checklist: **`docs/plans/cross-phase-performance-standards.md`** (authored in **P2-S15**).
+
+| Area | Rule | Reference |
+|------|------|-----------|
+| **First paint** | Server-fetch initial data in RSC/`page.tsx`; pass `initialData` into client hooks; avoid client-only waterfall on load | P1.5-S5/S6 — `frontend/lib/api/server.ts` |
+| **Client refetch** | Category filters, view toggles, retry only — keep `fetch(..., { cache: "no-store" })`; verify CORS on `/backend` paths | P1.5-S4/S10 |
+| **Bundles** | `next/dynamic` for heavy below-fold or tab panels; scope editorial fonts to routes that need them | P1.5-S7 |
+| **Backend reads** | One pool connection per request; published feed/card `Cache-Control: private, max-age=60` | P1.5-S2/S3/S4 |
+| **Measurement** | Never treat **`next dev`** Lighthouse as production truth; local parity = `pnpm build && pnpm start` | `scripts/README.md` |
+| **CI budgets** | Mobile: perf ≥90, TBT &lt;200 ms, SI &lt;3400 ms; Desktop: TBT &lt;150 ms, SI &lt;2400 ms | `scripts/lighthouse.mjs`, `scripts/lighthouse-budget.mjs` |
+| **API latency** | Warm **p95 &lt;800 ms** on `/api/feed` and `/api/cards/{id}` (direct or proxy path used in prod) | `scripts/bench_api_latency.mjs` — **closed in P2-S15** (deferred from P1.5 PO sign-off) |
+| **New routes** | When adding an `(app)` page, extend Lighthouse runner + CI in the **same PR** or track under P2-S15 | P1.5-S9/S9b |
+
+**PR checklist (perf):** SSR initial load → dynamic splits for heavy UI → run `pnpm perf:lighthouse` on production URL (or preview) before merge for touched surfaces.
 
 ## Team plan
 
@@ -16,7 +33,7 @@ _generated for independent execution without prd-planner_
 |-----------|-------|---------------|
 | Jordan | Mirror grading service, Lens loading stream, Portfolio Protector backend, **signal-monitor fact pipeline**, cost & rate-limit hardening | 24 |
 | Sam | Mirror UI (prediction list, streak), Lens UI (query / loading / result states), Phase 1 polish iteration | 24 |
-| Riley | Reasoning-gap analysis, resolved-card notification system, email channel, Factor DB expansion to 8 sectors + Map content | 20 |
+| Riley | Reasoning-gap analysis, resolved-card notification system, email channel, Factor DB expansion to 8 sectors + Map content, **P2-S15 perf close-out** | 23 |
 
 ---
 
@@ -38,12 +55,12 @@ _Add the personal learning surface (The Mirror) and the on-demand research surfa
 
 **Acceptance criteria**
 
-- [ ] Route `/(app)/mirror` reachable from sidebar; protected behind auth.
-- [ ] Topbar: "The Mirror" + subtitle + notification badge slot (filled by P2-S3).
-- [ ] Stats strip: four cells per PRD §5 Screen 4 — Playfair 28px number + DM Mono 10px label + Inter 11px subtext. Accuracy numbers coloured green (≥70%) or amber (<70%).
-- [ ] Filter pills above list: All / Resolved / Active / Pending.
-- [ ] Prediction Card per PRD §5: event tag + headline + "Your call: ..." + status badge + three-level accuracy meter; expandable inline (no navigation) to reveal Gap Insight + Map module link.
-- [ ] **Zero rupee figures anywhere on this surface** (PRD §5 Screen 4 design decision) — lint test asserts no `₹` substrings in the page subtree.
+- [x] Route `/(app)/mirror` reachable from sidebar; protected behind auth.
+- [x] Topbar: "The Mirror" + subtitle + notification badge slot (filled by P2-S3).
+- [x] Stats strip: four cells per PRD §5 Screen 4 — Playfair 28px number + DM Mono 10px label + Inter 11px subtext. Accuracy numbers coloured green (≥70%) or amber (<70%).
+- [x] Filter pills above list: All / Resolved / Active / Pending.
+- [x] Prediction Card per PRD §5: event tag + headline + "Your call: ..." + status badge + three-level accuracy meter; expandable inline (no navigation) to reveal Gap Insight + Map module link.
+- [x] **Zero rupee figures anywhere on this surface** (PRD §5 Screen 4 design decision) — lint test asserts no `₹` substrings in the page subtree.
 
 **Tech notes**
 
@@ -68,17 +85,17 @@ _Add the personal learning surface (The Mirror) and the on-demand research surfa
 
 #### Tasks (checkboxes)
 
-- [ ] **1.0** The Mirror — prediction history list + stats strip
-  - [ ] **1.1** `GET /api/mirror/predictions` — filter by status, paginated, includes joined card metadata.
-  - [ ] **1.2** `GET /api/mirror/stats` — total / mechanism % / market % / gaps count.
-  - [ ] **1.3** `mirror_stats.compute(user_id)` pure function with tested thresholds.
-  - [ ] **1.4** Page shell + `StatsStrip` reading the stats endpoint.
-  - [ ] **1.5** `FilterPills` syncing to URL params.
-  - [ ] **1.6** `PredictionCard` with status badge + three accuracy meter slots.
-  - [ ] **1.7** `AccuracyMeter` — three labelled bars (Mechanism / Business Impact / Market Reaction) with correct / partial / incorrect / monitoring states.
-  - [ ] **1.8** `GapInsightExpanded` slot — populated by P2-S4.
-  - [ ] **1.9** Empty state + loading skeleton + error retry.
-  - [ ] **1.10** Test: stats threshold colouring; no-rupee assertion; three independent bars; filter URL sync.
+- [x] **1.0** The Mirror — prediction history list + stats strip
+  - [x] **1.1** `GET /api/mirror/predictions` — filter by status, paginated, includes joined card metadata.
+  - [x] **1.2** `GET /api/mirror/stats` — total / mechanism % / market % / gaps count.
+  - [x] **1.3** `mirror_stats.compute(user_id)` pure function with tested thresholds.
+  - [x] **1.4** Page shell + `StatsStrip` reading the stats endpoint.
+  - [x] **1.5** `FilterPills` syncing to URL params.
+  - [x] **1.6** `PredictionCard` with status badge + three accuracy meter slots.
+  - [x] **1.7** `AccuracyMeter` — three labelled bars (Mechanism / Business Impact / Market Reaction) with correct / partial / incorrect / monitoring states.
+  - [x] **1.8** `GapInsightExpanded` slot — populated by P2-S4.
+  - [x] **1.9** Empty state + loading skeleton + error retry.
+  - [x] **1.10** Test: stats threshold colouring; no-rupee assertion; three independent bars; filter URL sync.
 
 ---
 
@@ -96,11 +113,11 @@ _Add the personal learning surface (The Mirror) and the on-demand research surfa
 
 **Acceptance criteria**
 
-- [ ] Job runs on every card transition to `resolved`; idempotent per (user, card).
-- [ ] Three accuracy fields per `user_predictions` row populated: `mechanism_accuracy`, `business_accuracy`, `market_accuracy` each in `{correct, partial, incorrect, monitoring}`.
-- [ ] Grading inputs are exclusively the immutable Original View (`track_record` Day 1 row) and the final card state — never an interim revision.
-- [ ] Gap Insight text written to `user_predictions.gap_insight` (consumed by P2-S4).
-- [ ] Reasoning encoded — never a generic "markets are unpredictable" (PRD §5 Screen 4 design decision).
+- [x] Job runs on every card transition to `resolved`; idempotent per (user, card).
+- [x] Three accuracy fields per `user_predictions` row populated: `mechanism_accuracy`, `business_accuracy`, `market_accuracy` each in `{correct, partial, incorrect, monitoring}`.
+- [x] Grading inputs are exclusively the immutable Original View (`track_record` Day 1 row) and the final card state — never an interim revision.
+- [x] Gap Insight text written to `user_predictions.gap_insight` (consumed by P2-S4).
+- [x] Reasoning encoded — never a generic "markets are unpredictable" (PRD §5 Screen 4 design decision).
 
 **Tech notes**
 
@@ -119,14 +136,14 @@ _Add the personal learning surface (The Mirror) and the on-demand research surfa
 
 #### Tasks (checkboxes)
 
-- [ ] **2.0** The Mirror — three-level accuracy grading service
-  - [ ] **2.1** Migration: add `mechanism_accuracy`, `business_accuracy`, `market_accuracy`, `gap_insight` to `user_predictions`.
-  - [ ] **2.2** Author `grading.v1.md` with explicit rubric per level + forbid generic gap explanations.
-  - [ ] **2.3** `prediction_grader.grade(prediction, original_card, final_card)` — three-level output + gap insight.
-  - [ ] **2.4** `grade_on_resolve` job hooks card state transition to `resolved`.
-  - [ ] **2.5** Persist three accuracy columns + gap insight + append a row to `track_record` summarising the grade.
-  - [ ] **2.6** Idempotency: re-running job on already-graded predictions is a no-op.
-  - [ ] **2.7** Test: fixture-card grading; assert Original View is the source; idempotency test.
+- [x] **2.0** The Mirror — three-level accuracy grading service
+  - [x] **2.1** Migration: add `mechanism_accuracy`, `business_accuracy`, `market_accuracy`, `gap_insight` to `user_predictions`.
+  - [x] **2.2** Author `grading.v1.md` with explicit rubric per level + forbid generic gap explanations.
+  - [x] **2.3** `prediction_grader.grade(prediction, original_card, final_card)` — three-level output + gap insight.
+  - [x] **2.4** `grade_on_resolve` job hooks card state transition to `resolved`.
+  - [x] **2.5** Persist three accuracy columns + gap insight + append a row to `track_record` summarising the grade.
+  - [x] **2.6** Idempotency: re-running job on already-graded predictions is a no-op.
+  - [x] **2.7** Test: fixture-card grading; assert Original View is the source; idempotency test.
 
 ---
 
@@ -144,16 +161,16 @@ _Add the personal learning surface (The Mirror) and the on-demand research surfa
 
 **Acceptance criteria**
 
-- [ ] Badge visible only when ≥1 of the user's predictions has just transitioned to a graded state and the user has not yet viewed it.
-- [ ] Tapping the badge scrolls/expands the relevant card in the prediction history (P2-S1 list).
-- [ ] Dismissal happens only on view, not on tap-away.
-- [ ] Notifications table reused from Phase 1 (P1-S11) with a new `kind='card_graded'` value.
+- [x] Badge visible only when ≥1 of the user's predictions has just transitioned to a graded state and the user has not yet viewed it.
+- [x] Tapping the badge scrolls/expands the relevant card in the prediction history (P2-S1 list).
+- [x] Dismissal happens only on view, not on tap-away.
+- [x] Notifications table reused from Phase 1 (P1-S11) with a new `kind='card_graded'` value.
 
 #### Relevant files
 
 | Path | Type | Purpose |
 |------|------|---------|
-| `backend/db/migrations/0011_notifications_kind_enum.sql` | create | Add `card_graded` enum value |
+| `backend/db/migrations/0015_notifications_card_graded_read_at.sql` | create | `read_at` + index for unread `card_graded` |
 | `backend/app/services/notify_on_grade.py` | create | Fan-out on resolve |
 | `backend/app/api/mirror_notifications.py` | create | `GET /api/mirror/notifications/unread` |
 | `frontend/app/(app)/mirror/_components/ResolvedBadge.tsx` | create | Pulsing badge |
@@ -163,14 +180,14 @@ _Add the personal learning surface (The Mirror) and the on-demand research surfa
 
 #### Tasks (checkboxes)
 
-- [ ] **3.0** Resolved-card notification system + topbar badge
-  - [ ] **3.1** Add `card_graded` to notification kind enum.
-  - [ ] **3.2** `notify_on_grade.fan_out(card_id)` — one notification per user with a graded prediction.
-  - [ ] **3.3** `GET /api/mirror/notifications/unread` returns count + list.
-  - [ ] **3.4** `ResolvedBadge` with pulsing dot animation (reuses §8.6 keyframe).
-  - [ ] **3.5** `ReadyToGradePanel` right-panel — green-tinted items, each clickable to scroll/expand the card.
-  - [ ] **3.6** Mark notification read on viewport-intersection with the corresponding card (not on tap-elsewhere).
-  - [ ] **3.7** Test: fan-out scope; badge hidden when zero unread; RTL pulsing-class assertion.
+- [x] **3.0** Resolved-card notification system + topbar badge
+  - [x] **3.1** Add `card_graded` to notification kind enum.
+  - [x] **3.2** `notify_on_grade.fan_out(card_id)` — one notification per user with a graded prediction.
+  - [x] **3.3** `GET /api/mirror/notifications/unread` returns count + list.
+  - [x] **3.4** `ResolvedBadge` with pulsing dot animation (reuses §8.6 keyframe).
+  - [x] **3.5** `ReadyToGradePanel` right-panel — green-tinted items, each clickable to scroll/expand the card.
+  - [x] **3.6** Mark notification read on viewport-intersection with the corresponding card (not on tap-elsewhere).
+  - [x] **3.7** Test: fan-out scope; badge hidden when zero unread; RTL pulsing-class assertion.
 
 ---
 
@@ -231,10 +248,10 @@ _Add the personal learning surface (The Mirror) and the on-demand research surfa
 
 **Acceptance criteria**
 
-- [ ] Grid renders 14 cells, each colour-coded green / amber / red / grey / transparent per PRD §5 Screen 4 spec.
-- [ ] DM Mono letters inside cells: `M / P / ✗ / · / –`.
-- [ ] Summary paragraph below grid compares mechanism % to market % and explains why a gap is normal.
-- [ ] Sorted most recent first; missing slots render transparent.
+- [x] Grid renders 14 cells, each colour-coded green / amber / red / grey / transparent per PRD §5 Screen 4 spec.
+- [x] DM Mono letters inside cells: `M / P / ✗ / · / –`.
+- [x] Summary paragraph below grid compares mechanism % to market % and explains why a gap is normal.
+- [x] Sorted most recent first; missing slots render transparent.
 
 #### Relevant files
 
@@ -248,12 +265,12 @@ _Add the personal learning surface (The Mirror) and the on-demand research surfa
 
 #### Tasks (checkboxes)
 
-- [ ] **5.0** Streak tracker grid + summary
-  - [ ] **5.1** `GET /api/mirror/streak` returns last 14 grading events (some may be `monitoring` / transparent).
-  - [ ] **5.2** `StreakTracker` renders 14 cells, exact colour map from PRD §8.3.
-  - [ ] **5.3** `StreakSummary` compares mechanism % vs market % and templates the explanation paragraph.
-  - [ ] **5.4** Legend row below the grid.
-  - [ ] **5.5** Test: ordering most-recent first; transparent rendering for missing slots; summary numerics.
+- [x] **5.0** Streak tracker grid + summary
+  - [x] **5.1** `GET /api/mirror/streak` returns last 14 grading events (some may be `monitoring` / transparent).
+  - [x] **5.2** `StreakTracker` renders 14 cells, exact colour map from PRD §8.3.
+  - [x] **5.3** `StreakSummary` compares mechanism % vs market % and templates the explanation paragraph.
+  - [x] **5.4** Legend row below the grid.
+  - [x] **5.5** Test: ordering most-recent first; transparent rendering for missing slots; summary numerics.
 
 ---
 
@@ -271,14 +288,14 @@ _Add the personal learning surface (The Mirror) and the on-demand research surfa
 
 **Acceptance criteria**
 
-- [ ] Route `/(app)/lens` reachable from sidebar; sidebar shows the Phase 2 purple badge in topbar.
-- [ ] Query text area min 80px, placeholder exactly as PRD §5 Screen 5.
-- [ ] Sector + Horizon optional dropdowns in the query-box footer.
-- [ ] "Generate card →" disabled until input >10 chars.
-- [ ] DM Mono time-estimate note: "Cards take 30–90 seconds to generate."
-- [ ] 2×3 example query grid with coloured category tags; clicking fills the textarea.
-- [ ] Recent query history list with relative dates; clicking navigates to result state for that query.
-- [ ] No page navigation between input / loading / result states.
+- [x] Route `/(app)/lens` reachable from sidebar; sidebar shows the Phase 2 purple badge in topbar.
+- [x] Query text area min 80px, placeholder exactly as PRD §5 Screen 5.
+- [x] Sector + Horizon optional dropdowns in the query-box footer.
+- [x] "Generate card →" disabled until input >10 chars.
+- [x] DM Mono time-estimate note: "Cards take 30–90 seconds to generate."
+- [x] 2×3 example query grid with coloured category tags; clicking fills the textarea.
+- [x] Recent query history list with relative dates; clicking navigates to result state for that query.
+- [x] No page navigation between input / loading / result states.
 
 #### Relevant files
 
@@ -290,24 +307,24 @@ _Add the personal learning surface (The Mirror) and the on-demand research surfa
 | `frontend/app/(app)/lens/_components/QueryHistory.tsx` | create | Recent queries |
 | `frontend/app/(app)/lens/_components/PhaseBadge.tsx` | create | Purple Phase 2 pill |
 | `frontend/lib/lens/useLensState.ts` | create | Query/Loading/Result state machine |
-| `backend/db/migrations/0012_lens_queries.sql` | create | `lens_queries(id, user_id, query, sector, horizon, status, created_at)` |
+| `backend/db/migrations/0016_lens_queries.sql` | create | `lens_queries(id, user_id, query, sector, horizon, status, created_at)` |
 | `backend/app/api/lens.py` | create | `POST /api/lens/queries` + `GET /api/lens/queries/me` |
 | `frontend/lib/lens/useLensState.test.ts` | create | State-machine tests |
 | `frontend/app/(app)/lens/_components/QueryInput.test.tsx` | create | CTA disabled <10 chars |
 
 #### Tasks (checkboxes)
 
-- [ ] **6.0** The Lens — query input + history + examples
-  - [ ] **6.1** Migration: `lens_queries` table with `status` enum (`queued`, `running`, `done`, `failed`).
-  - [ ] **6.2** `POST /api/lens/queries` creates a row, returns id, enqueues for generation.
-  - [ ] **6.3** `GET /api/lens/queries/me` returns user's recent 20.
-  - [ ] **6.4** `useLensState` reducer: `idle → submitting → loading → result | error`. URL hash for shareability.
-  - [ ] **6.5** `QueryInput` with sector + horizon dropdowns; CTA disabled <10 chars.
-  - [ ] **6.6** Time-estimate note below box (DM Mono 10px slate-400).
-  - [ ] **6.7** `ExampleGrid` with six static examples covering Macro / RBI / Regulatory / India-specific / Geopolitical / Budget.
-  - [ ] **6.8** `QueryHistory` list with relative dates.
-  - [ ] **6.9** `PhaseBadge` purple pill in topbar.
-  - [ ] **6.10** Test: state-machine transitions; CTA gating; example-tap fills textarea.
+- [x] **6.0** The Lens — query input + history + examples
+  - [x] **6.1** Migration: `lens_queries` table with `status` enum (`queued`, `running`, `done`, `failed`).
+  - [x] **6.2** `POST /api/lens/queries` creates a row, returns id, enqueues for generation.
+  - [x] **6.3** `GET /api/lens/queries/me` returns user's recent 20.
+  - [x] **6.4** `useLensState` reducer: `idle → submitting → loading → result | error`. URL hash for shareability.
+  - [x] **6.5** `QueryInput` with sector + horizon dropdowns; CTA disabled <10 chars.
+  - [x] **6.6** Time-estimate note below box (DM Mono 10px slate-400).
+  - [x] **6.7** `ExampleGrid` with six static examples covering Macro / RBI / Regulatory / India-specific / Geopolitical / Budget.
+  - [x] **6.8** `QueryHistory` list with relative dates.
+  - [x] **6.9** `PhaseBadge` purple pill in topbar.
+  - [x] **6.10** Test: state-machine transitions; CTA gating; example-tap fills textarea.
 
 ---
 
@@ -564,7 +581,8 @@ _Add the personal learning surface (The Mirror) and the on-demand research surfa
 - [ ] Backlog of tester findings captured in `notes/phase1-feedback-backlog.md` (gitignored), each item triaged P0/P1/P2.
 - [ ] All P0 findings closed before any P2 story ships to testers.
 - [ ] WCAG AA contrast verified on PRD §8.3 palette; automated check via `axe` in tests.
-- [ ] Lighthouse score ≥90 on Pulse, Thread, Mirror, Lens.
+- [ ] Lighthouse score ≥90 on Pulse, Thread (continuous — harness from P1.5-S9); Mirror, Lens, Map budgets enforced after **P2-S15** extends the runner.
+- [ ] New/changed routes follow **`docs/plans/cross-phase-performance-standards.md`** (SSR, bundle splits, no `next dev` benchmarking).
 
 #### Relevant files
 
@@ -572,7 +590,8 @@ _Add the personal learning surface (The Mirror) and the on-demand research surfa
 |------|------|---------|
 | `notes/phase1-feedback-backlog.md` | create | Triaged backlog (gitignored) |
 | `frontend/tests/a11y/*.test.tsx` | create | `axe` automated checks per surface |
-| `scripts/lighthouse.mjs` | create | Lighthouse CI harness |
+| `scripts/lighthouse.mjs` | modify | Extend URLs for new surfaces (**P2-S15**) |
+| `docs/plans/cross-phase-performance-standards.md` | create | Cross-phase perf checklist (**P2-S15**) |
 
 #### Tasks (checkboxes)
 
@@ -580,9 +599,9 @@ _Add the personal learning surface (The Mirror) and the on-demand research surfa
   - [ ] **12.1** Collect + triage Phase 1 tester feedback into `notes/phase1-feedback-backlog.md`.
   - [ ] **12.2** Close every P0 item.
   - [ ] **12.3** Add `axe` automated a11y check across Pulse, Thread, Mirror, Lens.
-  - [ ] **12.4** Lighthouse CI configured for the four surfaces; budget ≥90.
+  - [ ] **12.4** Pulse + Thread remain green on existing P1.5 Lighthouse CI job; Mirror/Lens/Map extension tracked in **P2-S15**.
   - [ ] **12.5** Copy clarity pass on Insight Panel + Instrument Card reasoning blocks.
-  - [ ] **12.6** Test: a11y suite green; Lighthouse budget enforced in CI.
+  - [ ] **12.6** Test: a11y suite green; Pulse/Thread Lighthouse budgets enforced in CI.
 
 ---
 
@@ -670,6 +689,65 @@ _Add the personal learning surface (The Mirror) and the on-demand research surfa
 
 ---
 
+### Story P2-S15 — Phase 1.5 performance debt closure + cross-phase standards (ad-hoc, end of Phase 2)
+
+- **Assigned:** Riley
+- **Points:** 3
+- **Layers:** Ops, Docs, CI, API (validation)
+- **Depends on:** P2-S1 (Mirror), P2-S6/S8 (Lens), P2-S11 (Map), P1.5-S9/S9b (harness), P1.5-S10 (sign-off evidence)
+- **Parallel with:** _None — run last in Phase 2 (Months 8–9)_
+
+**User story**
+
+> As the Product Owner, I want the Phase 1.5 performance benchmarks that were accepted as deferrals at phase close to be met on production, and a written standard so every Phase 2 (and later Phase 3) page inherits SSR, bundle, Lighthouse, and API bench practices — so we do not regress as surface area grows.
+
+**Context (from P1.5-S10 PO sign-off, 23-05-2026)**
+
+- Proxy warm API p95 was ~**1.75 s** vs target **&lt;800 ms** (improved from ~8 s baseline).
+- Mobile LCP ~**2.6 s** vs **2.5 s** “meaningful content” target — optional polish if cheap.
+
+**Acceptance criteria**
+
+- [ ] `docs/plans/cross-phase-performance-standards.md` checked in — checklist derived from Phase 1.5 (SSR, caching, pool, fonts, measurement, CI budgets); **required reading** for Phase 3 stories that add routes.
+- [ ] `scripts/bench_api_latency.mjs` post-deploy: **feed + card detail warm p95 &lt;800 ms** on the production path (Vercel `/backend/...` proxy and/or Render direct — document both in sign-off note).
+- [ ] `scripts/lighthouse.mjs` extended to audit **Mirror, Lens, Map** (in addition to Pulse + Thread); mobile + desktop profiles; CI job fails on budget miss (same thresholds as P1.5-S9/S9b).
+- [ ] Each new Phase 2 route audited: RSC initial load, dynamic imports for heavy panels, no full-app font pull on light pages.
+- [ ] Post-remediation JSON saved under `Page Load Performance/` for all six surfaces (Pulse, Thread, Mirror, Lens, Map index, one Map slug) — mobile + desktop sample.
+- [ ] Phase 2 close note in `docs/Post Implementation documentation/` or PR summary links evidence + standards doc.
+
+**Tech notes**
+
+- Reuse existing harness — do not fork Lighthouse logic. Add URL list / env vars e.g. `LIGHTHOUSE_MIRROR=1`, `LIGHTHOUSE_MAP_SLUG=...`.
+- Bench requires `BENCH_API_DIRECT_URL` set to Render production origin (not loopback `.env.local`).
+- If p95 cannot reach 800 ms after one focused tuning pass, document root cause (query ms vs proxy) and PO re-acceptance — do not silently waive.
+
+#### Relevant files
+
+| Path | Type | Purpose |
+|------|------|---------|
+| `docs/plans/cross-phase-performance-standards.md` | create | Cross-phase perf checklist (Phase 2 + 3) |
+| `scripts/lighthouse.mjs` | modify | Add Mirror, Lens, Map URLs |
+| `scripts/lighthouse-budget.mjs` | modify | Surface list / helpers if needed |
+| `scripts/bench_api_latency.mjs` | reference | Post-deploy p50/p95 evidence |
+| `.github/workflows/ci.yml` | modify | Lighthouse job includes new surfaces |
+| `scripts/README.md` | modify | Document new URLs + Phase 2 close bench |
+| `frontend/app/(app)/mirror/page.tsx` | review | SSR / initialData pattern |
+| `frontend/app/(app)/lens/**` | review | Stream + result; avoid dev-only perf assumptions |
+| `frontend/app/(app)/map/**` | review | RSC + matrix lazy load |
+| `Page Load Performance/*.json` | reference | Archive |
+
+#### Tasks (checkboxes)
+
+- [ ] **15.0** Phase 1.5 performance debt closure + cross-phase standards
+  - [ ] **15.1** Author `docs/plans/cross-phase-performance-standards.md` (Phase 1.5 learnings → mandatory PR checklist).
+  - [ ] **15.2** Run `bench_api_latency.mjs` on production; tune proxy/query until feed + card **p95 &lt;800 ms** OR document blocker + PO decision.
+  - [ ] **15.3** Extend `lighthouse.mjs` + CI for Mirror, Lens, Map (mobile + desktop).
+  - [ ] **15.4** Perf audit each Phase 2 route (SSR, dynamic imports, fonts) — file issues for gaps.
+  - [ ] **15.5** Capture and archive Lighthouse JSON for six surfaces; assert budgets locally.
+  - [ ] **15.6** Phase 2 performance close-out note linked from implementation plan.
+
+---
+
 ## Risks
 
 - **Mirror grading mis-reads cards** — Mitigated by P2-S2 grading using Original View only + per-level rubric in `grading.v1.md` + explicit forbid-generic-gaps. Add a spot-check ritual to `docs/plans/phase2-go-no-go.md`.
@@ -679,6 +757,7 @@ _Add the personal learning surface (The Mirror) and the on-demand research surfa
 - **Factor DB expansion quality** — P2-S11 keeps MMJ + source invariant from Phase 1; coverage test prevents partial seeds shipping.
 - **Signal gate over-fit to headlines** — P2-S14 adds market-leaning fact streams so P1-S11 gates are not driven only by `events` titles; monitor failures fall back to partial coverage with logged skips.
 - **Reasoning-gap heuristics produce trivial gaps** — P2-S4 tests must include negative fixtures (insufficient history → suppress panel).
+- **Performance regression on new surfaces** — Mitigated by § Performance standards + **P2-S15** (extend Lighthouse CI, close API p95 debt, cross-phase checklist for Phase 3).
 
 ## Recommendations
 
@@ -687,6 +766,7 @@ _Add the personal learning surface (The Mirror) and the on-demand research surfa
 - The Lens stack (S6 + S7 + S8) is one developer pair-week per story; tackle in sequence to keep stream contract clean.
 - P2-S12 (polish) is a continuous trickle — schedule one half-day per week, not a single sprint.
 - **P2-S14** (signal fact pipeline) should land before you rely on auto-gated signal actions at scale; keep event-only corroboration in Phase 1 until then.
+- **P2-S15** is the **mandatory Phase 2 exit gate** for performance — schedule in Months 8–9 after Mirror, Lens, and Map routes exist; do not start Phase 3 public surfaces until S15 is green or explicitly re-waived by PO.
 
 ---
 
@@ -698,9 +778,9 @@ Suggested order (Months 4–9, 24 weeks):
 2. **Month 5:** Sam P2-S6 + P2-S8 (Lens UI). Jordan P2-S7 (Lens stream). Riley P2-S4 (gaps) + continues P2-S11 (sectors 4–6).
 3. **Month 6:** Jordan P2-S9 (personalisation) + **starts P2-S14** (signal fact pipeline). Riley P2-S10 (email) + P2-S11 (sectors 7–8). Sam P2-S12 (polish trickle).
 4. **Month 7:** Jordan P2-S13 (rate-limit + observability); **finish P2-S14** if not done. Riley finishes P2-S11 + Map modules linked to gaps. Sam polish + Phase 2 tester onboarding.
-5. **Month 8–9:** Soak test, Phase 2 tester cohort, feedback iteration, prepare Phase 3 go/no-go.
+5. **Month 8–9:** Soak test, Phase 2 tester cohort, feedback iteration; **Riley P2-S15** (API p95 closure, Lighthouse on all Phase 2 surfaces, `cross-phase-performance-standards.md`); then prepare Phase 3 go/no-go.
 
-Parallel-safe pairs: `{S1, S2, S6, S11}` in Month 4; `{S3, S4, S5, S7, S8}` in Month 5; `{S9, S10, S13, S14}` in Month 6–7.
+Parallel-safe pairs: `{S1, S2, S6, S11}` in Month 4; `{S3, S4, S5, S7, S8}` in Month 5; `{S9, S10, S13, S14}` in Month 6–7. **P2-S15 is sequential last** (depends on S1, S6, S11).
 
 ---
 
@@ -711,6 +791,7 @@ Parallel-safe pairs: `{S1, S2, S6, S11}` in Month 4; `{S3, S4, S5, S7, S8}` in M
 - Same test placement and commands as Phase 1.
 - Reuse `.env.local`; add only new keys (`EMAIL_API_KEY`, `EMAIL_FROM`, `EMAIL_PROVIDER`).
 - All Phase 1 invariants (SEBI footer, MMJ tags, append-only `track_record`, no buy/sell/hold) continue to apply.
+- **Phase 1.5 performance:** follow § Performance standards on every story; close deferred benchmarks in **P2-S15** (`scripts/README.md`, `Phase1_P1.5 - Performance remediation Pulse and Thread.md`).
 
 ### Relevant Files (rollup)
 
@@ -733,14 +814,14 @@ Parallel-safe pairs: `{S1, S2, S6, S11}` in Month 4; `{S3, S4, S5, S7, S8}` in M
 
 ### Tasks by developer — Jordan
 
-- [ ] **2.0** Mirror — three-level accuracy grading service
-  - [ ] **2.1** Accuracy column migration
-  - [ ] **2.2** `grading.v1.md`
-  - [ ] **2.3** `prediction_grader.grade()`
-  - [ ] **2.4** `grade_on_resolve` job
-  - [ ] **2.5** Persist + append `track_record`
-  - [ ] **2.6** Idempotency
-  - [ ] **2.7** Grader + Original-View tests
+- [x] **2.0** Mirror — three-level accuracy grading service
+  - [x] **2.1** Accuracy column migration
+  - [x] **2.2** `grading.v1.md`
+  - [x] **2.3** `prediction_grader.grade()`
+  - [x] **2.4** `grade_on_resolve` job
+  - [x] **2.5** Persist + append `track_record`
+  - [x] **2.6** Idempotency
+  - [x] **2.7** Grader + Original-View tests
 - [ ] **7.0** Lens — live six-step pipeline stream
   - [ ] **7.1** `lens_pipeline.run()` milestones
   - [ ] **7.2** SSE endpoint
@@ -774,23 +855,23 @@ Parallel-safe pairs: `{S1, S2, S6, S11}` in Month 4; `{S3, S4, S5, S7, S8}` in M
 
 ### Tasks by developer — Sam
 
-- [ ] **1.0** Mirror — prediction history list + stats strip
-  - [ ] **1.1** `/api/mirror/predictions`
-  - [ ] **1.2** `/api/mirror/stats`
-  - [ ] **1.3** `mirror_stats.compute()`
-  - [ ] **1.4** `StatsStrip`
-  - [ ] **1.5** `FilterPills` URL sync
-  - [ ] **1.6** `PredictionCard`
-  - [ ] **1.7** `AccuracyMeter`
-  - [ ] **1.8** `GapInsightExpanded` slot
-  - [ ] **1.9** Empty / loading / error
-  - [ ] **1.10** No-`₹` + bars + filter-sync tests
-- [ ] **5.0** Mirror — streak tracker grid + summary
-  - [ ] **5.1** `/api/mirror/streak`
-  - [ ] **5.2** `StreakTracker` grid
-  - [ ] **5.3** `StreakSummary` paragraph
-  - [ ] **5.4** Legend row
-  - [ ] **5.5** Ordering + transparent + summary tests
+- [x] **1.0** Mirror — prediction history list + stats strip
+  - [x] **1.1** `/api/mirror/predictions`
+  - [x] **1.2** `/api/mirror/stats`
+  - [x] **1.3** `mirror_stats.compute()`
+  - [x] **1.4** `StatsStrip`
+  - [x] **1.5** `FilterPills` URL sync
+  - [x] **1.6** `PredictionCard`
+  - [x] **1.7** `AccuracyMeter`
+  - [x] **1.8** `GapInsightExpanded` slot
+  - [x] **1.9** Empty / loading / error
+  - [x] **1.10** No-`₹` + bars + filter-sync tests
+- [x] **5.0** Mirror — streak tracker grid + summary
+  - [x] **5.1** `/api/mirror/streak`
+  - [x] **5.2** `StreakTracker` grid
+  - [x] **5.3** `StreakSummary` paragraph
+  - [x] **5.4** Legend row
+  - [x] **5.5** Ordering + transparent + summary tests
 - [ ] **6.0** Lens — query input + history + examples
   - [ ] **6.1** `lens_queries` migration
   - [ ] **6.2** `POST /api/lens/queries`
@@ -823,14 +904,14 @@ Parallel-safe pairs: `{S1, S2, S6, S11}` in Month 4; `{S3, S4, S5, S7, S8}` in M
 
 ### Tasks by developer — Riley
 
-- [ ] **3.0** Resolved-card notification system + topbar badge
-  - [ ] **3.1** `card_graded` enum value
-  - [ ] **3.2** `notify_on_grade` fan-out
-  - [ ] **3.3** `/api/mirror/notifications/unread`
-  - [ ] **3.4** `ResolvedBadge` pulsing
-  - [ ] **3.5** `ReadyToGradePanel`
-  - [ ] **3.6** Read-on-viewport-intersect
-  - [ ] **3.7** Scope + visibility + pulse tests
+- [x] **3.0** Resolved-card notification system + topbar badge
+  - [x] **3.1** `card_graded` enum value
+  - [x] **3.2** `notify_on_grade` fan-out
+  - [x] **3.3** `/api/mirror/notifications/unread`
+  - [x] **3.4** `ResolvedBadge` pulsing
+  - [x] **3.5** `ReadyToGradePanel`
+  - [x] **3.6** Read-on-viewport-intersect
+  - [x] **3.7** Scope + visibility + pulse tests
 - [ ] **4.0** Reasoning-gap analysis + Map module linking
   - [ ] **4.1** Gap taxonomy
   - [ ] **4.2** `reasoning_gap_detector.analyse()`
@@ -856,6 +937,13 @@ Parallel-safe pairs: `{S1, S2, S6, S11}` in Month 4; `{S3, S4, S5, S7, S8}` in M
   - [ ] **11.5** Map sector-detail page
   - [ ] **11.6** Cross-link gaps → modules
   - [ ] **11.7** Coverage + linked-modules tests
+- [ ] **15.0** Phase 1.5 performance debt closure + cross-phase standards
+  - [ ] **15.1** `cross-phase-performance-standards.md`
+  - [ ] **15.2** Production bench p95 &lt;800 ms
+  - [ ] **15.3** Lighthouse CI — Mirror, Lens, Map
+  - [ ] **15.4** Route perf audit (SSR, splits, fonts)
+  - [ ] **15.5** Archive Lighthouse JSON (6 surfaces)
+  - [ ] **15.6** Phase 2 performance close-out note
 
 ---
 

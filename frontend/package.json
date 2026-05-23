@@ -8,7 +8,10 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "test": "jest"
+    "test": "jest",
+    "perf:lighthouse": "node ../scripts/lighthouse.mjs",
+    "perf:lighthouse:desktop": "node ../scripts/lighthouse.mjs --desktop",
+    "perf:lighthouse:budget-test": "node ../scripts/lighthouse-budget.test.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.3",
@@ -33,10 +36,12 @@
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
     "autoprefixer": "^10.4.21",
+    "chrome-launcher": "^1.1.2",
     "eslint": "^8.57.1",
     "eslint-config-next": "^14.2.28",
     "jest": "^29.7.0",
     "jest-environment-jsdom": "^29.7.0",
+    "lighthouse": "^12.6.0",
     "postcss": "^8.5.3",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.8.2"

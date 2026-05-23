@@ -35,16 +35,18 @@ Thread was measured ~90s after Pulse; both API calls still took ~7.7–8.3s — 
 
 ## Phase 1.5: Performance Remediation
 
+**Status: CLOSED** — Product Owner sign-off **23-05-2026** (`Phase1_P1.5 - Performance remediation Pulse and Thread.md`). Phase 2 may proceed. Deferred API p95 / standards carry-forward: **P2-S15** in `finnwise-phase2-implementation-tasks.md` + `docs/plans/cross-phase-performance-standards.md`.
+
 _Fix the ~8s API path and client-side data waterfall so Pulse and Thread reach meaningful content in under 2.5s and Lighthouse Performance ≥90 on mobile._ · **Duration estimate:** 2–3 weeks.
 
 ### Definition of Done (phase-wide)
 
-- [ ] Pulse and Thread Lighthouse **Performance ≥90** (mobile, production URLs).
-- [ ] **Speed Index <3.4s**, **TBT <200ms** on both surfaces.
-- [ ] **Time to meaningful content <2.5s** (feed cards visible / card title + ICE header visible).
-- [ ] Warm API **p95 <800ms** for `/api/feed` and `/api/cards/{id}` (measured via bench script + server timing headers).
-- [ ] Existing pytest/Jest suites green; new perf/a11y tests added where specified.
-- [ ] No regression to MMJ, SEBI, bias-flag, or track-record behavior.
+- [x] Pulse and Thread Lighthouse **Performance ≥90** (mobile, production URLs). _Saved runner traces 23-05-2026: 96 / 96 — see `Phase1_P1.5 - Performance remediation Pulse and Thread.md`._
+- [x] **Speed Index <3.4s**, **TBT <200ms** on both surfaces. _Met on saved mobile JSON; ad-hoc runs can exceed SI budget (variance)._
+- [x] **Time to meaningful content <2.5s** (feed cards visible / card title + ICE header visible). _PO accepted: mobile LCP ~2.58–2.60 s (marginal vs 2.5 s target); desktop sub-1 s; SSR removes ~8 s waterfall._
+- [x] Warm API **p95 <800ms** for `/api/feed` and `/api/cards/{id}` (measured via bench script + server timing headers). _PO accepted deferral: proxy p95 ~1.75 s recorded; improvement from ~8 s baseline; follow-up optional (ops/query), not blocking Phase 2._
+- [x] Existing pytest/Jest suites green; new perf/a11y tests added where specified. _(No regressions introduced in S10; suites unchanged.)_
+- [x] No regression to MMJ, SEBI, bias-flag, or track-record behavior. _(S10 validation-only.)_
 
 ---
 
@@ -326,11 +328,11 @@ _Fix the ~8s API path and client-side data waterfall so Pulse and Thread reach m
 
 **Acceptance criteria**
 
-- [ ] ICE tab panels (`InsightLayer`, `ContextLayer`, `EvidenceLayer`) lazy-loaded via `next/dynamic` — active tab first.
-- [ ] Aside widgets lazy-loaded: `BiasFlags`, `ConfidenceComposition`, `LifecycleTracker`, `SignalsToWatch`.
-- [ ] Inter remains global; Playfair + DM Mono scoped to Thread/editorial routes (or subset).
-- [ ] Pulse skeleton rows use fixed height to prevent layout shift (minor CLS in baseline trace).
-- [ ] Thread TBT **<250ms** in Lighthouse (target **<200ms** combined with S5/S6).
+- [x] ICE tab panels (`InsightLayer`, `ContextLayer`, `EvidenceLayer`) lazy-loaded via `next/dynamic` — active tab first.
+- [x] Aside widgets lazy-loaded: `BiasFlags`, `ConfidenceComposition`, `LifecycleTracker`, `SignalsToWatch`.
+- [x] Inter remains global; Playfair + DM Mono scoped to Thread/editorial routes (or subset).
+- [x] Pulse skeleton rows use fixed height to prevent layout shift (minor CLS in baseline trace).
+- [x] Thread TBT **<250ms** in Lighthouse (target **<200ms** combined with S5/S6).
 
 #### Relevant files
 
@@ -343,12 +345,12 @@ _Fix the ~8s API path and client-side data waterfall so Pulse and Thread reach m
 
 #### Tasks (checkboxes)
 
-- [ ] **1.5.7** Thread bundle and font diet
-  - [ ] **1.5.7.1** Dynamic-import ICE layers in `ThreadExperience.tsx`.
-  - [ ] **1.5.7.2** Dynamic-import aside components.
-  - [ ] **1.5.7.3** Reduce font payload — scope Playfair/DM Mono to Thread or subset.
-  - [ ] **1.5.7.4** Fix Pulse CLS with fixed-height skeleton rows.
-  - [ ] **1.5.7.5** Re-run Lighthouse on Thread — TBT target met.
+- [x] **1.5.7** Thread bundle and font diet
+  - [x] **1.5.7.1** Dynamic-import ICE layers in `ThreadExperience.tsx`.
+  - [x] **1.5.7.2** Dynamic-import aside components.
+  - [x] **1.5.7.3** Reduce font payload — scope Playfair/DM Mono to Thread or subset.
+  - [x] **1.5.7.4** Fix Pulse CLS with fixed-height skeleton rows.
+  - [x] **1.5.7.5** Re-run Lighthouse on Thread — TBT target met.
 
 ---
 
@@ -404,11 +406,11 @@ _Fix the ~8s API path and client-side data waterfall so Pulse and Thread reach m
 
 **Acceptance criteria**
 
-- [ ] `scripts/lighthouse.mjs` runs against production (or staging) URLs for `/pulse` and `/thread/{cardId}`.
-- [ ] Env var `LIGHTHOUSE_THREAD_CARD_ID` selects a known published card for Thread runs.
-- [ ] `pnpm perf:lighthouse` script in `frontend/package.json`.
-- [ ] GitHub Actions job asserts: Performance ≥90, TBT <200ms, Speed Index <3400ms.
-- [ ] Optional: `frontend/tests/a11y/thread.test.tsx` with axe for contrast/landmarks.
+- [x] `scripts/lighthouse.mjs` runs against production (or staging) URLs for `/pulse` and `/thread/{cardId}`.
+- [x] Env var `LIGHTHOUSE_THREAD_CARD_ID` selects a known published card for Thread runs.
+- [x] `pnpm perf:lighthouse` script in `frontend/package.json`.
+- [x] GitHub Actions job asserts: Performance ≥90, TBT <200ms, Speed Index <3400ms.
+- [ ] Optional: `frontend/tests/a11y/thread.test.tsx` with axe for contrast/landmarks. _(deferred — S8 a11y skipped)_
 
 #### Relevant files
 
@@ -422,12 +424,54 @@ _Fix the ~8s API path and client-side data waterfall so Pulse and Thread reach m
 
 #### Tasks (checkboxes)
 
-- [ ] **1.5.9** Lighthouse CI harness and budgets
-  - [ ] **1.5.9.1** Create `scripts/lighthouse.mjs` with mobile config matching baseline traces.
-  - [ ] **1.5.9.2** Add npm script + document env vars.
-  - [ ] **1.5.9.3** Wire CI job with budget assertions.
-  - [ ] **1.5.9.4** Optional axe test for Thread landmarks/contrast.
-  - [ ] **1.5.9.5** Verify CI fails when budgets intentionally regressed (smoke test).
+- [x] **1.5.9** Lighthouse CI harness and budgets
+  - [x] **1.5.9.1** Create `scripts/lighthouse.mjs` with mobile config matching baseline traces.
+  - [x] **1.5.9.2** Add npm script + document env vars.
+  - [x] **1.5.9.3** Wire CI job with budget assertions.
+  - [ ] **1.5.9.4** Optional axe test for Thread landmarks/contrast. _(deferred — S8 skipped)_
+  - [x] **1.5.9.5** Verify CI fails when budgets intentionally regressed (smoke test).
+
+---
+
+### Story P1.5-S9b — Desktop Lighthouse harness and budgets
+
+- **Assigned:** Riley
+- **Points:** 1
+- **Layers:** CI, Ops
+- **Depends on:** P1.5-S9 (shared `scripts/lighthouse.mjs` + budget helpers)
+- **Parallel with:** P1.5-S10
+
+**User story**
+
+> As the team, I want the same Lighthouse CI harness to run a **desktop** profile on Pulse and Thread, so that we can track wide-viewport performance separately from mobile and avoid regressions on laptop users.
+
+**Acceptance criteria**
+
+- [x] `scripts/lighthouse.mjs` supports `--desktop` (or `LIGHTHOUSE_FORM_FACTOR=desktop`) with Lighthouse desktop emulation (1350×940, 1× CPU, fast connection).
+- [x] `pnpm perf:lighthouse:desktop` script in `frontend/package.json`.
+- [x] Desktop budgets documented: Performance ≥90, TBT <150ms, Speed Index <2400ms (initial; tune after baseline).
+- [x] CI runs desktop audits (`continue-on-error` until production desktop JSON baselines captured in S10).
+- [x] Production desktop JSON traces saved under `Page Load Performance/` and budgets adjusted if needed (S10 task).
+- [x] Remove `continue-on-error` on desktop CI step once baselines pass consistently.
+
+#### Relevant files
+
+| Path | Type | Purpose |
+|------|------|---------|
+| `scripts/lighthouse.mjs` | modify | `--desktop` profile + report filename prefix |
+| `scripts/lighthouse-budget.mjs` | modify | `DESKTOP_BUDGETS`, `budgetsForFormFactor()` |
+| `frontend/package.json` | modify | `perf:lighthouse:desktop` |
+| `.github/workflows/ci.yml` | modify | Desktop audit step (informational → enforced) |
+| `scripts/README.md` | modify | Desktop env vars and budgets |
+
+#### Tasks (checkboxes)
+
+- [x] **1.5.9b** Desktop Lighthouse harness
+  - [x] **1.5.9b.1** Add desktop Lighthouse config (form factor, throttling, viewport).
+  - [x] **1.5.9b.2** Add `DESKTOP_BUDGETS` + `pnpm perf:lighthouse:desktop`.
+  - [x] **1.5.9b.3** Wire CI desktop step (`continue-on-error` until baseline).
+  - [x] **1.5.9b.4** Capture production desktop Pulse + Thread JSON; tighten budgets in S10.
+  - [x] **1.5.9b.5** Enforce desktop budgets in CI (drop `continue-on-error`).
 
 ---
 
@@ -436,7 +480,7 @@ _Fix the ~8s API path and client-side data waterfall so Pulse and Thread reach m
 - **Assigned:** Riley
 - **Points:** 1
 - **Layers:** Ops, Docs
-- **Depends on:** P1.5-S7, P1.5-S8, P1.5-S9
+- **Depends on:** P1.5-S7, P1.5-S9, P1.5-S9b _(P1.5-S8 skipped)_
 - **Parallel with:** _None — final gate_
 
 **User story**
@@ -445,10 +489,10 @@ _Fix the ~8s API path and client-side data waterfall so Pulse and Thread reach m
 
 **Acceptance criteria**
 
-- [ ] Lighthouse re-run on Vercel production: Pulse + Thread meet all phase-wide Definition of Done metrics.
-- [ ] `scripts/bench_api_latency.mjs` post-deploy results attached to post-implementation doc.
-- [ ] CORS verified for remaining client refetch paths (filter, view toggle).
-- [ ] Post-implementation doc checked in at `docs/Post Implementation documentation/Phase1_P1.5 - Performance remediation Pulse and Thread.md`.
+- [x] Lighthouse re-run on Vercel production: Pulse + Thread meet all phase-wide Definition of Done metrics. _(PO sign-off 23-05-2026; marginal LCP + API p95 accepted — see sign-off doc.)_
+- [x] `scripts/bench_api_latency.mjs` post-deploy results attached to post-implementation doc. _(Proxy warm bench recorded; direct Render requires `BENCH_API_DIRECT_URL`.)_
+- [x] CORS verified for remaining client refetch paths (filter, view toggle).
+- [x] Post-implementation doc checked in at `docs/Post Implementation documentation/Phase1_P1.5 - Performance remediation Pulse and Thread.md`.
 
 #### Relevant files
 
@@ -459,12 +503,12 @@ _Fix the ~8s API path and client-side data waterfall so Pulse and Thread reach m
 
 #### Tasks (checkboxes)
 
-- [ ] **1.5.10** Production validation and sign-off
-  - [ ] **1.5.10.1** Re-run Lighthouse mobile on production Pulse + Thread; save JSON to `Page Load Performance/`.
-  - [ ] **1.5.10.2** Run bench script post-deploy; record p50/p95.
-  - [ ] **1.5.10.3** Smoke-test CORS on client refetch paths.
-  - [ ] **1.5.10.4** Write post-implementation doc with before/after table.
-  - [ ] **1.5.10.5** Mark all phase-wide Definition of Done checkboxes complete.
+- [x] **1.5.10** Production validation and sign-off
+  - [x] **1.5.10.1** Re-run Lighthouse **mobile and desktop** on production Pulse + Thread; save JSON to `Page Load Performance/`.
+  - [x] **1.5.10.2** Run bench script post-deploy; record p50/p95.
+  - [x] **1.5.10.3** Smoke-test CORS on client refetch paths.
+  - [x] **1.5.10.4** Write post-implementation doc with before/after table.
+  - [x] **1.5.10.5** Mark all phase-wide Definition of Done checkboxes complete. _(PO sign-off 23-05-2026.)_
 
 ---
 
@@ -538,12 +582,12 @@ flowchart TD
   - [x] **1.5.6.4** `loading.tsx`
   - [x] **1.5.6.5** Current/Original toggle
   - [x] **1.5.6.6** First paint test
-- [ ] **1.5.7** Thread bundle and font diet
-  - [ ] **1.5.7.1** Dynamic ICE layers
-  - [ ] **1.5.7.2** Dynamic aside widgets
-  - [ ] **1.5.7.3** Font scoping/subsetting
-  - [ ] **1.5.7.4** Pulse CLS skeleton fix
-  - [ ] **1.5.7.5** Thread TBT target
+- [x] **1.5.7** Thread bundle and font diet
+  - [x] **1.5.7.1** Dynamic ICE layers
+  - [x] **1.5.7.2** Dynamic aside widgets
+  - [x] **1.5.7.3** Font scoping/subsetting
+  - [x] **1.5.7.4** Pulse CLS skeleton fix
+  - [x] **1.5.7.5** Thread TBT target
 - [ ] **1.5.8** Accessibility quick wins
   - [ ] **1.5.8.1** Contrast tokens
   - [ ] **1.5.8.2** Heading order
@@ -558,18 +602,19 @@ flowchart TD
   - [x] **1.5.1.3** `scripts/bench_api_latency.mjs`
   - [x] **1.5.1.4** `scripts/README.md` docs
   - [x] **1.5.1.5** Baseline numbers captured
-- [ ] **1.5.9** Lighthouse CI harness and budgets
-  - [ ] **1.5.9.1** `scripts/lighthouse.mjs`
-  - [ ] **1.5.9.2** npm script + env vars
-  - [ ] **1.5.9.3** CI budget job
-  - [ ] **1.5.9.4** Optional axe test
-  - [ ] **1.5.9.5** CI regression smoke test
-- [ ] **1.5.10** Production validation and sign-off
-  - [ ] **1.5.10.1** Production Lighthouse re-run
-  - [ ] **1.5.10.2** Post-deploy bench script
-  - [ ] **1.5.10.3** CORS smoke test
-  - [ ] **1.5.10.4** Post-implementation doc
-  - [ ] **1.5.10.5** Phase Definition of Done complete
+- [x] **1.5.9** Lighthouse CI harness and budgets
+  - [x] **1.5.9.1** `scripts/lighthouse.mjs`
+  - [x] **1.5.9.2** npm script + env vars
+  - [x] **1.5.9.3** CI budget job
+  - [ ] **1.5.9.4** Optional axe test _(deferred — S8 skipped)_
+  - [x] **1.5.9.5** CI regression smoke test
+- [x] **1.5.9b** Desktop Lighthouse harness _(see S9b tasks above)_
+- [x] **1.5.10** Production validation and sign-off
+  - [x] **1.5.10.1** Production Lighthouse re-run
+  - [x] **1.5.10.2** Post-deploy bench script
+  - [x] **1.5.10.3** CORS smoke test
+  - [x] **1.5.10.4** Post-implementation doc
+  - [x] **1.5.10.5** Phase Definition of Done complete
 
 ---
 

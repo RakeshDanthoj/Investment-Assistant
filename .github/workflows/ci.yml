@@ -29,6 +29,38 @@ jobs:
       - run: pnpm test
       - run: pnpm build
 
+  lighthouse:
+    name: Lighthouse budgets
+    runs-on: ubuntu-latest
+    needs: frontend
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+      - name: Install dependencies
+        run: pnpm install
+        working-directory: .
+      - name: Budget assertion smoke test
+        run: pnpm perf:lighthouse:budget-test
+      - name: Mobile Lighthouse (Pulse + Thread)
+        run: pnpm perf:lighthouse -- --no-save
+        env:
+          LIGHTHOUSE_BASE_URL: https://investment-assistant-frontend.vercel.app
+          LIGHTHOUSE_THREAD_CARD_ID: ${{ secrets.LIGHTHOUSE_THREAD_CARD_ID }}
+      - name: Desktop Lighthouse (Pulse + Thread)
+        run: pnpm perf:lighthouse:desktop -- --no-save
+        env:
+          LIGHTHOUSE_BASE_URL: https://investment-assistant-frontend.vercel.app
+          LIGHTHOUSE_THREAD_CARD_ID: ${{ secrets.LIGHTHOUSE_THREAD_CARD_ID }}
+
   backend:
     name: Backend
     runs-on: ubuntu-latest

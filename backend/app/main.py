@@ -15,6 +15,9 @@ from app.api.factor_db import router as factor_db_router
 from app.api.feed import router as feed_router
 from app.api.notifications import router as notifications_router
 from app.api.onboarding import router as onboarding_router
+from app.api.lens import router as lens_router
+from app.api.mirror import router as mirror_router
+from app.api.mirror_streak import router as mirror_streak_router
 from app.api.predictions import router as predictions_router
 from app.api.tester_acceptance import router as tester_acceptance_router
 from app.core.settings import get_settings
@@ -82,6 +85,9 @@ app.include_router(cards_router, prefix="/api/cards", tags=["cards"])
 app.include_router(notifications_router, prefix="/api", tags=["notifications"])
 app.include_router(cards_detail_router, prefix="/api/cards", tags=["cards"])
 app.include_router(predictions_router, prefix="/api", tags=["predictions"])
+app.include_router(mirror_router, prefix="/api")
+app.include_router(lens_router, prefix="/api")
+app.include_router(mirror_streak_router, prefix="/api")
 app.include_router(tester_acceptance_router, prefix="/api", tags=["tester"])
 
 

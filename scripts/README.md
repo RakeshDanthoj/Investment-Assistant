@@ -137,6 +137,135 @@ SSR fetches in P1.5-S5/S6 use `revalidate: 60` instead of `no-store` so first pa
 
 Lighthouse may flag **"Page prevented back/forward cache restoration"** because client refetch paths use `Cache-Control: no-store`. This is intentional: editorial freshness and filter/view toggles must not serve stale JSON. The warning is acceptable for Phase 1.5; published read paths still cache for 60s where safe.
 
-## Lighthouse (P1.5-S9)
+## Lighthouse (P1.5-S9 / S9b)
 
-Documented in P1.5-S9 — run mobile Lighthouse against production `/pulse` and `/thread/{cardId}` after SSR work lands.
+Lighthouse budgets for **Pulse** (`/pulse`) and **Thread** (`/thread/{cardId}`) on production (or staging). Supports **mobile** (default) and **desktop** (`--desktop` / `pnpm perf:lighthouse:desktop`).
+
+### Budgets — mobile (Phase 1.5 Definition of Done)
+
+| Metric | Threshold |
+|--------|-----------|
+| Performance score | ≥ 90 |
+| Total Blocking Time | < 200 ms |
+| Speed Index | < 3400 ms |
+
+### Budgets — desktop (P1.5-S9b; enforced in CI)
+
+| Metric | Threshold |
+|--------|-----------|
+| Performance score | ≥ 90 |
+| Total Blocking Time | < 150 ms |
+| Speed Index | < 2400 ms |
+
+Override desktop thresholds with `LIGHTHOUSE_DESKTOP_MIN_PERFORMANCE`, `LIGHTHOUSE_DESKTOP_MAX_TBT_MS`, `LIGHTHOUSE_DESKTOP_MAX_SPEED_INDEX_MS`.
+
+### Local vs production Lighthouse (important)
+
+**Do not benchmark `next dev` (`pnpm dev`) for performance scores.** The dev server serves large unminified chunks (often 2–3 MB vs ~350 KB on Vercel), which inflates TBT and Time to Interactive even when FCP/LCP look fast.
+
+| Environment | Typical Pulse desktop score | Notes |
+|-------------|----------------------------|--------|
+| `http://localhost:3000` + **`next dev`** | ~70 | Dev bundles + optional client refetch to `127.0.0.1:8000` |
+| `http://localhost:3000` + **`next build` / `next start`** | Closer to prod | Use for local parity checks |
+| Vercel production | 98–100 (May 2026 baseline) | What CI audits |
+
+For production-like local numbers:
+
+```bash
+cd frontend
+pnpm build
+pnpm start
+# In another terminal, from repo root:
+pnpm perf:lighthouse:desktop
+```
+
+### Production desktop baselines (P1.5-S9b.4, 23-05-2026)
+
+Committed evidence under `Page Load Performance/New loads/` (DevTools export, desktop profile):
+
+| Surface | File | Performance | TBT | Speed Index | Desktop budget |
+|---------|------|-------------|-----|-------------|----------------|
+| Pulse | `investment-assistant-frontend.vercel.app-20260523T200644-desktop-pulse.json` | 98 | 20 ms | 1600 ms | Pass |
+| Thread | `investment-assistant-frontend.vercel.app-20260523T200724- desktop -thread.json` | 100 | 0 ms | 980 ms | Pass |
+
+Card id in Thread trace: `8e17ca99-b0b7-40aa-81e0-29c9308673cc`. No desktop budget tightening was required — current `DESKTOP_BUDGETS` (90 / 150 ms / 2400 ms) already pass with headroom.
+
+Re-assert saved JSON without Chrome:
+
+```bash
+node scripts/lighthouse.mjs --desktop --assert-report="Page Load Performance/New loads/investment-assistant-frontend.vercel.app-20260523T200644-desktop-pulse.json"
+node scripts/lighthouse.mjs --desktop --assert-report="Page Load Performance/New loads/investment-assistant-frontend.vercel.app-20260523T200724- desktop -thread.json"
+```
+
+### Environment variables
+
+| Variable | Purpose |
+|----------|---------|
+| `LIGHTHOUSE_BASE_URL` | Frontend origin (default: `https://investment-assistant-frontend.vercel.app`) |
+| `LIGHTHOUSE_THREAD_CARD_ID` | Published card UUID for Thread (default: same as `BENCH_CARD_ID` in `bench_api_latency.mjs`) |
+| `LIGHTHOUSE_OUTPUT_DIR` | Where to write JSON reports (default: `Page Load Performance/`) |
+| `LIGHTHOUSE_MIN_PERFORMANCE` | Override min performance score (default: `90`) |
+| `LIGHTHOUSE_MAX_TBT_MS` | Override max TBT (default: `200`) |
+| `LIGHTHOUSE_MAX_SPEED_INDEX_MS` | Override max Speed Index (default: `3400`) |
+| `LIGHTHOUSE_FORM_FACTOR` | `mobile` (default) or `desktop` |
+| `LIGHTHOUSE_DESKTOP_*` | Desktop budget overrides (see table above) |
+| `LIGHTHOUSE_SKIP=1` | Skip run (exit 0) |
+
+Optional GitHub secret: `LIGHTHOUSE_THREAD_CARD_ID` — overrides the default card id in CI.
+
+### Run locally
+
+From repo root (requires Chrome; installed automatically via `chrome-launcher`):
+
+```bash
+pnpm install
+pnpm perf:lighthouse              # mobile
+pnpm perf:lighthouse:desktop        # desktop
+```
+
+From `frontend/`:
+
+```bash
+pnpm perf:lighthouse
+pnpm perf:lighthouse:desktop
+pnpm perf:lighthouse -- --pulse-only
+pnpm perf:lighthouse:desktop -- --thread-only
+pnpm perf:lighthouse -- --no-save
+```
+
+Budget assertion smoke test (no Chrome):
+
+```bash
+pnpm perf:lighthouse:budget-test
+```
+
+Assert budgets against an existing Lighthouse JSON export:
+
+```bash
+node scripts/lighthouse.mjs --assert-report="Page Load Performance/investment-assistant-frontend.vercel.app-20260523T151315-pulse.json"
+```
+
+Expect exit code **1** on the baseline Pulse trace (performance 82, Speed Index ~5.8s) — use that to verify CI would fail on regression.
+
+### CI
+
+The **Lighthouse budgets** job in `.github/workflows/ci.yml` runs after the frontend job:
+
+1. `pnpm perf:lighthouse:budget-test` — unit smoke for assertion helpers
+2. `pnpm perf:lighthouse -- --no-save` — live **mobile** audits (enforced)
+3. `pnpm perf:lighthouse:desktop -- --no-save` — live **desktop** audits (enforced; baselines in `Page Load Performance/New loads/`)
+
+Reports are not committed from CI; save locally with `pnpm perf:lighthouse` / `pnpm perf:lighthouse:desktop` when capturing evidence for **P1.5-S10**.
+
+### P1.5-S10 sign-off evidence (23-05-2026)
+
+| Artifact | Path |
+|----------|------|
+| Sign-off doc | `docs/Post Implementation documentation/Phase1_P1.5 - Performance remediation Pulse and Thread.md` |
+| Before mobile | `Page Load Performance/investment-assistant-frontend.vercel.app-20260523T151315-pulse.json`, `…151456- Thread.json` |
+| After mobile (runner) | `Page Load Performance/lighthouse-ci-mobile-…-2026-05-23T1448-pulse.json`, `…-thread.json` |
+| After desktop | `Page Load Performance/New loads/…200644-desktop-pulse.json`, `…200724- desktop -thread.json` |
+
+Post-deploy proxy bench (warm p95): feed **1753 ms**, card **1762 ms** — PO accepted at Phase 1.5 close (23-05-2026); optional follow-up. See sign-off doc for full table.
+
+**Phase 1.5 status:** **CLOSED** (Product Owner sign-off 23-05-2026).
