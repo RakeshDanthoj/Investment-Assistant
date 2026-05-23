@@ -37,6 +37,7 @@ function resolveSupabaseUrl(raw) {
 const supabaseUrl = resolveSupabaseUrl(process.env.SUPABASE_URL);
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY ?? "";
 const apiBaseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "").trim().replace(/\/$/, "");
+const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "").trim().replace(/\/$/, "");
 
 function isLoopbackApiUrl(url) {
   if (!url) return true;
@@ -50,6 +51,7 @@ const nextConfig = {
     NEXT_PUBLIC_SUPABASE_URL: supabaseUrl,
     NEXT_PUBLIC_SUPABASE_ANON_KEY: supabaseAnonKey,
     NEXT_PUBLIC_API_BASE_URL: apiBaseUrl,
+    NEXT_PUBLIC_SITE_URL: siteUrl,
   },
   async rewrites() {
     if (!apiBaseUrl || isLoopbackApiUrl(apiBaseUrl)) return [];

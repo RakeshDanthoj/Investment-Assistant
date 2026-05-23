@@ -22,11 +22,18 @@ Migrations live in `backend/db/migrations/` (`0003` enums → `0004` core tables
 Configure the Supabase project dashboard once per environment:
 
 1. **Authentication → Providers → Email**: enable Email; disable password sign-in (magic link only).
-2. **Authentication → URL configuration**: add redirect URLs:
-   - `http://localhost:3000/callback`
-   - `https://<your-vercel-preview>.vercel.app/callback`
-   - `https://<your-production-domain>/callback`
-3. **Authentication → Email templates**: optional — customise the magic-link email for invited testers.
+2. **Authentication → URL configuration** (required for production magic links):
+   - **Site URL**: set to your **production** frontend origin (e.g. `https://investment-assistant-frontend.vercel.app`). If this stays `http://localhost:3000`, magic-link emails from production will redirect to localhost when the requested redirect is not allow-listed.
+   - **Redirect URLs** (exact paths; add every host you use):
+     - `http://localhost:3000/callback`
+     - `https://investment-assistant-frontend.vercel.app/callback` (or your production domain)
+     - `https://*.vercel.app/callback` (preview deployments, if supported by your Supabase project)
+   - The app sends `emailRedirectTo` as `{origin}/callback?next=...` from the sign-in page (`sign-in-form.tsx`). That full URL must match an entry above (origin + `/callback` prefix is enough; query params are ignored for matching).
+3. **Authentication → Email templates**: optional — customise the magic-link email for invited testers. Do not hardcode `localhost` in template links; use `{{ .ConfirmationURL }}`.
+
+**Vercel:** set `NEXT_PUBLIC_SITE_URL` to the same production origin as Supabase Site URL (no trailing slash) so server-side callback redirects stay on the correct host behind the Vercel proxy.
+
+**Symptom:** magic link opens `localhost` after requesting sign-in on production → almost always **Site URL** or missing **Redirect URL** in Supabase, not application code.
 
 ## API latency bench (P1.5-S1)
 

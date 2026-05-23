@@ -6,6 +6,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { buildAuthCallbackUrl } from "@/lib/auth-redirect";
 import { createClient } from "@/lib/supabase/client";
 
 type SignInFormProps = {
@@ -25,7 +26,9 @@ export default function SignInForm({ nextPath }: SignInFormProps) {
     setErrorMessage(null);
 
     const supabase = createClient();
-    const redirectTo = `${window.location.origin}/callback?next=${encodeURIComponent(nextPath)}`;
+    const redirectTo = buildAuthCallbackUrl(nextPath, {
+      windowOrigin: window.location.origin,
+    });
 
     const { error } = await supabase.auth.signInWithOtp({
       email: email.trim(),
