@@ -58,8 +58,15 @@ def test_card_detail_includes_timing_headers(mock_build_detail: MagicMock) -> No
     assert payload["db_query_ms"] == 8.0
 
 
+@patch("app.main.get_settings")
 @patch("app.main.connection")
-def test_health_db_returns_connect_and_query_breakdown(mock_connection: MagicMock) -> None:
+def test_health_db_returns_connect_and_query_breakdown(
+    mock_connection: MagicMock,
+    mock_get_settings: MagicMock,
+) -> None:
+    mock_get_settings.return_value.supabase_db_url = (
+        "postgresql://postgres:secret@localhost:5432/postgres"
+    )
     mock_conn = MagicMock()
     mock_cur = MagicMock()
     mock_cur.fetchone.return_value = (2,)

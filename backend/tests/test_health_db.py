@@ -17,8 +17,12 @@ def test_health_ok() -> None:
     assert response.json() == {"status": "ok"}
 
 
+@patch("app.main.get_settings")
 @patch("app.main.connection")
-def test_health_db_ok(mock_connection: MagicMock) -> None:
+def test_health_db_ok(mock_connection: MagicMock, mock_get_settings: MagicMock) -> None:
+    mock_get_settings.return_value.supabase_db_url = (
+        "postgresql://postgres:secret@localhost:5432/postgres"
+    )
     mock_conn = MagicMock()
     mock_cur = MagicMock()
     mock_cur.fetchone.return_value = (3,)
