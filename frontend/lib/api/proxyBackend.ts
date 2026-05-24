@@ -13,6 +13,14 @@ function isLoopbackApiUrl(url: string): boolean {
   return /\/\/(localhost|127\.0\.0\.1)(:|\/|$)/i.test(url);
 }
 
+function hostsMatch(a: string, b: string): boolean {
+  try {
+    return new URL(a).host === new URL(b).host;
+  } catch {
+    return false;
+  }
+}
+
 /** Proxy browser `/backend/...` requests to the configured FastAPI origin. */
 export async function proxyToBackend(
   request: Request,
@@ -30,6 +38,16 @@ export async function proxyToBackend(
   }
 
   const incoming = new URL(request.url);
+  if (hostsMatch(configured, incoming.href)) {
+    return Response.json(
+      {
+        detail:
+          "NEXT_PUBLIC_API_BASE_URL must be your Render (or API) origin, not this Vercel frontend URL. " +
+          "Example: https://finnwise-backend.onrender.com",
+      },
+      { status: 503 },
+    );
+  }
   const path = pathSegments.map((segment) => encodeURIComponent(segment)).join("/");
   const target = `${configured}/${path}${incoming.search}`;
 

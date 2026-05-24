@@ -2,8 +2,10 @@ import type { CardDetailResponse } from "@/lib/cards/threadTypes";
 import type { PulseFeedResponse } from "@/lib/cards/pulseTypes";
 import { describeHttpFailure } from "@/lib/api";
 
-/** Direct API origin for RSC fetches — bypasses the browser `/backend` rewrite. */
+/** Direct API origin for RSC fetches and `/backend` route proxy (not the Vercel `/backend` rewrite). */
 export function getServerApiBaseUrl(): string {
+  const serverOnly = process.env.API_BASE_URL?.trim().replace(/\/$/, "");
+  if (serverOnly) return serverOnly;
   const configured = process.env.NEXT_PUBLIC_API_BASE_URL?.trim().replace(/\/$/, "");
   return configured || "http://127.0.0.1:8000";
 }

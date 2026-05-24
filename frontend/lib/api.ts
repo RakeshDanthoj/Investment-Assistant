@@ -10,6 +10,7 @@ export function getApiBaseUrl(): string {
   const host = window.location.hostname;
   const isLocalHost = host === "localhost" || host === "127.0.0.1";
 
+  // Production browsers call same-origin `/backend/...`; `app/backend/[...path]/route.ts` proxies to Render.
   if (configured && !isLocalHost && !isLoopbackUrl(configured)) {
     return "/backend";
   }

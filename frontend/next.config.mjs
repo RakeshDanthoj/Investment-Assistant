@@ -39,11 +39,6 @@ const supabaseAnonKey = process.env.SUPABASE_ANON_KEY ?? "";
 const apiBaseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "").trim().replace(/\/$/, "");
 const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "").trim().replace(/\/$/, "");
 
-function isLoopbackApiUrl(url) {
-  if (!url) return true;
-  return /\/\/(localhost|127\.0\.0\.1)(:|\/|$)/i.test(url);
-}
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -53,15 +48,9 @@ const nextConfig = {
     NEXT_PUBLIC_API_BASE_URL: apiBaseUrl,
     NEXT_PUBLIC_SITE_URL: siteUrl,
   },
-  async rewrites() {
-    const resolvedApiBaseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "")
-      .trim()
-      .replace(/\/$/, "");
-    if (!resolvedApiBaseUrl || isLoopbackApiUrl(resolvedApiBaseUrl)) return [];
-    return [
-      { source: "/backend/:path*", destination: `${resolvedApiBaseUrl}/:path*` },
-    ];
-  },
+  // Browser `/backend/...` is proxied by `app/backend/[...path]/route.ts` (not rewrites).
+  // Rewrites here previously intercepted that path; when NEXT_PUBLIC_API_BASE_URL
+  // pointed at the Vercel host, /backend/api/feed looped to /api/feed → HTML 404.
 };
 
 export default nextConfig;
