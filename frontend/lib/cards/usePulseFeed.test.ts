@@ -87,4 +87,21 @@ describe("usePulseFeed", () => {
       expect(fetchMock).toHaveBeenCalledTimes(1);
     });
   });
+
+  it("shows actionable copy when the proxy returns an HTML 404 page", async () => {
+    fetchMock.mockResolvedValue({
+      ok: false,
+      status: 404,
+      text: async () => "<!DOCTYPE html><html><title>404: This page could not be found.</title></html>",
+    });
+
+    const { result } = renderHook(() => usePulseFeed([]));
+
+    await waitFor(() => {
+      expect(result.current.status).toBe("error");
+    });
+
+    expect(result.current.errorMessage).toContain("NEXT_PUBLIC_API_BASE_URL");
+    expect(result.current.errorMessage).not.toContain("<!DOCTYPE");
+  });
 });

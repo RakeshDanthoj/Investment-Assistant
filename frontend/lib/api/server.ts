@@ -1,5 +1,6 @@
 import type { CardDetailResponse } from "@/lib/cards/threadTypes";
 import type { PulseFeedResponse } from "@/lib/cards/pulseTypes";
+import { describeHttpFailure } from "@/lib/api";
 
 /** Direct API origin for RSC fetches — bypasses the browser `/backend` rewrite. */
 export function getServerApiBaseUrl(): string {
@@ -39,7 +40,7 @@ export async function fetchPulseFeed(options?: PulseFeedFetchOptions): Promise<P
 
   if (!response.ok) {
     const text = await response.text().catch(() => "");
-    throw new Error(text || `Feed failed (${response.status})`);
+    throw new Error(describeHttpFailure(response.status, text, "load the feed"));
   }
 
   return (await response.json()) as PulseFeedResponse;
@@ -62,7 +63,10 @@ export async function fetchCardDetail(
 
   if (!response.ok) {
     const text = await response.text().catch(() => "");
-    throw new CardDetailFetchError(text || `Card failed (${response.status})`, response.status);
+    throw new CardDetailFetchError(
+      describeHttpFailure(response.status, text, "load the card"),
+      response.status,
+    );
   }
 
   return (await response.json()) as CardDetailResponse;

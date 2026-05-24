@@ -1,4 +1,4 @@
-import { describeFetchFailure, getApiBaseUrl } from "./api";
+import { describeFetchFailure, describeHttpFailure, getApiBaseUrl } from "./api";
 
 describe("getApiBaseUrl", () => {
   const prev = process.env.NEXT_PUBLIC_API_BASE_URL;
@@ -19,5 +19,20 @@ describe("describeFetchFailure", () => {
     const msg = describeFetchFailure(new Error("Failed to fetch"), "save your profile");
     expect(msg).toContain("save your profile");
     expect(msg).toContain("NEXT_PUBLIC_API_BASE_URL");
+  });
+});
+
+describe("describeHttpFailure", () => {
+  it("maps Next.js HTML 404 pages to proxy guidance", () => {
+    const html = "<!DOCTYPE html><html><title>404: This page could not be found.</title></html>";
+    const msg = describeHttpFailure(404, html, "load the feed");
+    expect(msg).toContain("load the feed");
+    expect(msg).toContain("NEXT_PUBLIC_API_BASE_URL");
+    expect(msg).not.toContain("<!DOCTYPE");
+  });
+
+  it("returns JSON detail when present", () => {
+    const msg = describeHttpFailure(503, '{"detail":"Database unavailable"}', "load the feed");
+    expect(msg).toBe("Database unavailable");
   });
 });

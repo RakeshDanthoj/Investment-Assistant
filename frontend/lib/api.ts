@@ -31,6 +31,44 @@ export function isApiMisconfiguredForProduction(): boolean {
   return !configured || isLoopbackUrl(configured);
 }
 
+/** Map non-JSON HTTP error bodies (including Next.js HTML 404 pages) to user-facing copy. */
+export function describeHttpFailure(
+  status: number,
+  body: string,
+  context = "complete the request",
+): string {
+  const trimmed = body.trim();
+  const looksLikeHtml =
+    trimmed.startsWith("<!DOCTYPE") ||
+    trimmed.startsWith("<html") ||
+    trimmed.includes("<html") ||
+    trimmed.includes("next-error-h1");
+
+  if (looksLikeHtml) {
+    if (status === 404) {
+      return (
+        `Could not ${context}. The /backend API proxy returned 404 — confirm ` +
+        "NEXT_PUBLIC_API_BASE_URL is set in Vercel and redeploy the frontend."
+      );
+    }
+    return `Could not ${context}. The server returned an HTML error page (${status}).`;
+  }
+
+  try {
+    const parsed = JSON.parse(trimmed) as { detail?: unknown; message?: unknown };
+    if (typeof parsed.detail === "string") return parsed.detail;
+    if (typeof parsed.message === "string") return parsed.message;
+  } catch {
+    // not JSON
+  }
+
+  if (trimmed.length > 280) {
+    return `Could not ${context}. Request failed (${status}).`;
+  }
+
+  return trimmed || `Could not ${context}. Request failed (${status}).`;
+}
+
 /**
  * Turn raw fetch failures into actionable copy (network / CORS / misconfigured API URL).
  */

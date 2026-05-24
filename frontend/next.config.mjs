@@ -54,8 +54,13 @@ const nextConfig = {
     NEXT_PUBLIC_SITE_URL: siteUrl,
   },
   async rewrites() {
-    if (!apiBaseUrl || isLoopbackApiUrl(apiBaseUrl)) return [];
-    return [{ source: "/backend/:path*", destination: `${apiBaseUrl}/:path*` }];
+    const resolvedApiBaseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "")
+      .trim()
+      .replace(/\/$/, "");
+    if (!resolvedApiBaseUrl || isLoopbackApiUrl(resolvedApiBaseUrl)) return [];
+    return [
+      { source: "/backend/:path*", destination: `${resolvedApiBaseUrl}/:path*` },
+    ];
   },
 };
 

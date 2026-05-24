@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { getApiBaseUrl } from "@/lib/api";
+import { describeFetchFailure, describeHttpFailure, getApiBaseUrl } from "@/lib/api";
 import type { PulseCard, PulseFeedResponse } from "@/lib/cards/pulseTypes";
 import { getStoredSessionId } from "@/lib/sessionProfile";
 
@@ -48,7 +48,7 @@ export function usePulseFeed(selectedCategories: string[], options?: UsePulseFee
       const res = await fetch(url, { cache: "no-store" });
       if (!res.ok) {
         const t = await res.text();
-        throw new Error(t || `Feed failed (${res.status})`);
+        throw new Error(describeHttpFailure(res.status, t, "load the feed"));
       }
       const json = (await res.json()) as PulseFeedResponse;
       setData(json);
@@ -62,9 +62,19 @@ export function usePulseFeed(selectedCategories: string[], options?: UsePulseFee
         setSelectedId(null);
       }
     } catch (e) {
-      setStatus("error");
-      setData(null);
-      setErrorMessage(e instanceof Error ? e.message : "Could not load feed.");
+      const message = describeFetchFailure(e, "load the feed");
+      let keepExisting = false;
+      setData((prev) => {
+        keepExisting = Boolean(prev?.cards?.length);
+        return keepExisting ? prev : null;
+      });
+      if (keepExisting) {
+        setStatus("success");
+        setErrorMessage(null);
+      } else {
+        setStatus("error");
+        setErrorMessage(message);
+      }
     }
   }, [categoryQuery]);
 
