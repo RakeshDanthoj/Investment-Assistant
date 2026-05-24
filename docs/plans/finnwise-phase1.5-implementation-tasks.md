@@ -35,7 +35,7 @@ Thread was measured ~90s after Pulse; both API calls still took ~7.7–8.3s — 
 
 ## Phase 1.5: Performance Remediation
 
-**Status: CLOSED** — Product Owner sign-off **23-05-2026** (`Phase1_P1.5 - Performance remediation Pulse and Thread.md`). Phase 2 may proceed. Deferred API p95 / standards carry-forward: **P2-S15** in `finnwise-phase2-implementation-tasks.md` + `docs/plans/cross-phase-performance-standards.md`.
+**Status: CLOSED** — Product Owner sign-off **23-05-2026** (`Phase1_P1.5 - Performance remediation Pulse and Thread.md`). Phase 2 may proceed. Deferred API p95 / standards: harness in **P2-S15**; close-out in **Phase 2.5** (`finnwise-phase2.5-implementation-tasks.md`) + `docs/plans/cross-phase-performance-standards.md`.
 
 _Fix the ~8s API path and client-side data waterfall so Pulse and Thread reach meaningful content in under 2.5s and Lighthouse Performance ≥90 on mobile._ · **Duration estimate:** 2–3 weeks.
 

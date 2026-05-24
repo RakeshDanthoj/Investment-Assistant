@@ -15,8 +15,8 @@ from psycopg.rows import dict_row
 from app.db.connection import connection
 from app.models.enums import LifecycleState, SignalState
 from app.services.confidence_gate import GateDecision, route
-from app.services.market_facts import build_market_facts
 from app.services.email_on_signal import fan_out as fan_out_signal_emails
+from app.services.market_facts import build_market_facts
 from app.services.signal_check import MarketFact, SignalEvalResult, evaluate
 
 _LOG = logging.getLogger(__name__)

@@ -47,8 +47,6 @@ def test_run_emits_six_named_steps_in_order(
 ) -> None:
     mock_get.return_value = _row()
 
-    captured_milestones: list[str] = []
-
     def fake_draft(*_args, on_milestone=None, **_kwargs):
         if on_milestone is not None:
             for step in LENS_PIPELINE_STEPS:

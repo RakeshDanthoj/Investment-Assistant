@@ -7,7 +7,7 @@ import logging
 from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 
-from app.core.settings import Settings, get_settings
+from app.core.settings import Settings
 from app.services.signal_check import MarketFact
 from app.sources.base import RawEvent, SourceAdapter, SourceFailure
 from app.sources.nse_announcements import NSEAnnouncementsSourceAdapter

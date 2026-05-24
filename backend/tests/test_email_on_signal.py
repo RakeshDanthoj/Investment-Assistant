@@ -5,8 +5,6 @@ from __future__ import annotations
 import inspect
 from unittest.mock import MagicMock
 
-import pytest
-
 from app.services import email_on_signal
 
 
@@ -71,7 +69,11 @@ def test_fan_out_sends_to_opted_in_user(monkeypatch) -> None:
     monkeypatch.setattr(email_on_signal, "_is_opted_in", lambda _cur, _uid: True)
     monkeypatch.setattr(email_on_signal, "_already_sent", lambda _cur, **_: False)
     monkeypatch.setattr(email_on_signal, "_lookup_email", lambda _cur, _uid: "user@finnwise.test")
-    monkeypatch.setattr(email_on_signal, "_create_unsubscribe_token", lambda _cur, _uid: "token-abc")
+    monkeypatch.setattr(
+        email_on_signal,
+        "_create_unsubscribe_token",
+        lambda _cur, _uid: "token-abc",
+    )
     monkeypatch.setattr(email_on_signal.email_client, "send", lambda **_: True)
 
     sent = email_on_signal.fan_out(

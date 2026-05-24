@@ -3,7 +3,8 @@
 **Version:** v1.0 | **Date:** 24-05-2026  
 **Status:** Ready to execute  
 **Owner:** Feature devs + Riley (measurement/CI)  
-**Related:** `docs/plans/cross-phase-performance-standards.md`, `docs/Post Implementation documentation/Phase1_P1.5 - Performance remediation Pulse and Thread.md`
+**Related:** `docs/plans/finnwise-phase2.5-implementation-tasks.md` (Phase 2.5 gate), `docs/plans/cross-phase-performance-standards.md`, `docs/Post Implementation documentation/Phase1_P1.5 - Performance remediation Pulse and Thread.md`  
+**Parent:** P2-S15 harness (closed) → Phase 2.5 executes PC-* backlog
 
 ---
 

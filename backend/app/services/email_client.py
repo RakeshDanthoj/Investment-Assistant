@@ -76,9 +76,10 @@ def send(
     from_addr = settings.email_from.strip()
 
     if not provider or not api_key or not from_addr:
+        domain = to.split("@")[-1] if "@" in to else "unknown"
         _LOG.info(
             "email.send.skipped_unconfigured",
-            extra={"template": template, "to_domain": to.split("@")[-1] if "@" in to else "unknown"},
+            extra={"template": template, "to_domain": domain},
         )
         return False
 

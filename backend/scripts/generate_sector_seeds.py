@@ -202,12 +202,13 @@ def _cell(ticker: str, factor: str) -> tuple[int, str, str]:
 
 
 def render_sector(slug: str, name: str, instruments: list[tuple[str, str, str]]) -> str:
+    escaped_name = name.replace("'", "''")
     lines = [
         f"-- P2-S11 seed: {name} sector + instruments × 8 macro factors.",
-        f"-- Idempotent: safe to re-run after migration 0007_factor_db.sql.",
+        "-- Idempotent: safe to re-run after migration 0007_factor_db.sql.",
         "",
         "insert into public.sectors (slug, name)",
-        f"values ('{slug}', '{name.replace("'", "''")}')",
+        f"values ('{slug}', '{escaped_name}')",
         "on conflict (slug) do update set name = excluded.name;",
         "",
     ]

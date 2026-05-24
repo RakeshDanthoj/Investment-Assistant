@@ -10,11 +10,9 @@ from app.api.admin_metrics import router as admin_metrics_router
 from app.api.admin_queue import router as admin_router
 from app.api.admin_review import router as admin_review_router
 from app.api.admin_signal_queue import router as admin_signal_queue_router
-from app.core.logging import configure_structured_logging
-from app.api.email_preferences import router as email_preferences_router
-from app.api.unsubscribe import router as unsubscribe_router
 from app.api.cards import router as cards_router
 from app.api.cards_detail import router as cards_detail_router
+from app.api.email_preferences import router as email_preferences_router
 from app.api.factor_db import router as factor_db_router
 from app.api.feed import router as feed_router
 from app.api.instruments import router as instruments_router
@@ -29,6 +27,8 @@ from app.api.onboarding import router as onboarding_router
 from app.api.predictions import router as predictions_router
 from app.api.saved_threads import router as saved_threads_router
 from app.api.tester_acceptance import router as tester_acceptance_router
+from app.api.unsubscribe import router as unsubscribe_router
+from app.core.logging import configure_structured_logging
 from app.core.settings import get_settings
 from app.db.connection import close_db_pool, connection, init_db_pool
 from app.diagnostics.timing import DbRequestTimer

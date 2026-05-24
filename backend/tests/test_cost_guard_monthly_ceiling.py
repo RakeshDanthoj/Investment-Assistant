@@ -56,7 +56,9 @@ def test_post_lens_query_returns_monthly_budget_error(monkeypatch):
     monkeypatch.setattr("app.api.lens.enforce_lens_daily_limit", lambda **_: None)
 
     def _raise_budget(**_kwargs):
-        raise MonthlyLLMBudgetError("monthly LLM budget exceeded: projected ₹25000 > ceiling ₹20000")
+        raise MonthlyLLMBudgetError(
+            "monthly LLM budget exceeded: projected ₹25000 > ceiling ₹20000"
+        )
 
     monkeypatch.setattr("app.api.lens.check_monthly_budget_or_raise", _raise_budget)
 

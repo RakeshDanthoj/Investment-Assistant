@@ -21,8 +21,8 @@ _SUCCESS_HTML = """
   </head>
   <body style="font-family:Inter,sans-serif;padding:40px;max-width:480px;margin:0 auto;">
     <h1 style="font-size:20px;">You are unsubscribed</h1>
-    <p>Signal-fired emails are turned off for your FinnWise account. You can re-enable them anytime in
-    Settings → Email notifications.</p>
+    <p>Signal-fired emails are turned off for your FinnWise account.
+    You can re-enable them anytime in Settings → Email notifications.</p>
   </body>
 </html>
 """
@@ -33,7 +33,8 @@ _INVALID_HTML = """
   <head><meta charset="utf-8" /><title>Link expired — FinnWise</title></head>
   <body style="font-family:Inter,sans-serif;padding:40px;max-width:480px;margin:0 auto;">
     <h1 style="font-size:20px;">This link is invalid or expired</h1>
-    <p>If you still receive emails, open FinnWise → Settings → Email notifications to manage preferences.</p>
+    <p>If you still receive emails, open FinnWise → Settings → Email notifications
+    to manage preferences.</p>
   </body>
 </html>
 """
@@ -76,7 +77,9 @@ def apply_unsubscribe_token(token: str) -> bool:
                 )
                 cur.execute(
                     """
-                    INSERT INTO public.user_email_preferences (user_id, signal_fired_enabled, updated_at)
+                    INSERT INTO public.user_email_preferences (
+                        user_id, signal_fired_enabled, updated_at
+                    )
                     VALUES (%s::uuid, false, now())
                     ON CONFLICT (user_id) DO UPDATE SET
                       signal_fired_enabled = false,

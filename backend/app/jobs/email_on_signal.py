@@ -5,8 +5,8 @@ from __future__ import annotations
 import argparse
 import logging
 
-from app.services.email_on_signal import fan_out
 from app.db.connection import connection
+from app.services.email_on_signal import fan_out
 
 _LOG = logging.getLogger(__name__)
 

@@ -5,7 +5,6 @@ from __future__ import annotations
 from contextlib import contextmanager
 from uuid import uuid4
 
-import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -31,11 +30,6 @@ def _fake_connection_factory(rows_by_query: dict[str, list]):
 
         def execute(self, sql, params=None):
             self._last_sql = " ".join(sql.split())
-            key = "token_lookup" if "unsubscribe_tokens" in sql and "FOR UPDATE" in sql else ""
-            if "UPDATE public.unsubscribe_tokens" in sql:
-                key = "mark_used"
-            if "user_email_preferences" in sql:
-                key = "prefs"
 
         def fetchone(self):
             if "SELECT user_id" in self._last_sql:

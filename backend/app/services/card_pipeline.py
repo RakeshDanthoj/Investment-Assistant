@@ -9,6 +9,13 @@ from typing import Any, Protocol
 from uuid import UUID
 
 from app.services.card_repository import fetch_event_row, insert_draft_card_bundle
+from app.services.cost_guard import (
+    check_monthly_budget_or_raise,
+    consume_slot_or_raise,
+    estimate_cost_usd,
+    merge_usage,
+)
+from app.services.factor_db import fetch_matrix_rows
 from app.services.lens_pipeline_steps import (
     STEP_DISSENT,
     STEP_FACTOR_DB,
@@ -17,17 +24,10 @@ from app.services.lens_pipeline_steps import (
     STEP_SYNTHESIS,
     STEP_VALIDATE,
 )
-from app.services.cost_guard import (
-    check_monthly_budget_or_raise,
-    consume_slot_or_raise,
-    estimate_cost_usd,
-    merge_usage,
-)
-from app.services.pipeline_telemetry import record_pipeline_run
-from app.services.factor_db import fetch_matrix_rows
 from app.services.llm_client import LlmClient, load_prompt_markdown, render_prompt
 from app.services.mmj_validator import validate_mmj_tags
 from app.services.number_validator import validate_numbers_in_evidence
+from app.services.pipeline_telemetry import record_pipeline_run
 
 PROMPT_SYNTHESIS_VERSION = "synthesis.v1"
 PROMPT_DISSENT_VERSION = "dissent.v1"

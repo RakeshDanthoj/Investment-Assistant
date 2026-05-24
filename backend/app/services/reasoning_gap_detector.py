@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from collections import Counter
 from dataclasses import dataclass
-from typing import Literal
 from uuid import UUID
 
 from psycopg.rows import dict_row
@@ -149,7 +148,12 @@ def _score_sector_concentration(rows: list[GradedPredictionRow]) -> GapTypeScore
 def score_gap_types(rows: list[GradedPredictionRow]) -> list[GapTypeScore]:
     """Score all taxonomy gaps; higher score = stronger pattern."""
     candidates: list[GapTypeScore] = []
-    for scorer in (_score_direction_magnitude, _score_narrative_anchoring, _score_sector_concentration):
+    scorers = (
+        _score_direction_magnitude,
+        _score_narrative_anchoring,
+        _score_sector_concentration,
+    )
+    for scorer in scorers:
         result = scorer(rows)
         if result is not None:
             candidates.append(result)

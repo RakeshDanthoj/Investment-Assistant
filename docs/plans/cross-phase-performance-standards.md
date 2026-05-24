@@ -1,14 +1,15 @@
 # Cross-phase performance standards (Phase 1.5 → Phase 2 → Phase 3)
 
-**Version:** v0.1 (draft for P2-S15 completion) | **Date:** 23-05-2026  
+**Version:** v0.1 (draft — finalize in Phase 2.5) | **Date:** 23-05-2026  
 **Source:** Phase 1.5 remediation (`Phase1_P1.5 - Performance remediation Pulse and Thread.md`, `finnwise-phase1.5-implementation-tasks.md`)  
-**Owner:** Riley (harness + CI); all feature devs apply on every user-facing route
+**Owner:** Riley (harness + CI); all feature devs apply on every user-facing route  
+**Exit gate:** `docs/plans/finnwise-phase2.5-implementation-tasks.md` (carries forward open items from **P2-S15**)
 
 ---
 
 ## Purpose
 
-FinnWise adds many routes in Phase 2 (Mirror, Lens, Map) and Phase 3 (marketing, public Map, billing). This checklist prevents repeating the Phase 1 **client-fetch waterfall** and **~8 s API** failure mode. **P2-S15** closes deferred P1.5 benchmarks and extends automated gates.
+FinnWise adds many routes in Phase 2 (Mirror, Lens, Map) and Phase 3 (marketing, public Map, billing). This checklist prevents repeating the Phase 1 **client-fetch waterfall** and **~8 s API** failure mode. **P2-S15** authored this doc and extended Lighthouse CI; **Phase 2.5** closes deferred P1.5 benchmarks and green budgets.
 
 ---
 
@@ -61,11 +62,14 @@ FinnWise adds many routes in Phase 2 (Mirror, Lens, Map) and Phase 3 (marketing,
 
 ---
 
-## Phase 2 exit criteria (P2-S15)
+## Phase 2.5 exit criteria (pre–Phase 3; from P2-S15 carry-forward)
 
-- [ ] All practices above reflected in Mirror, Lens, Map implementations.
-- [ ] Lighthouse JSON archived under `Page Load Performance/` for Pulse, Thread, Mirror, Lens, Map (mobile + desktop samples).
-- [ ] Production bench shows **p95 &lt; 800 ms** OR documented PO re-waiver with root cause.
+See **`docs/plans/finnwise-phase2.5-implementation-tasks.md`** for full stories. Summary:
+
+- [ ] All practices above reflected in Mirror, Lens, Map implementations (audit **P2.5-S5**).
+- [ ] Lighthouse JSON archived under `Page Load Performance/` for Pulse, Thread, Mirror, Lens, Map index, Map slug (mobile + desktop).
+- [ ] Production bench shows **p95 &lt; 800 ms** OR documented PO re-waiver with root cause (**P2.5-S2**).
+- [ ] CI Lighthouse job passes on all Phase 2 routes including `/map/{slug}` when deployed.
 
 ---
 

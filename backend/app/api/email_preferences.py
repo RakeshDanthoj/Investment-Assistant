@@ -17,7 +17,10 @@ class EmailPreferencesResponse(BaseModel):
 
 
 class EmailPreferencesUpdate(BaseModel):
-    signal_fired_enabled: bool = Field(..., description="Receive emails when a watched signal fires")
+    signal_fired_enabled: bool = Field(
+        ...,
+        description="Receive emails when a watched signal fires",
+    )
 
 
 def get_preferences(cur, user_id: str) -> bool:

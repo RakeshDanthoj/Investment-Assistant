@@ -22,8 +22,8 @@ All new and modified **user-facing routes** (Mirror, Lens, Map, settings, etc.) 
 | **Backend reads** | One pool connection per request; published feed/card `Cache-Control: private, max-age=60` | P1.5-S2/S3/S4 |
 | **Measurement** | Never treat **`next dev`** Lighthouse as production truth; local parity = `pnpm build && pnpm start` | `scripts/README.md` |
 | **CI budgets** | Mobile: perf ≥90, TBT &lt;200 ms, SI &lt;3400 ms; Desktop: TBT &lt;150 ms, SI &lt;2400 ms | `scripts/lighthouse.mjs`, `scripts/lighthouse-budget.mjs` |
-| **API latency** | Warm **p95 &lt;800 ms** on `/api/feed` and `/api/cards/{id}` (direct or proxy path used in prod) | `scripts/bench_api_latency.mjs` — **closed in P2-S15** (deferred from P1.5 PO sign-off) |
-| **New routes** | When adding an `(app)` page, extend Lighthouse runner + CI in the **same PR** or track under P2-S15 | P1.5-S9/S9b |
+| **API latency** | Warm **p95 &lt;800 ms** on `/api/feed` and `/api/cards/{id}` (direct or proxy path used in prod) | `scripts/bench_api_latency.mjs` — **Phase 2.5** (`finnwise-phase2.5-implementation-tasks.md` § P2.5-S2); bench run started in P2-S15 |
+| **New routes** | When adding an `(app)` page, extend Lighthouse runner + CI in the **same PR** or track under P2-S15 / Phase 2.5 | P1.5-S9/S9b |
 
 **PR checklist (perf):** SSR initial load → dynamic splits for heavy UI → run `pnpm perf:lighthouse` on production URL (or preview) before merge for touched surfaces.
 
@@ -691,6 +691,7 @@ _Add the personal learning surface (The Mirror) and the on-demand research surfa
 
 ### Story P2-S15 — Phase 1.5 performance debt closure + cross-phase standards (ad-hoc, end of Phase 2)
 
+- **Status:** **Partially closed** (harness + standards + CI extension shipped). **Remediation** → **`docs/plans/finnwise-phase2.5-implementation-tasks.md`** (Phase 2.5, pre–Phase 3).
 - **Assigned:** Riley
 - **Points:** 3
 - **Layers:** Ops, Docs, CI, API (validation)
@@ -708,12 +709,12 @@ _Add the personal learning surface (The Mirror) and the on-demand research surfa
 
 **Acceptance criteria**
 
-- [ ] `docs/plans/cross-phase-performance-standards.md` checked in — checklist derived from Phase 1.5 (SSR, caching, pool, fonts, measurement, CI budgets); **required reading** for Phase 3 stories that add routes.
-- [ ] `scripts/bench_api_latency.mjs` post-deploy: **feed + card detail warm p95 &lt;800 ms** on the production path (Vercel `/backend/...` proxy and/or Render direct — document both in sign-off note).
-- [ ] `scripts/lighthouse.mjs` extended to audit **Mirror, Lens, Map** (in addition to Pulse + Thread); mobile + desktop profiles; CI job fails on budget miss (same thresholds as P1.5-S9/S9b).
-- [ ] Each new Phase 2 route audited: RSC initial load, dynamic imports for heavy panels, no full-app font pull on light pages.
-- [ ] Post-remediation JSON saved under `Page Load Performance/` for all six surfaces (Pulse, Thread, Mirror, Lens, Map index, one Map slug) — mobile + desktop sample.
-- [ ] Phase 2 close note in `docs/Post Implementation documentation/` or PR summary links evidence + standards doc.
+- [x] `docs/plans/cross-phase-performance-standards.md` checked in — checklist derived from Phase 1.5 (SSR, caching, pool, fonts, measurement, CI budgets); **required reading** for Phase 3 stories that add routes.
+- [ ] `scripts/bench_api_latency.mjs` post-deploy: **feed + card detail warm p95 &lt;800 ms** — **moved to Phase 2.5** (P2.5-S2); baseline recorded 24 May 2026 (see Phase 2.5 plan).
+- [x] `scripts/lighthouse.mjs` extended to audit **Mirror, Lens, Map** (in addition to Pulse + Thread); mobile + desktop profiles; CI job fails on budget miss (same thresholds as P1.5-S9/S9b). `map-sector` pending Map deploy → P2.5-S1.
+- [ ] Each new Phase 2 route audited: RSC initial load, dynamic imports for heavy panels, no full-app font pull on light pages — **moved to Phase 2.5** (P2.5-S5).
+- [ ] Post-remediation JSON saved under `Page Load Performance/` for all six surfaces — **partial** (5/6 mobile, May 2026); **moved to Phase 2.5** (P2.5-S6).
+- [ ] Phase 2 close note in `docs/Post Implementation documentation/` — **moved to Phase 2.5** (P2.5-S6).
 
 **Tech notes**
 
@@ -738,13 +739,13 @@ _Add the personal learning surface (The Mirror) and the on-demand research surfa
 
 #### Tasks (checkboxes)
 
-- [ ] **15.0** Phase 1.5 performance debt closure + cross-phase standards
+- [x] **15.0** Phase 1.5 performance debt closure + cross-phase standards _(harness complete; remediation in **Phase 2.5**)_
   - [x] **15.1** Author `docs/plans/cross-phase-performance-standards.md` (Phase 1.5 learnings → mandatory PR checklist).
-  - [ ] **15.2** Run `bench_api_latency.mjs` on production; tune proxy/query until feed + card **p95 &lt;800 ms** OR document blocker + PO decision.
+  - [ ] **15.2** Run `bench_api_latency.mjs` on production; tune until **p95 &lt;800 ms** OR PO waiver — → **P2.5-S2** ([x] baseline bench run 24 May 2026).
   - [x] **15.3** Extend `lighthouse.mjs` + CI for Mirror, Lens, Map (mobile + desktop).
-  - [ ] **15.4** Perf audit each Phase 2 route (SSR, dynamic imports, fonts) — file issues for gaps.
-  - [ ] **15.5** Capture and archive Lighthouse JSON for six surfaces; assert budgets locally.
-  - [ ] **15.6** Phase 2 performance close-out note linked from implementation plan.
+  - [ ] **15.4** Perf audit each Phase 2 route — → **P2.5-S5**.
+  - [ ] **15.5** Capture and archive Lighthouse JSON for six surfaces — → **P2.5-S6** ([x] partial mobile archive May 2026).
+  - [ ] **15.6** Performance close-out note — → **P2.5-S6** (`finnwise-phase2.5-implementation-tasks.md`).
 
 ---
 
@@ -766,7 +767,7 @@ _Add the personal learning surface (The Mirror) and the on-demand research surfa
 - The Lens stack (S6 + S7 + S8) is one developer pair-week per story; tackle in sequence to keep stream contract clean.
 - P2-S12 (polish) is a continuous trickle — schedule one half-day per week, not a single sprint.
 - **P2-S14** (signal fact pipeline) should land before you rely on auto-gated signal actions at scale; keep event-only corroboration in Phase 1 until then.
-- **P2-S15** is the **mandatory Phase 2 exit gate** for performance — schedule in Months 8–9 after Mirror, Lens, and Map routes exist; do not start Phase 3 public surfaces until S15 is green or explicitly re-waived by PO.
+- **P2-S15** delivered harness + standards; **Phase 2.5** (`finnwise-phase2.5-implementation-tasks.md`) is the **mandatory pre–Phase 3 gate** for green Lighthouse CI, API p95, and Map production deploy.
 
 ---
 
@@ -778,7 +779,7 @@ Suggested order (Months 4–9, 24 weeks):
 2. **Month 5:** Sam P2-S6 + P2-S8 (Lens UI). Jordan P2-S7 (Lens stream). Riley P2-S4 (gaps) + continues P2-S11 (sectors 4–6).
 3. **Month 6:** Jordan P2-S9 (personalisation) + **starts P2-S14** (signal fact pipeline). Riley P2-S10 (email) + P2-S11 (sectors 7–8). Sam P2-S12 (polish trickle).
 4. **Month 7:** Jordan P2-S13 (rate-limit + observability); **finish P2-S14** if not done. Riley finishes P2-S11 + Map modules linked to gaps. Sam polish + Phase 2 tester onboarding.
-5. **Month 8–9:** Soak test, Phase 2 tester cohort, feedback iteration; **Riley P2-S15** (API p95 closure, Lighthouse on all Phase 2 surfaces, `cross-phase-performance-standards.md`); then prepare Phase 3 go/no-go.
+5. **Month 8–9:** Soak test, Phase 2 tester cohort, feedback iteration; **Riley P2-S15** (harness + CI — done); **Phase 2.5** (API p95, Lighthouse green, Map deploy); then prepare Phase 3 go/no-go.
 
 Parallel-safe pairs: `{S1, S2, S6, S11}` in Month 4; `{S3, S4, S5, S7, S8}` in Month 5; `{S9, S10, S13, S14}` in Month 6–7. **P2-S15 is sequential last** (depends on S1, S6, S11).
 
@@ -791,7 +792,7 @@ Parallel-safe pairs: `{S1, S2, S6, S11}` in Month 4; `{S3, S4, S5, S7, S8}` in M
 - Same test placement and commands as Phase 1.
 - Reuse `.env.local`; add only new keys (`EMAIL_API_KEY`, `EMAIL_FROM`, `EMAIL_PROVIDER`).
 - All Phase 1 invariants (SEBI footer, MMJ tags, append-only `track_record`, no buy/sell/hold) continue to apply.
-- **Phase 1.5 performance:** follow § Performance standards on every story; close deferred benchmarks in **P2-S15** (`scripts/README.md`, `Phase1_P1.5 - Performance remediation Pulse and Thread.md`).
+- **Phase 1.5 performance:** follow § Performance standards on every story; harness in **P2-S15**; close deferred benchmarks in **Phase 2.5** (`finnwise-phase2.5-implementation-tasks.md`, `scripts/README.md`).
 
 ### Relevant Files (rollup)
 
