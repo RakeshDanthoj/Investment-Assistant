@@ -14,11 +14,12 @@ import { fileURLToPath, pathToFileURL } from "url";
 import {
   assertBudgets,
   budgetsForFormFactor,
+  detectAuditFailure,
   extractMetrics,
   resolveBudgets,
 } from "./lighthouse-budget.mjs";
 
-export { assertBudgets, extractMetrics } from "./lighthouse-budget.mjs";
+export { assertBudgets, detectAuditFailure, extractMetrics } from "./lighthouse-budget.mjs";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.join(scriptDir, "..");
@@ -221,12 +222,41 @@ async function runLighthouse(url, chrome, lighthouse, formFactor) {
   return result.lhr;
 }
 
-function printResult(label, url, metrics) {
+function printResult(label, url, metrics, auditFailure) {
   console.log(`\n=== ${label} ===`);
   console.log(url);
-  console.log(
-    `performance=${metrics.performanceScore}  TBT=${Math.round(metrics.tbtMs)}ms  speed-index=${Math.round(metrics.speedIndexMs)}ms`,
-  );
+  const scoreText =
+    metrics.performanceScore == null ? "unavailable" : String(metrics.performanceScore);
+  const tbtText = Number.isFinite(metrics.tbtMs) ? `${Math.round(metrics.tbtMs)}ms` : "NaN";
+  const siText = Number.isFinite(metrics.speedIndexMs)
+    ? `${Math.round(metrics.speedIndexMs)}ms`
+    : "NaN";
+  console.log(`performance=${scoreText}  TBT=${tbtText}  speed-index=${siText}`);
+  if (auditFailure) {
+    console.log(`audit error: ${auditFailure}`);
+  }
+}
+
+async function preflightTargets(targets) {
+  const failures = [];
+  for (const { label, url } of targets) {
+    try {
+      const res = await fetch(url, {
+        method: "GET",
+        redirect: "follow",
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Linux; Android 11) AppleWebKit/537.36 Chrome/120.0.0.0 Mobile Safari/537.36",
+        },
+      });
+      if (res.status >= 400) {
+        failures.push(`${label}: ${url} returned HTTP ${res.status}`);
+      }
+    } catch (err) {
+      failures.push(`${label}: ${url} unreachable (${err.message ?? err})`);
+    }
+  }
+  return failures;
 }
 
 async function auditPageOnce({
@@ -248,6 +278,7 @@ async function auditPageOnce({
   }
   const lhr = await runLighthouse(url, chrome, lighthouse, formFactor);
   const metrics = extractMetrics(lhr);
+  const auditFailure = detectAuditFailure(lhr);
 
   if (saveReports) {
     const stamp = new Date().toISOString().replace(/[:.]/g, "").slice(0, 15);
@@ -262,8 +293,8 @@ async function auditPageOnce({
     console.log(`Saved report: ${outPath}`);
   }
 
-  printResult(label, url, metrics);
-  return { violation: assertBudgets(label, metrics, budgets), metrics };
+  printResult(label, url, metrics, auditFailure);
+  return { violation: assertBudgets(label, metrics, budgets), metrics, auditFailure };
 }
 
 async function auditPage(opts) {
@@ -280,8 +311,8 @@ async function auditPage(opts) {
     }
     if (
       !best ||
-      result.metrics.performanceScore > best.metrics.performanceScore ||
-      (result.metrics.performanceScore === best.metrics.performanceScore &&
+      (result.metrics.performanceScore ?? -1) > (best.metrics.performanceScore ?? -1) ||
+      ((result.metrics.performanceScore ?? -1) === (best.metrics.performanceScore ?? -1) &&
         result.metrics.tbtMs < best.metrics.tbtMs)
     ) {
       best = result;
@@ -358,6 +389,16 @@ async function main() {
     console.log("(budget overrides active via env)");
   }
 
+  const preflightFailures = await preflightTargets(targets);
+  if (preflightFailures.length) {
+    console.error("\n❌ Lighthouse preflight failed — production URL is not reachable:");
+    for (const msg of preflightFailures) console.error(`  - ${msg}`);
+    console.error(
+      "\nVerify Vercel production is deployed and LIGHTHOUSE_BASE_URL matches the live origin.",
+    );
+    process.exit(1);
+  }
+
   const { launchChrome, lighthouse } = await loadLighthouseModules();
   const chromeFlags = ["--headless", "--no-sandbox", "--disable-gpu"];
   if (env.CI === "true") {
@@ -392,6 +433,9 @@ async function main() {
       console.error(`  ${label}:`);
       for (const msg of failures) console.error(`    - ${msg}`);
     }
+    console.error(
+      "\nIf scores show as unavailable/NaN, the page did not load — check deployment and LIGHTHOUSE_BASE_URL.",
+    );
     process.exit(1);
   }
 

@@ -2,7 +2,7 @@
  * Pure budget helpers for Lighthouse CI (imported by lighthouse.mjs and tests).
  */
 
-/** Phase 1.5 Definition of Done — mobile (baseline traces May 2026). */
+/** Phase 1.5 Definition of Done  mobile (baseline traces May 2026). */
 export const MOBILE_BUDGETS = {
   minPerformanceScore: 90,
   maxTotalBlockingTimeMs: 200,
@@ -10,7 +10,7 @@ export const MOBILE_BUDGETS = {
 };
 
 /**
- * Desktop budgets — Lighthouse desktop "good" band (p10) for TBT/SI.
+ * Desktop budgets  Lighthouse desktop "good" band (p10) for TBT/SI.
  * Baselines captured 2026-05-23 (see scripts/README.md); enforced in CI since P1.5-S9b.5.
  */
 export const DESKTOP_BUDGETS = {
@@ -28,15 +28,36 @@ export function budgetsForFormFactor(formFactor) {
 
 export function extractMetrics(lhr) {
   const audits = lhr.audits ?? {};
-  const performanceScore = Math.round((lhr.categories?.performance?.score ?? 0) * 100);
+  const rawScore = lhr.categories?.performance?.score;
+  const performanceScore =
+    rawScore == null ? null : Math.round(rawScore * 100);
   const tbtMs = audits["total-blocking-time"]?.numericValue ?? NaN;
   const speedIndexMs = audits["speed-index"]?.numericValue ?? NaN;
   return { performanceScore, tbtMs, speedIndexMs };
 }
 
+/** Returns a human-readable reason when Lighthouse could not score the page. */
+export function detectAuditFailure(lhr) {
+  const runtimeMessage = lhr.runtimeError?.message?.trim();
+  if (runtimeMessage) return runtimeMessage;
+
+  const warning = (lhr.runWarnings ?? []).find((w) => typeof w === "string" && w.trim());
+  if (warning) return warning.trim();
+
+  const rawScore = lhr.categories?.performance?.score;
+  const tbtMs = lhr.audits?.["total-blocking-time"]?.numericValue;
+  const speedIndexMs = lhr.audits?.["speed-index"]?.numericValue;
+  if (rawScore == null && !Number.isFinite(tbtMs) && !Number.isFinite(speedIndexMs)) {
+    return "Lighthouse could not compute performance metrics (page may be unreachable or returned an error)";
+  }
+  return null;
+}
+
 export function assertBudgets(label, metrics, budgets = MOBILE_BUDGETS) {
   const failures = [];
-  if (metrics.performanceScore < budgets.minPerformanceScore) {
+  if (metrics.performanceScore == null) {
+    failures.push("performance score unavailable (Lighthouse audit failed)");
+  } else if (metrics.performanceScore < budgets.minPerformanceScore) {
     failures.push(
       `performance ${metrics.performanceScore} < ${budgets.minPerformanceScore}`,
     );

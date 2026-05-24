@@ -4,7 +4,7 @@
  */
 
 import assert from "node:assert/strict";
-import { assertBudgets, extractMetrics } from "./lighthouse-budget.mjs";
+import { assertBudgets, detectAuditFailure, extractMetrics } from "./lighthouse-budget.mjs";
 
 const passing = {
   categories: { performance: { score: 0.92 } },
@@ -30,5 +30,21 @@ const metricsFail = extractMetrics(failingTbt);
 const violation = assertBudgets("fail", metricsFail);
 assert.ok(violation);
 assert.ok(violation.failures.some((f) => f.includes("TBT")));
+
+const auditFailed = {
+  runtimeError: {
+    message: "Lighthouse was unable to reliably load the page you requested. (Status code: 404)",
+  },
+  categories: { performance: { score: null } },
+  audits: {},
+};
+const metricsAuditFail = extractMetrics(auditFailed);
+assert.equal(metricsAuditFail.performanceScore, null);
+assert.equal(
+  detectAuditFailure(auditFailed),
+  "Lighthouse was unable to reliably load the page you requested. (Status code: 404)",
+);
+const auditViolation = assertBudgets("404", metricsAuditFail);
+assert.ok(auditViolation?.failures.some((f) => f.includes("audit failed")));
 
 console.log("lighthouse-budget.test.mjs: all assertions passed");
