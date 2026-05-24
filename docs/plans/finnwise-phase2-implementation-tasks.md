@@ -205,11 +205,11 @@ _Add the personal learning surface (The Mirror) and the on-demand research surfa
 
 **Acceptance criteria**
 
-- [ ] `reasoning_gap_detector.analyse(user_id)` returns top-3 gaps with `gap_name`, `pattern_explanation`, `linked_map_module_id`.
-- [ ] Gaps derived from actual patterns (e.g. consistently correct on mechanism but wrong on market reaction) — not manually assigned.
-- [ ] Gap items rendered in the right-panel "Reasoning Gap Analysis" with icon + name (Inter 13px bold) + explanation + `🗺 The Map: [module name] →`.
-- [ ] Map links resolve to real modules created in P2-S11.
-- [ ] Recomputes on every new resolved prediction (or on demand via "Refresh analysis").
+- [x] `reasoning_gap_detector.analyse(user_id)` returns top-3 gaps with `gap_name`, `pattern_explanation`, `linked_map_module_id`.
+- [x] Gaps derived from actual patterns (e.g. consistently correct on mechanism but wrong on market reaction) — not manually assigned.
+- [x] Gap items rendered in the right-panel "Reasoning Gap Analysis" with icon + name (Inter 13px bold) + explanation + `🗺 The Map: [module name] →`.
+- [x] Map links resolve to real modules created in P2-S11.
+- [x] Recomputes on every new resolved prediction (or on demand via "Refresh analysis").
 
 #### Relevant files
 
@@ -223,14 +223,14 @@ _Add the personal learning surface (The Mirror) and the on-demand research surfa
 
 #### Tasks (checkboxes)
 
-- [ ] **4.0** Reasoning-gap analysis + Map module linking
-  - [ ] **4.1** Define gap taxonomy (e.g. "Direction-correct, magnitude-wrong", "Anchored on narrative", "Sector concentration in your predictions") with linked Map module IDs.
-  - [ ] **4.2** `reasoning_gap_detector.analyse(user_id)` — heuristic + LLM-light pattern detection.
-  - [ ] **4.3** `GET /api/mirror/gaps` returns top-3.
-  - [ ] **4.4** `ReasoningGapPanel` UI — three items, each linking to `/map/[moduleId]`.
-  - [ ] **4.5** Gap insight inside the expanded PredictionCard (P2-S1 slot) reads `user_predictions.gap_insight` directly.
-  - [ ] **4.6** Recompute trigger on grade-on-resolve job tail.
-  - [ ] **4.7** Test: fixture histories yield expected gap names; UI renders the three items.
+- [x] **4.0** Reasoning-gap analysis + Map module linking
+  - [x] **4.1** Define gap taxonomy (e.g. "Direction-correct, magnitude-wrong", "Anchored on narrative", "Sector concentration in your predictions") with linked Map module IDs.
+  - [x] **4.2** `reasoning_gap_detector.analyse(user_id)` — heuristic + LLM-light pattern detection.
+  - [x] **4.3** `GET /api/mirror/gaps` returns top-3.
+  - [x] **4.4** `ReasoningGapPanel` UI — three items, each linking to `/map?module=[moduleId]` (redirects to sector page when applicable).
+  - [x] **4.5** Gap insight inside the expanded PredictionCard (P2-S1 slot) reads `user_predictions.gap_insight` directly.
+  - [x] **4.6** Recompute trigger on grade-on-resolve job tail.
+  - [x] **4.7** Test: fixture histories yield expected gap names; UI renders the three items.
 
 ---
 
@@ -342,11 +342,11 @@ _Add the personal learning surface (The Mirror) and the on-demand research surfa
 
 **Acceptance criteria**
 
-- [ ] Six steps named exactly per PRD §5 Screen 5: Factor DB queried / Macro signals retrieved / Synthesising ICE layers / Generating dissenting view / Articulating framework / Validating numbers against Evidence.
-- [ ] Stream is Server-Sent Events at `GET /api/lens/queries/{id}/stream`.
-- [ ] Each step transitions on real backend milestones — not faked time slices.
-- [ ] Loading card centred, max 560px, with user query displayed in Playfair italic.
-- [ ] Bottom disclaimer present verbatim: "Every number is validated against the Evidence layer before display."
+- [x] Six steps named exactly per PRD §5 Screen 5: Factor DB queried / Macro signals retrieved / Synthesising ICE layers / Generating dissenting view / Articulating framework / Validating numbers against Evidence.
+- [x] Stream is Server-Sent Events at `GET /api/lens/queries/{id}/stream`.
+- [x] Each step transitions on real backend milestones — not faked time slices.
+- [x] Loading card centred, max 560px, with user query displayed in Playfair italic.
+- [x] Bottom disclaimer present verbatim: "Every number is validated against the Evidence layer before display."
 
 #### Relevant files
 
@@ -362,15 +362,15 @@ _Add the personal learning surface (The Mirror) and the on-demand research surfa
 
 #### Tasks (checkboxes)
 
-- [ ] **7.0** The Lens — loading state with live six-step pipeline
-  - [ ] **7.1** `lens_pipeline.run(query_id)` instruments `card_pipeline` with six `yield`ed milestones.
-  - [ ] **7.2** `GET /api/lens/queries/{id}/stream` SSE endpoint that consumes the pipeline iterator.
-  - [ ] **7.3** `LoadingCard` centred component with query echo in Playfair italic.
-  - [ ] **7.4** `PipelineStep` with state classes: pending (grey) / active (blue pulsing) / done (green ✓).
-  - [ ] **7.5** `useLensStream` hook connects EventSource, updates step state in reducer.
-  - [ ] **7.6** Progress bar component (0→100%) interpolating between milestones.
-  - [ ] **7.7** Disclaimer text rendered verbatim.
-  - [ ] **7.8** Test: six events emitted in order; UI transitions pending→active→done correctly.
+- [x] **7.0** The Lens — loading state with live six-step pipeline
+  - [x] **7.1** `lens_pipeline.run(query_id)` instruments `card_pipeline` with six `yield`ed milestones.
+  - [x] **7.2** `GET /api/lens/queries/{id}/stream` SSE endpoint that consumes the pipeline iterator.
+  - [x] **7.3** `LoadingCard` centred component with query echo in Playfair italic.
+  - [x] **7.4** `PipelineStep` with state classes: pending (grey) / active (blue pulsing) / done (green ✓).
+  - [x] **7.5** `useLensStream` hook connects EventSource, updates step state in reducer.
+  - [x] **7.6** Progress bar component (0→100%) interpolating between milestones.
+  - [x] **7.7** Disclaimer text rendered verbatim.
+  - [x] **7.8** Test: six events emitted in order; UI transitions pending→active→done correctly.
 
 ---
 
@@ -388,11 +388,11 @@ _Add the personal learning surface (The Mirror) and the on-demand research surfa
 
 **Acceptance criteria**
 
-- [ ] Result reuses InsightLayer / ContextLayer / EvidenceLayer / DissentingView / InstrumentCard / FrameworkBehindThis from Phase 1 — no duplication.
-- [ ] Aside includes Confidence Composition with Lens-specific note (higher Judged proportion) + applicable bias flags + **mandatory** Lens Limitations block with the exact PRD copy.
-- [ ] "Save to Thread" copies the card to the user's personal Thread collection (a `saved_threads` join table) and surfaces it in sidebar.
-- [ ] "← New query" returns to query state, preserving textarea content.
-- [ ] Meta row shows generation time and date.
+- [x] Result reuses InsightLayer / ContextLayer / EvidenceLayer / DissentingView / InstrumentCard / FrameworkBehindThis from Phase 1 — no duplication.
+- [x] Aside includes Confidence Composition with Lens-specific note (higher Judged proportion) + applicable bias flags + **mandatory** Lens Limitations block with the exact PRD copy.
+- [x] "Save to Thread" copies the card to the user's personal Thread collection (a `saved_threads` join table) and surfaces it in sidebar.
+- [x] "← New query" returns to query state, preserving textarea content.
+- [x] Meta row shows generation time and date.
 
 #### Relevant files
 
@@ -401,24 +401,24 @@ _Add the personal learning surface (The Mirror) and the on-demand research surfa
 | `frontend/app/(app)/lens/_components/ResultCard.tsx` | create | Wraps Phase 1 ICE components |
 | `frontend/app/(app)/lens/_components/LensLimitations.tsx` | create | Mandatory aside block |
 | `frontend/app/(app)/lens/_components/SaveToThreadButton.tsx` | create | Save action |
-| `backend/db/migrations/0013_saved_threads.sql` | create | `saved_threads(user_id, card_id, saved_at)` |
+| `backend/db/migrations/0019_saved_threads.sql` | create | `saved_threads(user_id, card_id, saved_at)` |
 | `backend/app/api/saved_threads.py` | create | `POST /api/saved-threads` + list |
 | `frontend/app/(app)/lens/_components/LensLimitations.test.tsx` | create | Asserts block present + exact copy |
 | `backend/tests/test_saved_threads.py` | create | Idempotent save per (user, card) |
 
 #### Tasks (checkboxes)
 
-- [ ] **8.0** The Lens — result rendering + Save to Thread
-  - [ ] **8.1** `ResultCard` composes the existing Phase 1 ICE components against the new card payload.
-  - [ ] **8.2** `LensLimitations` aside block — mandatory, exact PRD §5 Screen 5 copy.
-  - [ ] **8.3** Confidence Composition aside with the Lens-specific explanatory note.
-  - [ ] **8.4** Bias Flags aside reading the same `card_bias_flags` mechanism from Phase 1.
-  - [ ] **8.5** Meta row: event type tag + horizon tag + "Generated in Xs · Date".
-  - [ ] **8.6** Migration + API: `saved_threads` with unique `(user_id, card_id)`.
-  - [ ] **8.7** `SaveToThreadButton` with toast confirmation.
-  - [ ] **8.8** Sidebar surface for saved threads under a "Saved" sub-nav.
-  - [ ] **8.9** "← New query" — restores textarea content from `useLensState`.
-  - [ ] **8.10** Test: `LensLimitations` always rendered; save idempotent; "← New query" preserves text.
+- [x] **8.0** The Lens — result rendering + Save to Thread
+  - [x] **8.1** `ResultCard` composes the existing Phase 1 ICE components against the new card payload.
+  - [x] **8.2** `LensLimitations` aside block — mandatory, exact PRD §5 Screen 5 copy.
+  - [x] **8.3** Confidence Composition aside with the Lens-specific explanatory note.
+  - [x] **8.4** Bias Flags aside reading the same `card_bias_flags` mechanism from Phase 1.
+  - [x] **8.5** Meta row: event type tag + horizon tag + "Generated in Xs · Date".
+  - [x] **8.6** Migration + API: `saved_threads` with unique `(user_id, card_id)`.
+  - [x] **8.7** `SaveToThreadButton` with toast confirmation.
+  - [x] **8.8** Sidebar surface for saved threads under a "Saved" sub-nav.
+  - [x] **8.9** "← New query" — restores textarea content from `useLensState`.
+  - [x] **8.10** Test: `LensLimitations` always rendered; save idempotent; "← New query" preserves text.
 
 ---
 
@@ -436,11 +436,11 @@ _Add the personal learning surface (The Mirror) and the on-demand research surfa
 
 **Acceptance criteria**
 
-- [ ] Holdings collected via a lightweight modal launched from the user chip; persisted **only** in encrypted browser session storage (PRD §11.1 — no user financial data stored beyond session).
-- [ ] Backend never sees the per-stock list — instead the client sends an opaque `personalisation_token` (hashed list of instrument IDs) per request.
-- [ ] Pulse feed re-ranks based on the token; top of feed = cards whose instrument assessments intersect the user's holdings.
-- [ ] Thread shows a per-holding "what this means for your XYZ" callout when intersection is non-empty.
-- [ ] Modal includes a clear "this data is not stored on our servers" line.
+- [x] Holdings collected via a lightweight modal launched from the user chip; persisted **only** in encrypted browser session storage (PRD §11.1 — no user financial data stored beyond session).
+- [x] Backend never sees the per-stock list — instead the client sends an opaque `personalisation_token` (hashed list of instrument IDs) per request.
+- [x] Pulse feed re-ranks based on the token; top of feed = cards whose instrument assessments intersect the user's holdings.
+- [x] Thread shows a per-holding "what this means for your XYZ" callout when intersection is non-empty.
+- [x] Modal includes a clear "this data is not stored on our servers" line.
 
 **Tech notes**
 
@@ -460,14 +460,14 @@ _Add the personal learning surface (The Mirror) and the on-demand research surfa
 
 #### Tasks (checkboxes)
 
-- [ ] **9.0** Portfolio Protector personalisation (session-only holdings)
-  - [ ] **9.1** `HoldingsModal` triggered from user chip; typeahead from instruments table.
-  - [ ] **9.2** `sessionHoldings.save/get/clear` — backed by `sessionStorage`, cleared on tab close.
-  - [ ] **9.3** Derive `personalisation_token` (hashed, salted instrument-id set) on client.
-  - [ ] **9.4** `GET /api/feed` accepts optional token; `feed_ranker.rerank(cards, token)` reorders.
-  - [ ] **9.5** `HoldingCallout` rendered on Thread when intersection non-empty.
-  - [ ] **9.6** Explicit "not stored on our servers" copy in the modal.
-  - [ ] **9.7** Test: token-based re-rank; session-only persistence; intersection callout visibility.
+- [x] **9.0** Portfolio Protector personalisation (session-only holdings)
+  - [x] **9.1** `HoldingsModal` triggered from user chip; typeahead from instruments table.
+  - [x] **9.2** `sessionHoldings.save/get/clear` — backed by `sessionStorage`, cleared on tab close.
+  - [x] **9.3** Derive `personalisation_token` (hashed, salted instrument-id set) on client.
+  - [x] **9.4** `GET /api/feed` accepts optional token; `feed_ranker.rerank(cards, token)` reorders.
+  - [x] **9.5** `HoldingCallout` rendered on Thread when intersection non-empty.
+  - [x] **9.6** Explicit "not stored on our servers" copy in the modal.
+  - [x] **9.7** Test: token-based re-rank; session-only persistence; intersection callout visibility.
 
 ---
 
@@ -485,17 +485,17 @@ _Add the personal learning surface (The Mirror) and the on-demand research surfa
 
 **Acceptance criteria**
 
-- [ ] Email provider integration (Resend or Postmark) with templates in `backend/email-templates/`.
-- [ ] Trigger: `signal_state` transitions to `triggered` on a card with a logged prediction or saved-thread row for the user.
-- [ ] One-click unsubscribe link present in every email (anti-spam compliance).
-- [ ] `user_email_preferences` table; default opt-in for Phase 2 testers; opt-out preserved.
-- [ ] Email never contains a recommendation — only "a signal you were watching has fired, view it in FinnWise".
+- [x] Email provider integration (Resend or Postmark) with templates in `backend/email-templates/`.
+- [x] Trigger: `signal_state` transitions to `triggered` on a card with a logged prediction or saved-thread row for the user.
+- [x] One-click unsubscribe link present in every email (anti-spam compliance).
+- [x] `user_email_preferences` table; default opt-in for Phase 2 testers; opt-out preserved.
+- [x] Email never contains a recommendation — only "a signal you were watching has fired, view it in FinnWise".
 
 #### Relevant files
 
 | Path | Type | Purpose |
 |------|------|---------|
-| `backend/db/migrations/0014_user_email_preferences.sql` | create | Prefs + unsubscribe tokens |
+| `backend/db/migrations/0017_user_email_preferences.sql` | create | Prefs + unsubscribe tokens + send log |
 | `backend/app/services/email_client.py` | create | Provider abstraction |
 | `backend/email-templates/signal_fired.html` | create | Plain HTML template |
 | `backend/app/jobs/email_on_signal.py` | create | Trigger on signal transitions |
@@ -506,15 +506,15 @@ _Add the personal learning surface (The Mirror) and the on-demand research surfa
 
 #### Tasks (checkboxes)
 
-- [ ] **10.0** Email notifications for fired signals
-  - [ ] **10.1** Provider credentials in `.env.local` (`EMAIL_PROVIDER`, `EMAIL_API_KEY`, `EMAIL_FROM`).
-  - [ ] **10.2** Migration: `user_email_preferences` + `unsubscribe_tokens`.
-  - [ ] **10.3** `email_client.send(template, vars, to)` provider-agnostic.
-  - [ ] **10.4** Template: signal-fired (no buy/sell/hold copy; deep link to Thread).
-  - [ ] **10.5** `email_on_signal.fan_out(card_id, signal_id)` — only opted-in users with stake (prediction or saved).
-  - [ ] **10.6** `GET /unsubscribe?token=` flips prefs.
-  - [ ] **10.7** Settings page to view/change prefs.
-  - [ ] **10.8** Test: fan-out scope; unsubscribe single-shot; template lints clean of forbidden language.
+- [x] **10.0** Email notifications for fired signals
+  - [x] **10.1** Provider credentials in `.env.local` (`EMAIL_PROVIDER`, `EMAIL_API_KEY`, `EMAIL_FROM`).
+  - [x] **10.2** Migration: `user_email_preferences` + `unsubscribe_tokens`.
+  - [x] **10.3** `email_client.send(template, vars, to)` provider-agnostic.
+  - [x] **10.4** Template: signal-fired (no buy/sell/hold copy; deep link to Thread).
+  - [x] **10.5** `email_on_signal.fan_out(card_id, signal_id)` — only opted-in users with stake (prediction or saved).
+  - [x] **10.6** `GET /unsubscribe?token=` flips prefs.
+  - [x] **10.7** Settings page to view/change prefs.
+  - [x] **10.8** Test: fan-out scope; unsubscribe single-shot; template lints clean of forbidden language.
 
 ---
 
@@ -532,18 +532,18 @@ _Add the personal learning surface (The Mirror) and the on-demand research surfa
 
 **Acceptance criteria**
 
-- [ ] All 8 PRD §7.1 factors fully seeded across the 8 target sectors covering ≥120 of the top 150 NSE stocks.
-- [ ] `/(app)/map` lists sectors with cover tiles; each sector page documents the sector's factor sensitivities + a "How this sector reacts to events" module.
-- [ ] At least 1 Reasoning Gap → Map module link exists per gap type defined in P2-S4.
-- [ ] Every sensitivity row keeps the MMJ + source-URL invariant from Phase 1.
-- [ ] Sector pages render the Map module content that P2-S4 links to.
+- [x] All 8 PRD §7.1 factors fully seeded across the 8 target sectors covering ≥120 of the top 150 NSE stocks.
+- [x] `/(app)/map` lists sectors with cover tiles; each sector page documents the sector's factor sensitivities + a "How this sector reacts to events" module.
+- [x] At least 1 Reasoning Gap → Map module link exists per gap type defined in P2-S4.
+- [x] Every sensitivity row keeps the MMJ + source-URL invariant from Phase 1.
+- [x] Sector pages render the Map module content that P2-S4 links to.
 
 #### Relevant files
 
 | Path | Type | Purpose |
 |------|------|---------|
 | `backend/db/seeds/sectors/*.sql` | create | One seed file per sector (8 files) |
-| `backend/db/migrations/0015_map_modules.sql` | create | `map_modules(id, sector, title, body, linked_gap_types[])` |
+| `backend/db/migrations/0018_map_modules.sql` | create | `map_modules(id, sector, title, body, linked_gap_types[])` |
 | `backend/app/api/map.py` | create | `GET /api/map/sectors` + `GET /api/map/sectors/{slug}` |
 | `frontend/app/(app)/map/page.tsx` | create | Sector index |
 | `frontend/app/(app)/map/[slug]/page.tsx` | create | Sector detail + module list |
@@ -553,14 +553,14 @@ _Add the personal learning surface (The Mirror) and the on-demand research surfa
 
 #### Tasks (checkboxes)
 
-- [ ] **11.0** Factor DB expansion to all 8 sectors + The Map content
-  - [ ] **11.1** Author seed files: IT / Energy & Oil / Consumer (FMCG) / Auto / Pharma / Metals & Materials / Telecom / Infra & Capital Goods (banking already done in P1-S5).
-  - [ ] **11.2** Migration + seed: `map_modules` for each sector with the "How this sector reacts" body.
-  - [ ] **11.3** `GET /api/map/sectors` index + `GET /api/map/sectors/{slug}` detail.
-  - [ ] **11.4** `/(app)/map` index page rendering `SectorTile`s.
-  - [ ] **11.5** `/(app)/map/[slug]` rendering the sensitivity matrix subset + modules.
-  - [ ] **11.6** Cross-link from P2-S4 reasoning gaps to the matching module IDs.
-  - [ ] **11.7** Test: factor-DB coverage (≥120 instruments × 8 factors, all MMJ-tagged); Map module endpoint returns linked modules for known gap types.
+- [x] **11.0** Factor DB expansion to all 8 sectors + The Map content
+  - [x] **11.1** Author seed files: IT / Energy & Oil / Consumer (FMCG) / Auto / Pharma / Metals & Materials / Telecom / Infra & Capital Goods (banking already done in P1-S5).
+  - [x] **11.2** Migration + seed: `map_modules` for each sector with the "How this sector reacts" body.
+  - [x] **11.3** `GET /api/map/sectors` index + `GET /api/map/sectors/{slug}` detail.
+  - [x] **11.4** `/(app)/map` index page rendering `SectorTile`s.
+  - [x] **11.5** `/(app)/map/[slug]` rendering the sensitivity matrix subset + modules.
+  - [x] **11.6** Cross-link from P2-S4 reasoning gaps to the matching module IDs.
+  - [x] **11.7** Test: factor-DB coverage (≥120 instruments × 8 factors, all MMJ-tagged); Map module endpoint returns linked modules for known gap types.
 
 ---
 
@@ -578,11 +578,11 @@ _Add the personal learning surface (The Mirror) and the on-demand research surfa
 
 **Acceptance criteria**
 
-- [ ] Backlog of tester findings captured in `notes/phase1-feedback-backlog.md` (gitignored), each item triaged P0/P1/P2.
-- [ ] All P0 findings closed before any P2 story ships to testers.
-- [ ] WCAG AA contrast verified on PRD §8.3 palette; automated check via `axe` in tests.
-- [ ] Lighthouse score ≥90 on Pulse, Thread (continuous — harness from P1.5-S9); Mirror, Lens, Map budgets enforced after **P2-S15** extends the runner.
-- [ ] New/changed routes follow **`docs/plans/cross-phase-performance-standards.md`** (SSR, bundle splits, no `next dev` benchmarking).
+- [x] Backlog of tester findings captured in `notes/phase1-feedback-backlog.md` (gitignored), each item triaged P0/P1/P2.
+- [x] All P0 findings closed before any P2 story ships to testers.
+- [x] WCAG AA contrast verified on PRD §8.3 palette; automated check via `axe` in tests.
+- [x] Lighthouse score ≥90 on Pulse, Thread (continuous — harness from P1.5-S9); Mirror, Lens, Map budgets enforced after **P2-S15** extends the runner.
+- [x] New/changed routes follow **`docs/plans/cross-phase-performance-standards.md`** (SSR, bundle splits, no `next dev` benchmarking).
 
 #### Relevant files
 
@@ -595,13 +595,13 @@ _Add the personal learning surface (The Mirror) and the on-demand research surfa
 
 #### Tasks (checkboxes)
 
-- [ ] **12.0** Phase 1 UI polish + tester-feedback iteration
-  - [ ] **12.1** Collect + triage Phase 1 tester feedback into `notes/phase1-feedback-backlog.md`.
-  - [ ] **12.2** Close every P0 item.
-  - [ ] **12.3** Add `axe` automated a11y check across Pulse, Thread, Mirror, Lens.
-  - [ ] **12.4** Pulse + Thread remain green on existing P1.5 Lighthouse CI job; Mirror/Lens/Map extension tracked in **P2-S15**.
-  - [ ] **12.5** Copy clarity pass on Insight Panel + Instrument Card reasoning blocks.
-  - [ ] **12.6** Test: a11y suite green; Pulse/Thread Lighthouse budgets enforced in CI.
+- [x] **12.0** Phase 1 UI polish + tester-feedback iteration
+  - [x] **12.1** Collect + triage Phase 1 tester feedback into `notes/phase1-feedback-backlog.md`.
+  - [x] **12.2** Close every P0 item.
+  - [x] **12.3** Add `axe` automated a11y check across Pulse, Thread, Mirror, Lens.
+  - [x] **12.4** Pulse + Thread remain green on existing P1.5 Lighthouse CI job; Mirror/Lens/Map extension tracked in **P2-S15**.
+  - [x] **12.5** Copy clarity pass on Insight Panel + Instrument Card reasoning blocks.
+  - [x] **12.6** Test: a11y suite green; Pulse/Thread Lighthouse budgets enforced in CI.
 
 ---
 
@@ -619,10 +619,10 @@ _Add the personal learning surface (The Mirror) and the on-demand research surfa
 
 **Acceptance criteria**
 
-- [ ] Per-user rate limit: 10 Lens queries/day; 429 with `retry-after` past the limit.
-- [ ] Monthly cost ceiling: pipeline aborts and surfaces a clear error when projected month cost > ₹X budget threshold (configurable).
-- [ ] Structured logs (JSON) on every pipeline run with prompt_version + token counts + duration.
-- [ ] Basic metrics endpoint (`/api/admin/metrics`) gated to admin allow-list.
+- [x] Per-user rate limit: 10 Lens queries/day; 429 with `retry-after` past the limit.
+- [x] Monthly cost ceiling: pipeline aborts and surfaces a clear error when projected month cost > ₹X budget threshold (configurable).
+- [x] Structured logs (JSON) on every pipeline run with prompt_version + token counts + duration.
+- [x] Basic metrics endpoint (`/api/admin/metrics`) gated to admin allow-list.
 
 #### Relevant files
 
@@ -637,12 +637,12 @@ _Add the personal learning surface (The Mirror) and the on-demand research surfa
 
 #### Tasks (checkboxes)
 
-- [ ] **13.0** Rate-limit guard + LLM cost ceiling + observability
-  - [ ] **13.1** `rate_limit` middleware — per-user token bucket; 10 Lens queries/day.
-  - [ ] **13.2** Extend `cost_guard` with monthly projection from rolling token spend.
-  - [ ] **13.3** Structured JSON logger on every pipeline run.
-  - [ ] **13.4** `/api/admin/metrics` — daily card count, p95 generation time, override rate, signal false-positive rate (PRD §13 metrics).
-  - [ ] **13.5** Test: 429 path; monthly ceiling abort; metrics shape.
+- [x] **13.0** Rate-limit guard + LLM cost ceiling + observability
+  - [x] **13.1** `rate_limit` middleware — per-user token bucket; 10 Lens queries/day.
+  - [x] **13.2** Extend `cost_guard` with monthly projection from rolling token spend.
+  - [x] **13.3** Structured JSON logger on every pipeline run.
+  - [x] **13.4** `/api/admin/metrics` — daily card count, p95 generation time, override rate, signal false-positive rate (PRD §13 metrics).
+  - [x] **13.5** Test: 429 path; monthly ceiling abort; metrics shape.
 
 ---
 
@@ -660,11 +660,11 @@ _Add the personal learning surface (The Mirror) and the on-demand research surfa
 
 **Acceptance criteria**
 
-- [ ] **Unified fact feed:** `run_signal_monitor`’s default path (production) builds the `MarketFact` list by **merging** at least two streams: (a) existing recent **`events`** rows (macro/ingest proxy), and (b) at least one **market-leaning** stream with stable `source_id`, text line, and `observed_at`.
-- [ ] **Market stream (minimum bar):** e.g. **NSE corporate announcements** and/or **benchmark index level / move** lines (Nifty/Sensex or agreed substitute), sourced via an adapter that reuses or extends Phase 1 source patterns (`app/sources/*`), with timeouts and parse fallbacks documented.
-- [ ] **No silent empty prod:** if a stream fails, log and continue; document which streams are optional vs required per env.
-- [ ] **Configuration:** feature flags or env toggles to disable brittle sources without code deploy where practical.
-- [ ] **Tests:** unit tests for merge + dedup-by-`source_id`; at least one fixture-based test proving `evaluate()` sees facts from both streams; contract test or recorded-response test for the market adapter if live calls are flaky in CI.
+- [x] **Unified fact feed:** `run_signal_monitor`’s default path (production) builds the `MarketFact` list by **merging** at least two streams: (a) existing recent **`events`** rows (macro/ingest proxy), and (b) at least one **market-leaning** stream with stable `source_id`, text line, and `observed_at`.
+- [x] **Market stream (minimum bar):** e.g. **NSE corporate announcements** and/or **benchmark index level / move** lines (Nifty/Sensex or agreed substitute), sourced via an adapter that reuses or extends Phase 1 source patterns (`app/sources/*`), with timeouts and parse fallbacks documented.
+- [x] **No silent empty prod:** if a stream fails, log and continue; document which streams are optional vs required per env.
+- [x] **Configuration:** feature flags or env toggles to disable brittle sources without code deploy where practical.
+- [x] **Tests:** unit tests for merge + dedup-by-`source_id`; at least one fixture-based test proving `evaluate()` sees facts from both streams; contract test or recorded-response test for the market adapter if live calls are flaky in CI.
 
 #### Relevant files
 
@@ -679,13 +679,13 @@ _Add the personal learning surface (The Mirror) and the on-demand research surfa
 
 #### Tasks (checkboxes)
 
-- [ ] **14.0** Signal monitor: richer market + macro fact sources
-  - [ ] **14.1** Design fact-merge contract (`MarketFact`, ordering, cap on list size, dedup rules).
-  - [ ] **14.2** Implement market adapter(s): NSE announcements and/or index snapshot lines with `observed_at` in IST/UTC consistently.
-  - [ ] **14.3** Merge with `fetch_recent_event_facts`; wire as default in `run_signal_monitor` (keep `facts_provider` override for tests).
-  - [ ] **14.4** Env toggles + structured logging when a stream is empty or errors.
-  - [ ] **14.5** Tests: merge unit tests + dual-stream `evaluate` fixture test.
-  - [ ] **14.6** Document operational playbook (rate limits, market holidays vs cron) in PR comment or short `docs/` note if needed.
+- [x] **14.0** Signal monitor: richer market + macro fact sources
+  - [x] **14.1** Design fact-merge contract (`MarketFact`, ordering, cap on list size, dedup rules).
+  - [x] **14.2** Implement market adapter(s): NSE announcements and/or index snapshot lines with `observed_at` in IST/UTC consistently.
+  - [x] **14.3** Merge with `fetch_recent_event_facts`; wire as default in `run_signal_monitor` (keep `facts_provider` override for tests).
+  - [x] **14.4** Env toggles + structured logging when a stream is empty or errors.
+  - [x] **14.5** Tests: merge unit tests + dual-stream `evaluate` fixture test.
+  - [x] **14.6** Document operational playbook (rate limits, market holidays vs cron) in PR comment or short `docs/` note if needed.
 
 ---
 
@@ -739,9 +739,9 @@ _Add the personal learning surface (The Mirror) and the on-demand research surfa
 #### Tasks (checkboxes)
 
 - [ ] **15.0** Phase 1.5 performance debt closure + cross-phase standards
-  - [ ] **15.1** Author `docs/plans/cross-phase-performance-standards.md` (Phase 1.5 learnings → mandatory PR checklist).
+  - [x] **15.1** Author `docs/plans/cross-phase-performance-standards.md` (Phase 1.5 learnings → mandatory PR checklist).
   - [ ] **15.2** Run `bench_api_latency.mjs` on production; tune proxy/query until feed + card **p95 &lt;800 ms** OR document blocker + PO decision.
-  - [ ] **15.3** Extend `lighthouse.mjs` + CI for Mirror, Lens, Map (mobile + desktop).
+  - [x] **15.3** Extend `lighthouse.mjs` + CI for Mirror, Lens, Map (mobile + desktop).
   - [ ] **15.4** Perf audit each Phase 2 route (SSR, dynamic imports, fonts) — file issues for gaps.
   - [ ] **15.5** Capture and archive Lighthouse JSON for six surfaces; assert budgets locally.
   - [ ] **15.6** Phase 2 performance close-out note linked from implementation plan.
@@ -822,29 +822,29 @@ Parallel-safe pairs: `{S1, S2, S6, S11}` in Month 4; `{S3, S4, S5, S7, S8}` in M
   - [x] **2.5** Persist + append `track_record`
   - [x] **2.6** Idempotency
   - [x] **2.7** Grader + Original-View tests
-- [ ] **7.0** Lens — live six-step pipeline stream
-  - [ ] **7.1** `lens_pipeline.run()` milestones
-  - [ ] **7.2** SSE endpoint
-  - [ ] **7.3** `LoadingCard`
-  - [ ] **7.4** `PipelineStep` states
-  - [ ] **7.5** `useLensStream` hook
-  - [ ] **7.6** Progress bar
-  - [ ] **7.7** Mandatory disclaimer
-  - [ ] **7.8** Six-event ordering test
-- [ ] **9.0** Portfolio Protector personalisation (session-only)
-  - [ ] **9.1** `HoldingsModal`
-  - [ ] **9.2** `sessionHoldings` store
-  - [ ] **9.3** `personalisation_token` derivation
-  - [ ] **9.4** Feed re-rank
-  - [ ] **9.5** `HoldingCallout` in Thread
-  - [ ] **9.6** "Not stored on our servers" copy
-  - [ ] **9.7** Session-only + re-rank tests
-- [ ] **13.0** Rate-limit guard + LLM cost ceiling + observability
-  - [ ] **13.1** Per-user rate-limit middleware
-  - [ ] **13.2** Monthly cost projection
-  - [ ] **13.3** Structured JSON logging
-  - [ ] **13.4** `/api/admin/metrics`
-  - [ ] **13.5** 429 + ceiling tests
+- [x] **7.0** Lens — live six-step pipeline stream
+  - [x] **7.1** `lens_pipeline.run()` milestones
+  - [x] **7.2** SSE endpoint
+  - [x] **7.3** `LoadingCard`
+  - [x] **7.4** `PipelineStep` states
+  - [x] **7.5** `useLensStream` hook
+  - [x] **7.6** Progress bar
+  - [x] **7.7** Mandatory disclaimer
+  - [x] **7.8** Six-event ordering test
+- [x] **9.0** Portfolio Protector personalisation (session-only)
+  - [x] **9.1** `HoldingsModal`
+  - [x] **9.2** `sessionHoldings` store
+  - [x] **9.3** `personalisation_token` derivation
+  - [x] **9.4** Feed re-rank
+  - [x] **9.5** `HoldingCallout` in Thread
+  - [x] **9.6** "Not stored on our servers" copy
+  - [x] **9.7** Session-only + re-rank tests
+- [x] **13.0** Rate-limit guard + LLM cost ceiling + observability
+  - [x] **13.1** Per-user rate-limit middleware
+  - [x] **13.2** Monthly cost projection
+  - [x] **13.3** Structured JSON logging
+  - [x] **13.4** `/api/admin/metrics`
+  - [x] **13.5** 429 + ceiling tests
 - [ ] **14.0** Signal monitor: richer market + macro fact sources
   - [ ] **14.1** Fact-merge contract + caps
   - [ ] **14.2** NSE/index (or agreed) adapter
@@ -883,24 +883,24 @@ Parallel-safe pairs: `{S1, S2, S6, S11}` in Month 4; `{S3, S4, S5, S7, S8}` in M
   - [ ] **6.8** `QueryHistory`
   - [ ] **6.9** `PhaseBadge`
   - [ ] **6.10** State + gating + tap-fill tests
-- [ ] **8.0** Lens — result rendering + Save to Thread
-  - [ ] **8.1** `ResultCard` reuses Phase 1 ICE components
-  - [ ] **8.2** `LensLimitations` mandatory aside
-  - [ ] **8.3** Lens-specific Confidence Composition note
-  - [ ] **8.4** Bias Flags aside
-  - [ ] **8.5** Meta row
-  - [ ] **8.6** `saved_threads` migration + API
-  - [ ] **8.7** `SaveToThreadButton`
-  - [ ] **8.8** Saved sub-nav in sidebar
-  - [ ] **8.9** "← New query" preserves text
-  - [ ] **8.10** Limitations + save + preserve tests
-- [ ] **12.0** Phase 1 UI polish + tester-feedback iteration
-  - [ ] **12.1** Triage `notes/phase1-feedback-backlog.md`
-  - [ ] **12.2** Close all P0
-  - [ ] **12.3** `axe` a11y tests
-  - [ ] **12.4** Lighthouse CI ≥90
-  - [ ] **12.5** Copy clarity pass
-  - [ ] **12.6** A11y + Lighthouse green in CI
+- [x] **8.0** Lens — result rendering + Save to Thread
+  - [x] **8.1** `ResultCard` reuses Phase 1 ICE components
+  - [x] **8.2** `LensLimitations` mandatory aside
+  - [x] **8.3** Lens-specific Confidence Composition note
+  - [x] **8.4** Bias Flags aside
+  - [x] **8.5** Meta row
+  - [x] **8.6** `saved_threads` migration + API
+  - [x] **8.7** `SaveToThreadButton`
+  - [x] **8.8** Saved sub-nav in sidebar
+  - [x] **8.9** "← New query" preserves text
+  - [x] **8.10** Limitations + save + preserve tests
+- [x] **12.0** Phase 1 UI polish + tester-feedback iteration
+  - [x] **12.1** Triage `notes/phase1-feedback-backlog.md`
+  - [x] **12.2** Close all P0
+  - [x] **12.3** `axe` a11y tests
+  - [x] **12.4** Lighthouse CI ≥90
+  - [x] **12.5** Copy clarity pass
+  - [x] **12.6** A11y + Lighthouse green in CI
 
 ### Tasks by developer — Riley
 
@@ -912,14 +912,14 @@ Parallel-safe pairs: `{S1, S2, S6, S11}` in Month 4; `{S3, S4, S5, S7, S8}` in M
   - [x] **3.5** `ReadyToGradePanel`
   - [x] **3.6** Read-on-viewport-intersect
   - [x] **3.7** Scope + visibility + pulse tests
-- [ ] **4.0** Reasoning-gap analysis + Map module linking
-  - [ ] **4.1** Gap taxonomy
-  - [ ] **4.2** `reasoning_gap_detector.analyse()`
-  - [ ] **4.3** `/api/mirror/gaps`
-  - [ ] **4.4** `ReasoningGapPanel`
-  - [ ] **4.5** Wire `gap_insight` into expanded PredictionCard
-  - [ ] **4.6** Recompute on resolve
-  - [ ] **4.7** Fixture-history + UI tests
+- [x] **4.0** Reasoning-gap analysis + Map module linking
+  - [x] **4.1** Gap taxonomy
+  - [x] **4.2** `reasoning_gap_detector.analyse()`
+  - [x] **4.3** `/api/mirror/gaps`
+  - [x] **4.4** `ReasoningGapPanel`
+  - [x] **4.5** Wire `gap_insight` into expanded PredictionCard
+  - [x] **4.6** Recompute on resolve
+  - [x] **4.7** Fixture-history + UI tests
 - [ ] **10.0** Email notifications for fired signals
   - [ ] **10.1** Provider creds in `.env.local`
   - [ ] **10.2** `user_email_preferences` + tokens
@@ -929,14 +929,14 @@ Parallel-safe pairs: `{S1, S2, S6, S11}` in Month 4; `{S3, S4, S5, S7, S8}` in M
   - [ ] **10.6** `/unsubscribe` endpoint
   - [ ] **10.7** Email settings page
   - [ ] **10.8** Scope + single-shot + language-lint tests
-- [ ] **11.0** Factor DB expansion to all 8 sectors + The Map content
-  - [ ] **11.1** Seeds: IT / Energy / Consumer / Auto / Pharma / Metals / Telecom / Infra
-  - [ ] **11.2** `map_modules` migration + content
-  - [ ] **11.3** Map API endpoints
-  - [ ] **11.4** Map index page
-  - [ ] **11.5** Map sector-detail page
-  - [ ] **11.6** Cross-link gaps → modules
-  - [ ] **11.7** Coverage + linked-modules tests
+- [x] **11.0** Factor DB expansion to all 8 sectors + The Map content
+  - [x] **11.1** Seeds: IT / Energy / Consumer / Auto / Pharma / Metals / Telecom / Infra
+  - [x] **11.2** `map_modules` migration + content
+  - [x] **11.3** Map API endpoints
+  - [x] **11.4** Map index page
+  - [x] **11.5** Map sector-detail page
+  - [x] **11.6** Cross-link gaps → modules
+  - [x] **11.7** Coverage + linked-modules tests
 - [ ] **15.0** Phase 1.5 performance debt closure + cross-phase standards
   - [ ] **15.1** `cross-phase-performance-standards.md`
   - [ ] **15.2** Production bench p95 &lt;800 ms

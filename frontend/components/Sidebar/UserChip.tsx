@@ -17,10 +17,18 @@ import { getInitials } from "@/lib/user-display";
 export type UserChipProps = {
   name: string;
   email: string;
+  holdingsCount?: number;
+  onManageHoldings?: () => void;
   onSignOut: () => void | Promise<void>;
 };
 
-export default function UserChip({ name, email, onSignOut }: UserChipProps) {
+export default function UserChip({
+  name,
+  email,
+  holdingsCount = 0,
+  onManageHoldings,
+  onSignOut,
+}: UserChipProps) {
   const [signingOut, setSigningOut] = useState(false);
 
   async function handleSignOut() {
@@ -56,8 +64,17 @@ export default function UserChip({ name, email, onSignOut }: UserChipProps) {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent side="top" align="start" className="w-[--radix-dropdown-menu-trigger-width]">
+          {onManageHoldings ? (
+            <DropdownMenuItem onClick={onManageHoldings}>
+              Session holdings
+              {holdingsCount > 0 ? ` (${holdingsCount})` : ""}
+            </DropdownMenuItem>
+          ) : null}
           <DropdownMenuItem asChild>
             <Link href="/account">Account</Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href="/settings/email">Email notifications</Link>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem disabled={signingOut} onClick={handleSignOut}>

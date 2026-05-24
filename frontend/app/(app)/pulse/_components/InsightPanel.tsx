@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import type { PulseCard } from "@/lib/cards/pulseTypes";
 import { categoryLabel, categoryPillClass } from "@/lib/cards/categories";
+import { formatFinnwiseDateTime } from "@/lib/format/dateTime";
 import { cn } from "@/lib/utils";
 
 function dotClass(tier: string): string {
@@ -31,19 +32,6 @@ function categoryBadgeVariant(
   }
 }
 
-function formatTime(iso: string | null): string {
-  if (!iso) return "—";
-  try {
-    const d = new Date(iso);
-    return d.toLocaleString(undefined, {
-      dateStyle: "medium",
-      timeStyle: "short",
-    });
-  } catch {
-    return iso;
-  }
-}
-
 type InsightPanelProps = {
   card: PulseCard | null;
 };
@@ -52,7 +40,9 @@ export function InsightPanel({ card }: InsightPanelProps) {
   if (!card) {
     return (
       <aside className="hidden min-h-[200px] border-l border-border bg-background p-6 min-[860px]:block">
-        <p className="text-sm text-muted-foreground">Select an event to preview analysis.</p>
+        <p className="text-sm text-muted-foreground">
+          Select an event card to preview direction, magnitude, and linked instruments.
+        </p>
       </aside>
     );
   }
@@ -75,9 +65,10 @@ export function InsightPanel({ card }: InsightPanelProps) {
       <h2 className="font-display text-xl font-semibold leading-snug text-foreground">
         {card.headline}
       </h2>
-      <p className="mt-3 text-sm italic leading-relaxed text-muted-foreground">
-        {card.event_context}
+      <p className="mt-1 font-mono text-[9px] uppercase tracking-wide text-muted-foreground">
+        Event context
       </p>
+      <p className="mt-2 text-sm italic leading-relaxed text-muted-foreground">{card.event_context}</p>
 
       <div className="mt-6 grid grid-cols-3 gap-2">
         <Card size="sm" className="gap-0 rounded-md border-border bg-finnwise-surface py-0 shadow-none ring-0">
@@ -108,7 +99,7 @@ export function InsightPanel({ card }: InsightPanelProps) {
               Last reviewed
             </p>
             <p className="mt-1 font-mono text-[10px] text-foreground/80">
-              {formatTime(card.last_reviewed_at ?? card.created_at)}
+              {formatFinnwiseDateTime(card.last_reviewed_at ?? card.created_at)}
             </p>
           </CardContent>
         </Card>
@@ -143,7 +134,7 @@ export function InsightPanel({ card }: InsightPanelProps) {
           <Link href={`/thread/${card.id}`}>Read full analysis in The Thread →</Link>
         </Button>
         <p className="mt-2 font-mono text-[9px] text-muted-foreground">
-          Updated {formatTime(card.last_reviewed_at ?? card.created_at)}
+          Updated {formatFinnwiseDateTime(card.last_reviewed_at ?? card.created_at)}
         </p>
       </div>
     </aside>

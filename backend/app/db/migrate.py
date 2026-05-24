@@ -17,6 +17,10 @@ MIGRATION_FILES = (
     "0014_user_predictions_gap_insight.sql",
     "0015_notifications_card_graded_read_at.sql",
     "0016_lens_queries.sql",
+    "0017_user_email_preferences.sql",
+    "0018_map_modules.sql",
+    "0019_saved_threads.sql",
+    "0020_rate_limit_observability.sql",
 )
 
 _SCHEMA_MIGRATIONS_DDL = """

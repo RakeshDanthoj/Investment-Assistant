@@ -46,6 +46,8 @@ def test_post_lens_query_returns_id(monkeypatch):
         created_at=datetime(2026, 5, 24, tzinfo=UTC),
     )
 
+    monkeypatch.setattr("app.api.lens.enforce_lens_daily_limit", lambda **_: None)
+    monkeypatch.setattr("app.api.lens.check_monthly_budget_or_raise", lambda **_: None)
     monkeypatch.setattr("app.api.lens.create_query", lambda **_kwargs: row)
     monkeypatch.setattr("app.api.lens.enqueue_generation", lambda _qid: None)
 

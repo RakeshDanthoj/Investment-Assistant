@@ -51,7 +51,39 @@ class Settings(BaseSettings):
 
     newsapi_key: str = ""
     factor_db_admin_emails: str = ""
+    admin_emails: str = Field(default="", validation_alias="ADMIN_EMAILS")
+    llm_monthly_budget_inr: float = Field(
+        default=20_000.0,
+        validation_alias="LLM_MONTHLY_BUDGET_INR",
+    )
+    usd_inr_rate: float = Field(default=85.0, validation_alias="USD_INR_RATE")
     cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000,https://*.vercel.app"
+    personalisation_token_salt: str = Field(
+        default="dev-personalisation-salt-change-me",
+        validation_alias="PERSONALISATION_TOKEN_SALT",
+    )
+
+    email_provider: str = Field(default="", validation_alias="EMAIL_PROVIDER")
+    email_api_key: str = Field(default="", validation_alias="EMAIL_API_KEY")
+    email_from: str = Field(default="", validation_alias="EMAIL_FROM")
+    app_public_url: str = Field(default="", validation_alias="APP_PUBLIC_URL")
+
+    signal_facts_events_enabled: bool = Field(
+        default=True,
+        validation_alias="SIGNAL_FACTS_EVENTS_ENABLED",
+    )
+    signal_facts_nse_enabled: bool = Field(
+        default=True,
+        validation_alias="SIGNAL_FACTS_NSE_ENABLED",
+    )
+    signal_facts_index_enabled: bool = Field(
+        default=True,
+        validation_alias="SIGNAL_FACTS_INDEX_ENABLED",
+    )
+    signal_facts_max_total: int = Field(
+        default=300,
+        validation_alias="SIGNAL_FACTS_MAX_TOTAL",
+    )
 
 
 @lru_cache

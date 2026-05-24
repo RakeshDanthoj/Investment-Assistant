@@ -21,7 +21,7 @@ export function InstrumentCard({ row }: InstrumentCardProps) {
       <CardContent className="p-4">
         <p className="font-display text-[15px] font-semibold text-slate-900">{row.instrument_id}</p>
         <p className="mt-1 font-mono text-[10px] uppercase tracking-wide text-slate-400">
-          Instrument assessment
+          How this event affects this name
         </p>
         <Badge
           variant="outline"
@@ -30,7 +30,12 @@ export function InstrumentCard({ row }: InstrumentCardProps) {
           {row.signal_label}
         </Badge>
         {row.reasoning ? (
-          <p className="mt-3 text-[13px] leading-relaxed text-slate-600">{row.reasoning}</p>
+          <div className="mt-3">
+            <p className="font-mono text-[10px] uppercase tracking-wide text-slate-400">
+              Why we labelled it this way
+            </p>
+            <p className="mt-1 text-[13px] leading-relaxed text-slate-700">{row.reasoning}</p>
+          </div>
         ) : null}
         <div className="mt-4 grid min-w-0 gap-3 sm:grid-cols-2">
           <Card className="rounded-lg border-emerald-100 bg-[#F0FDF4] py-0 shadow-none ring-emerald-100">

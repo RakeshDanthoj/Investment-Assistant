@@ -1,5 +1,7 @@
 "use client";
 
+import { formatFinnwiseTime } from "@/lib/format/dateTime";
+
 import { FilterPills } from "./FilterPills";
 
 type TopbarProps = {
@@ -9,16 +11,6 @@ type TopbarProps = {
   selectedCategories: string[];
   onCategoriesChange: (next: string[]) => void;
 };
-
-function formatUpdated(iso: string | null): string {
-  if (!iso) return "—";
-  try {
-    const d = new Date(iso);
-    return d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
-  } catch {
-    return iso;
-  }
-}
 
 export function Topbar({
   counts,
@@ -44,7 +36,7 @@ export function Topbar({
           <span>
             {counts} event{counts === 1 ? "" : "s"}
           </span>
-          <span>Updated {formatUpdated(lastUpdated)}</span>
+          <span>Updated {formatFinnwiseTime(lastUpdated)}</span>
         </div>
       </div>
     </header>

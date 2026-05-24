@@ -2,6 +2,7 @@
 
 import { ChevronRight } from "lucide-react";
 
+import { formatFinnwiseDate } from "@/lib/format/dateTime";
 import type { MirrorUnreadNotification } from "@/lib/mirror/types";
 import { cn } from "@/lib/utils";
 
@@ -10,19 +11,6 @@ type ReadyToGradePanelProps = {
   onSelect: (item: MirrorUnreadNotification) => void;
   className?: string;
 };
-
-function formatResolvedDate(iso: string | null): string {
-  if (!iso) return "";
-  try {
-    return new Date(iso).toLocaleDateString(undefined, {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    });
-  } catch {
-    return "";
-  }
-}
 
 export function ReadyToGradePanel({ items, onSelect, className }: ReadyToGradePanelProps) {
   return (
@@ -60,7 +48,7 @@ export function ReadyToGradePanel({ items, onSelect, className }: ReadyToGradePa
                   </span>
                   {item.resolved_at ? (
                     <span className="font-mono text-[10px] text-slate-500">
-                      Resolved {formatResolvedDate(item.resolved_at)}
+                      Resolved {item.resolved_at ? formatFinnwiseDate(item.resolved_at) : ""}
                     </span>
                   ) : null}
                 </span>

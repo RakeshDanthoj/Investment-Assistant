@@ -68,6 +68,19 @@ export type MirrorStreakResponse = {
   summary: string;
 };
 
+export type MirrorReasoningGap = {
+  gap_type: string;
+  gap_name: string;
+  pattern_explanation: string;
+  linked_map_module_id: string;
+  linked_map_module_name: string;
+};
+
+export type MirrorReasoningGapsResponse = {
+  items: MirrorReasoningGap[];
+  insufficient_history: boolean;
+};
+
 export const MIRROR_FILTER_OPTIONS = [
   { id: "resolved", label: "Resolved" },
   { id: "active", label: "Active" },

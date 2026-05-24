@@ -1,10 +1,15 @@
 "use client";
 
+import { useMemo } from "react";
+
 import type { CardDetailResponse } from "@/lib/cards/threadTypes";
+import { intersectHoldingsWithInstruments } from "@/lib/personalisation/sessionHoldings";
+import { useSessionHoldings } from "@/lib/personalisation/useSessionHoldings";
 
 import { Card, CardContent } from "@/components/ui/card";
 
 import { DissentingView } from "./DissentingView";
+import { HoldingCallout } from "./HoldingCallout";
 import { EmptyLayerState } from "./EmptyLayerState";
 import { FrameworkBehindThis } from "./FrameworkBehindThis";
 import { InstrumentCard } from "./InstrumentCard";
@@ -27,9 +32,15 @@ export function InsightLayer({
   framework_behind_this,
 }: InsightLayerProps) {
   const hasInsight = insight_layer.trim().length > 0;
+  const { holdings } = useSessionHoldings();
+  const holdingIntersections = useMemo(
+    () => intersectHoldingsWithInstruments(holdings, instruments),
+    [holdings, instruments],
+  );
 
   return (
     <div className="w-full min-w-0 space-y-8">
+      <HoldingCallout intersections={holdingIntersections} />
       <Card className="w-full min-w-0 rounded-[10px] py-0 shadow-none ring-slate-200">
         <CardContent className="p-6">
           <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-slate-400">Insight</p>

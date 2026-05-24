@@ -113,6 +113,60 @@ def get_query_for_user(*, user_id: UUID, query_id: UUID) -> LensQueryRow | None:
     return _row_from_record(dict(row))
 
 
+def update_query_status(
+    query_id: UUID,
+    *,
+    status: LensQueryStatus,
+    card_id: UUID | None = None,
+) -> None:
+    stmt = """
+    UPDATE public.lens_queries
+    SET status = %s::public.lens_query_status,
+        card_id = COALESCE(%s::uuid, card_id)
+    WHERE id = %s::uuid
+    """
+    with connection() as conn, conn.cursor() as cur:
+        cur.execute(
+            stmt,
+            (
+                status,
+                str(card_id) if card_id else None,
+                str(query_id),
+            ),
+        )
+
+
+def create_lens_event_for_query(row: LensQueryRow) -> UUID:
+    """Synthetic draft event so Lens queries can reuse the ICE card pipeline."""
+    from uuid import uuid4
+
+    event_id = uuid4()
+    category = row.sector or "macro"
+    canonical_url = f"lens:{row.id}@finnwise.internal"
+    title = row.query.strip()[:500]
+    stmt = """
+    INSERT INTO public.events (
+      id, title, category, confidence_score, lifecycle_state,
+      canonical_url, event_source
+    )
+    VALUES (
+      %s::uuid, %s, %s::public.event_category, 50, 'draft',
+      %s, 'lens'
+    )
+    """
+    with connection() as conn, conn.cursor() as cur:
+        cur.execute(
+            stmt,
+            (
+                str(event_id),
+                title,
+                category,
+                canonical_url,
+            ),
+        )
+    return event_id
+
+
 def enqueue_generation(query_id: UUID) -> None:
-    """Placeholder hook for P2-S7 pipeline worker; row is already status=queued."""
+    """Generation runs when the client opens the SSE stream (P2-S7)."""
     _ = query_id

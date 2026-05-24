@@ -13,7 +13,7 @@ from app.services.card_repository import (
     fetch_card_detail_for_review,
     fetch_instrument_assessments_for_card,
 )
-from app.services.cost_guard import DailyLLMCardCapError
+from app.services.cost_guard import DailyLLMCardCapError, MonthlyLLMBudgetError
 from app.services.publish_card import PublishCardError, publish_draft_card
 from app.services.regenerate_card import RegenerateCardError, regenerate_draft_with_notes
 
@@ -86,6 +86,11 @@ def post_regenerate_card(card_id: UUID, body: RegenerateCardBody) -> dict:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail={"code": "llm_daily_cap", "message": str(exc)},
+        ) from exc
+    except MonthlyLLMBudgetError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail={"code": "llm_monthly_budget", "message": str(exc)},
         ) from exc
     except (DissentQualityError, FrameworkQualityError, RuntimeError, ValueError) as exc:
         raise HTTPException(

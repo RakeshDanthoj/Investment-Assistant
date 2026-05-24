@@ -21,6 +21,7 @@ from app.services.prediction_grader import (
     SupportsGradingCompletion,
     grade,
 )
+from app.services.reasoning_gap_detector import recompute_for_user
 
 _LOG = logging.getLogger(__name__)
 
@@ -141,6 +142,12 @@ def grade_predictions_for_card(
         if graded_user_ids:
             fan_out_on_grade(cur, card_id=str(card_id), user_ids=graded_user_ids)
         conn.commit()
+
+    for uid in set(graded_user_ids):
+        try:
+            recompute_for_user(UUID(uid))
+        except Exception:
+            _LOG.exception("reasoning_gap.recompute_failed", extra={"user_id": uid})
 
     if graded:
         _LOG.info("grade_on_resolve.complete", extra={"card_id": str(card_id), "graded": graded})

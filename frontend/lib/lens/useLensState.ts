@@ -11,6 +11,7 @@ export type LensState = {
   horizon: Horizon | null;
   activeQueryId: string | null;
   activeQuery: LensQueryItem | null;
+  generationSeconds: number | null;
   errorMessage: string | null;
 };
 
@@ -24,6 +25,8 @@ export type LensAction =
   | { type: "SUBMIT_ERROR"; message: string }
   | { type: "OPEN_HISTORY"; item: LensQueryItem }
   | { type: "RESET_TO_IDLE" }
+  | { type: "STREAM_COMPLETE"; cardId: string; generationSeconds?: number }
+  | { type: "STREAM_ERROR"; message: string }
   | { type: "HYDRATE_FROM_HASH"; hash: string; history: LensQueryItem[] };
 
 export const LENS_QUERY_MIN_CHARS = 11;
@@ -36,6 +39,7 @@ export function initialLensState(): LensState {
     horizon: null,
     activeQueryId: null,
     activeQuery: null,
+    generationSeconds: null,
     errorMessage: null,
   };
 }
@@ -121,7 +125,37 @@ export function lensReducer(state: LensState, action: LensAction): LensState {
         view: "idle",
         activeQueryId: null,
         activeQuery: null,
+        generationSeconds: null,
         errorMessage: null,
+      };
+    case "STREAM_COMPLETE": {
+      const activeQuery =
+        state.activeQuery !== null
+          ? { ...state.activeQuery, status: "done" as const, card_id: action.cardId }
+          : state.activeQueryId
+            ? {
+                id: state.activeQueryId,
+                query: state.queryText,
+                sector: state.sector,
+                horizon: state.horizon,
+                status: "done" as const,
+                card_id: action.cardId,
+                created_at: new Date().toISOString(),
+              }
+            : null;
+      return {
+        ...state,
+        view: "result",
+        activeQuery,
+        generationSeconds: action.generationSeconds ?? state.generationSeconds,
+        errorMessage: null,
+      };
+    }
+    case "STREAM_ERROR":
+      return {
+        ...state,
+        view: "error",
+        errorMessage: action.message,
       };
     case "HYDRATE_FROM_HASH": {
       const parsed = parseLensHash(action.hash);

@@ -4,6 +4,12 @@ import { render, screen } from "@testing-library/react";
 
 import MirrorPage from "./page";
 
+jest.mock("../../../lib/supabase/server", () => ({
+  createClient: jest.fn(async () => ({
+    auth: { getSession: jest.fn(async () => ({ data: { session: null } })) },
+  })),
+}));
+
 jest.mock("./_components/MirrorClient", () => ({
   __esModule: true,
   default: function MockMirrorClient() {
@@ -17,8 +23,9 @@ jest.mock("./_components/MirrorClient", () => ({
 }));
 
 describe("MirrorPage", () => {
-  it("contains no rupee figures in the rendered subtree", () => {
-    const { container } = render(<MirrorPage />);
+  it("contains no rupee figures in the rendered subtree", async () => {
+    const page = await MirrorPage({ searchParams: {} });
+    const { container } = render(page);
     expect(container.textContent).not.toMatch(/₹/);
     expect(screen.getByTestId("mirror-client")).toBeInTheDocument();
   });

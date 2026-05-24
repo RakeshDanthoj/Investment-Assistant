@@ -50,11 +50,40 @@ describe("lensReducer", () => {
     expect(next.view).toBe("loading");
   });
 
-  it("resets to idle from result", () => {
+  it("resets to idle from result and preserves query text", () => {
     let state = lensReducer(initialLensState(), { type: "OPEN_HISTORY", item: historyItem });
     state = lensReducer(state, { type: "RESET_TO_IDLE" });
     expect(state.view).toBe("idle");
     expect(state.activeQueryId).toBeNull();
+    expect(state.queryText).toBe(historyItem.query);
+  });
+
+  it("stream complete moves to result with card id", () => {
+    let state = lensReducer(initialLensState(), {
+      type: "SUBMIT_SUCCESS",
+      queryId: "q-stream",
+    });
+    state = lensReducer(state, {
+      type: "STREAM_COMPLETE",
+      cardId: "card-abc",
+      generationSeconds: 52,
+    });
+    expect(state.view).toBe("result");
+    expect(state.activeQuery?.card_id).toBe("card-abc");
+    expect(state.generationSeconds).toBe(52);
+  });
+
+  it("stream error moves to error view", () => {
+    let state = lensReducer(initialLensState(), {
+      type: "SUBMIT_SUCCESS",
+      queryId: "q-stream",
+    });
+    state = lensReducer(state, {
+      type: "STREAM_ERROR",
+      message: "Stream failed",
+    });
+    expect(state.view).toBe("error");
+    expect(state.errorMessage).toBe("Stream failed");
   });
 });
 

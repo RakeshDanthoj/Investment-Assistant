@@ -11,7 +11,9 @@ from uuid import UUID
 from psycopg import Connection
 from psycopg.rows import dict_row
 
+from app.core.settings import get_settings
 from app.db.connection import connection
+from app.services.feed_ranker import rerank
 
 # Major events: editor/model confidence on the parent event row.
 MAJOR_EVENT_MIN_CONFIDENCE = 70
@@ -272,6 +274,7 @@ def build_feed_response(
     session_id: UUID | None,
     horizon: str | None,
     category: str | None,
+    personalisation_token: str | None = None,
 ) -> dict[str, Any]:
     cat_list: list[str] | None = None
     if category:
@@ -291,6 +294,8 @@ def build_feed_response(
         )
         fog = _fetch_fog_of_war_conn(conn)
 
+    salt = get_settings().personalisation_token_salt.strip()
+    rows = rerank(rows, personalisation_token, salt=salt)
     cards = [build_card_payload(r) for r in rows]
 
     eff_horizon = horizon or (profile.horizon if profile else None)

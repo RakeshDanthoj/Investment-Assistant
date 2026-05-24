@@ -28,6 +28,11 @@ def get_feed(
         default=None,
         description="Onboarding session id for profile join (horizon default).",
     ),
+    personalisation_token: str | None = Query(
+        default=None,
+        max_length=4096,
+        description="Opaque hashed holdings token (never send raw instrument lists).",
+    ),
 ) -> JSONResponse:
     if horizon is not None and horizon not in {
         "under_1y",
@@ -45,6 +50,7 @@ def get_feed(
                 session_id=session_id,
                 horizon=horizon,
                 category=category,
+                personalisation_token=personalisation_token,
             )
         except RuntimeError as exc:
             if "SUPABASE_DB_URL" in str(exc):

@@ -1,6 +1,6 @@
 /** @jest-environment jsdom */
 
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 
 import { InstrumentCard } from "./InstrumentCard";
 
@@ -21,5 +21,6 @@ describe("InstrumentCard", () => {
     );
     const text = container.textContent ?? "";
     expect(text.toLowerCase()).not.toMatch(forbidden);
+    expect(screen.getByText("Why we labelled it this way")).toBeInTheDocument();
   });
 });

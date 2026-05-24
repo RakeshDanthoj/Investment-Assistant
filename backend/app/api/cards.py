@@ -8,7 +8,7 @@ from app.services.card_pipeline import (
     FrameworkQualityError,
     draft_card_from_event,
 )
-from app.services.cost_guard import DailyLLMCardCapError
+from app.services.cost_guard import DailyLLMCardCapError, MonthlyLLMBudgetError
 
 router = APIRouter()
 
@@ -30,6 +30,11 @@ def post_draft_from_event(body: DraftFromEventRequest) -> DraftFromEventResponse
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail={"code": "llm_daily_cap", "message": str(exc)},
+        ) from exc
+    except MonthlyLLMBudgetError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail={"code": "llm_monthly_budget", "message": str(exc)},
         ) from exc
     except LookupError as exc:
         raise HTTPException(

@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 
+import { SavedThreadsNav } from "./SavedThreadsNav";
 import UserChipContainer from "./UserChipContainer";
 
 const NotificationBadge = dynamic(
@@ -93,6 +94,7 @@ export default function Sidebar({ userName, userEmail }: SidebarProps) {
             );
           })}
         </ul>
+        <SavedThreadsNav pathname={pathname} />
       </nav>
       <UserChipContainer userName={userName} userEmail={userEmail} />
     </aside>

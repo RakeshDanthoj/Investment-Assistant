@@ -18,6 +18,24 @@ describe("UserChip", () => {
     expect(screen.getByText("JS")).toBeInTheDocument();
   });
 
+  it("opens session holdings from the menu when handler provided", async () => {
+    const user = userEvent.setup();
+    const onManageHoldings = jest.fn();
+    render(
+      <UserChip
+        name="Jordan Smith"
+        email="jordan@finnwise.test"
+        holdingsCount={2}
+        onManageHoldings={onManageHoldings}
+        onSignOut={jest.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /Jordan Smith/i }));
+    await user.click(await screen.findByRole("menuitem", { name: /session holdings \(2\)/i }));
+    expect(onManageHoldings).toHaveBeenCalledTimes(1);
+  });
+
   it("links to account settings from the menu", async () => {
     const user = userEvent.setup();
     render(

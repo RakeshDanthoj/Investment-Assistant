@@ -4,6 +4,7 @@ import { forwardRef, useEffect, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { categoryLabel, categoryPillClass } from "@/lib/cards/categories";
+import { formatFinnwiseDate } from "@/lib/format/dateTime";
 import type { MirrorPrediction } from "@/lib/mirror/types";
 import { cn } from "@/lib/utils";
 
@@ -16,18 +17,6 @@ type PredictionCardProps = {
   expanded?: boolean;
   onExpandedChange?: (open: boolean) => void;
 };
-
-function formatLoggedAt(iso: string): string {
-  try {
-    return new Date(iso).toLocaleDateString(undefined, {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    });
-  } catch {
-    return iso;
-  }
-}
 
 function statusBadgeVariant(status: MirrorPrediction["mirror_status"]) {
   switch (status) {
@@ -94,7 +83,7 @@ export const PredictionCard = forwardRef<HTMLElement, PredictionCardProps>(funct
           </span>
           <span className="text-[12px] text-slate-600">{prediction.event_title}</span>
           <span className="font-mono text-[10px] text-slate-400">
-            {formatLoggedAt(prediction.logged_at)}
+            {formatFinnwiseDate(prediction.logged_at)}
           </span>
           <Badge
             variant="outline"

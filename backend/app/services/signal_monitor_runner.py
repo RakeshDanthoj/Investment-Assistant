@@ -15,7 +15,8 @@ from psycopg.rows import dict_row
 from app.db.connection import connection
 from app.models.enums import LifecycleState, SignalState
 from app.services.confidence_gate import GateDecision, route
-from app.services.market_facts import fetch_recent_event_facts
+from app.services.market_facts import build_market_facts
+from app.services.email_on_signal import fan_out as fan_out_signal_emails
 from app.services.signal_check import MarketFact, SignalEvalResult, evaluate
 
 _LOG = logging.getLogger(__name__)
@@ -101,8 +102,9 @@ def _high_path(
     card_title: str,
     decision: GateDecision,
     eval_result: SignalEvalResult,
+    emit_email: bool = True,
 ) -> None:
-    del signal_text, card_title
+    del signal_text
     override_until = datetime.now(tz=UTC) + timedelta(hours=2)
     note = (
         f"\n\n[Auto-update — high confidence] Signal matched market/macro sources "
@@ -147,6 +149,13 @@ def _high_path(
         """,
         (card_id, json.dumps(tr_payload)),
     )
+    if emit_email:
+        fan_out_signal_emails(
+            cur,
+            card_id=card_id,
+            signal_id=signal_id,
+            card_title=card_title,
+        )
 
 
 def _medium_path(
@@ -216,7 +225,7 @@ def run_signal_monitor(
     if facts_provider is None:
 
         def facts_fn(rt: datetime) -> Sequence[MarketFact]:
-            return fetch_recent_event_facts(reference_time=rt)
+            return build_market_facts(reference_time=rt)
 
     else:
         facts_fn = facts_provider

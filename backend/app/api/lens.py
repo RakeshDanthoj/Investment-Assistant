@@ -10,6 +10,12 @@ from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field
 
 from app.core.auth import CurrentUser
+from app.middleware.rate_limit import (
+    LensDailyRateLimitError,
+    enforce_lens_daily_limit,
+    lens_rate_limit_http_exception,
+)
+from app.services.cost_guard import MonthlyLLMBudgetError, check_monthly_budget_or_raise
 from app.services.lens_queries import (
     LensQueryRow,
     LensQueryStatus,
@@ -99,6 +105,23 @@ def post_lens_query(
     body: LensQueryCreate,
     current_user: CurrentUser,
 ) -> LensQueryCreateResponse:
+    try:
+        enforce_lens_daily_limit(user_id=UUID(current_user.id))
+    except LensDailyRateLimitError as exc:
+        raise lens_rate_limit_http_exception(exc) from exc
+    except RuntimeError as exc:
+        _db_unavailable(exc)
+
+    try:
+        check_monthly_budget_or_raise()
+    except MonthlyLLMBudgetError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail={"code": "llm_monthly_budget", "message": str(exc)},
+        ) from exc
+    except RuntimeError as exc:
+        _db_unavailable(exc)
+
     try:
         row = create_query(
             user_id=UUID(current_user.id),

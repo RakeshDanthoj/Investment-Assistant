@@ -16,6 +16,8 @@ from app.services.mirror_stats import (
     compute,
     mirror_filter_status,
 )
+from app.services.reasoning_gap_detector import infer_gap_type_for_prediction
+from app.services.reasoning_gap_map import resolve_module_for_gap_type
 
 MirrorStatusFilter = Literal["resolved", "active", "pending"] | None
 
@@ -40,6 +42,25 @@ class MirrorPredictionRow:
     mirror_status: Literal["resolved", "active", "pending"]
     linked_map_module_id: str | None
     linked_map_module_name: str | None
+
+
+def _linked_map_fields(
+    *,
+    mechanism_accuracy: str | None,
+    business_accuracy: str | None,
+    market_accuracy: str | None,
+) -> tuple[str | None, str | None]:
+    gap_type = infer_gap_type_for_prediction(
+        mechanism_accuracy,
+        business_accuracy,
+        market_accuracy,
+    )
+    if gap_type is None:
+        return None, None
+    module = resolve_module_for_gap_type(gap_type)
+    if module is None:
+        return None, None
+    return str(module.id), module.title
 
 
 def _parse_ts(value: object) -> datetime | None:
@@ -108,23 +129,31 @@ def list_predictions(
             if logged_at is None:
                 continue
             lifecycle = str(row["lifecycle_state"])
+            mech = row.get("mechanism_accuracy")
+            biz = row.get("business_accuracy")
+            market = row.get("market_accuracy")
+            module_id, module_name = _linked_map_fields(
+                mechanism_accuracy=mech,
+                business_accuracy=biz,
+                market_accuracy=market,
+            )
             rows.append(
                 MirrorPredictionRow(
                     id=UUID(str(row["id"])),
                     card_id=UUID(str(row["card_id"])),
                     prediction_text=str(row["prediction_text"]),
                     logged_at=logged_at,
-                    mechanism_accuracy=row.get("mechanism_accuracy"),
-                    business_accuracy=row.get("business_accuracy"),
-                    market_accuracy=row.get("market_accuracy"),
+                    mechanism_accuracy=mech,
+                    business_accuracy=biz,
+                    market_accuracy=market,
                     gap_insight=row.get("gap_insight"),
                     card_title=str(row["card_title"]),
                     event_title=str(row["event_title"]),
                     event_category=str(row["event_category"]),
                     lifecycle_state=lifecycle,
                     mirror_status=mirror_filter_status(lifecycle),
-                    linked_map_module_id=None,
-                    linked_map_module_name=None,
+                    linked_map_module_id=module_id,
+                    linked_map_module_name=module_name,
                 )
             )
     return rows

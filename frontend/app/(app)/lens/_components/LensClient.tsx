@@ -15,10 +15,10 @@ import { createClient } from "@/lib/supabase/client";
 
 import { ExampleGrid } from "./ExampleGrid";
 import { LensTopbar } from "./LensTopbar";
-import { LoadingPlaceholder } from "./LoadingPlaceholder";
+import { LoadingCard } from "./LoadingCard";
 import { QueryHistory } from "./QueryHistory";
 import { QueryInput } from "./QueryInput";
-import { ResultPlaceholder } from "./ResultPlaceholder";
+import { ResultCard } from "./ResultCard";
 
 export default function LensClient() {
   const [state, dispatch] = useReducer(lensReducer, undefined, initialLensState);
@@ -136,7 +136,13 @@ export default function LensClient() {
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
       <LensTopbar />
-      <div className="mx-auto w-full max-w-[680px] flex-1 px-4 py-6">
+      <div
+        className={
+          state.view === "result"
+            ? "w-full flex-1"
+            : "mx-auto w-full max-w-[680px] flex-1 px-4 py-6"
+        }
+      >
         {showInput ? (
           <>
             <QueryInput
@@ -184,15 +190,32 @@ export default function LensClient() {
           </>
         ) : null}
 
-        {state.view === "loading" ? (
-          <LoadingPlaceholder queryText={state.queryText} />
+        {state.view === "loading" && state.activeQueryId ? (
+          <LoadingCard
+            queryId={state.activeQueryId}
+            queryText={state.queryText}
+            onComplete={(cardId, generationSeconds) =>
+              dispatch({ type: "STREAM_COMPLETE", cardId, generationSeconds })
+            }
+            onError={(message) => dispatch({ type: "STREAM_ERROR", message })}
+          />
         ) : null}
 
-        {state.view === "result" ? (
-          <ResultPlaceholder
+        {state.view === "result" && state.activeQuery?.card_id ? (
+          <ResultCard
+            cardId={state.activeQuery.card_id}
             queryText={state.queryText}
+            sector={state.sector}
+            horizon={state.horizon}
+            generationSeconds={state.generationSeconds}
+            generatedAt={state.activeQuery.created_at}
             onNewQuery={() => dispatch({ type: "RESET_TO_IDLE" })}
           />
+        ) : null}
+        {state.view === "result" && !state.activeQuery?.card_id ? (
+          <div className="rounded-lg border border-border bg-card p-6 text-sm text-muted-foreground">
+            Card is not ready yet. Return to your query history when generation completes.
+          </div>
         ) : null}
       </div>
     </div>

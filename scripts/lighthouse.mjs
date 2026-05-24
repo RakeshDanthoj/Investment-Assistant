@@ -26,6 +26,7 @@ const repoRoot = path.join(scriptDir, "..");
 
 const DEFAULT_BASE_URL = "https://investment-assistant-frontend.vercel.app";
 const DEFAULT_CARD_ID = "e708b82c-f7c7-45e7-a59b-6b66dac8927a";
+const DEFAULT_MAP_SLUG = "it";
 
 /** Empty GitHub secret must not override the published default card id. */
 export function resolveThreadCardId(env, defaultId = DEFAULT_CARD_ID) {
@@ -76,7 +77,7 @@ function parseArgs(argv) {
   const flags = {
     assertReport: null,
     saveReports: true,
-    pages: ["pulse", "thread"],
+    pages: null,
     formFactor: "mobile",
   };
   for (let i = 2; i < argv.length; i += 1) {
@@ -87,6 +88,14 @@ function parseArgs(argv) {
       flags.pages = ["pulse"];
     } else if (arg === "--thread-only") {
       flags.pages = ["thread"];
+    } else if (arg === "--mirror-only") {
+      flags.pages = ["mirror"];
+    } else if (arg === "--lens-only") {
+      flags.pages = ["lens"];
+    } else if (arg === "--map-only") {
+      flags.pages = ["map", "map-sector"];
+    } else if (arg === "--all") {
+      flags.pages = ["pulse", "thread", "mirror", "lens", "map", "map-sector"];
     } else if (arg === "--desktop" || arg === "--mobile") {
       // handled by parseFormFactor
     } else if (arg.startsWith("--assert-report=")) {
@@ -96,6 +105,22 @@ function parseArgs(argv) {
     }
   }
   return flags;
+}
+
+function parsePagesFromEnv(env) {
+  const raw = String(env.LIGHTHOUSE_PAGES ?? "").trim();
+  if (!raw) return null;
+  return raw
+    .split(",")
+    .map((p) => p.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+function resolvePages(flags, env) {
+  if (Array.isArray(flags.pages) && flags.pages.length) return flags.pages;
+  const fromEnv = parsePagesFromEnv(env);
+  if (fromEnv?.length) return fromEnv;
+  return ["pulse", "thread"];
 }
 
 function printHelp() {
@@ -108,12 +133,18 @@ Options:
   --no-save               Do not write JSON reports to disk
   --pulse-only            Audit /pulse only
   --thread-only           Audit /thread/{cardId} only
+  --mirror-only           Audit /mirror only
+  --lens-only             Audit /lens only
+  --map-only              Audit /map and /map/{slug} only
+  --all                   Audit Pulse + Thread + Mirror + Lens + Map
   -h, --help              Show this help
 
 Environment:
   LIGHTHOUSE_FORM_FACTOR      mobile | desktop (default: mobile)
   LIGHTHOUSE_BASE_URL         Frontend origin
   LIGHTHOUSE_THREAD_CARD_ID   Published card id for Thread
+  LIGHTHOUSE_MAP_SLUG         Sector slug for /map/{slug} (default: it)
+  LIGHTHOUSE_PAGES            Comma list: pulse,thread,mirror,lens,map,map-sector
   LIGHTHOUSE_OUTPUT_DIR       Report directory (default: Page Load Performance/)
 
   Mobile budgets (default env prefix LIGHTHOUSE_):
@@ -358,6 +389,7 @@ async function main() {
 
   const baseUrl = normalizeBaseUrl(env.LIGHTHOUSE_BASE_URL ?? DEFAULT_BASE_URL);
   const cardId = resolveThreadCardId(env);
+  const mapSlug = String(env.LIGHTHOUSE_MAP_SLUG ?? DEFAULT_MAP_SLUG).trim() || DEFAULT_MAP_SLUG;
   if (String(env.LIGHTHOUSE_THREAD_CARD_ID ?? "").trim() === "") {
     console.log(
       "Note: LIGHTHOUSE_THREAD_CARD_ID unset or empty — using default published card id.",
@@ -367,17 +399,32 @@ async function main() {
     env.LIGHTHOUSE_OUTPUT_DIR ?? path.join(repoRoot, "Page Load Performance"),
   );
 
+  const pages = resolvePages(flags, env);
   const targets = [];
-  if (flags.pages.includes("pulse")) {
+  if (pages.includes("pulse")) {
     targets.push({ label: "Pulse", url: `${baseUrl}/pulse` });
   }
-  if (flags.pages.includes("thread")) {
+  if (pages.includes("thread")) {
     targets.push({ label: "Thread", url: `${baseUrl}/thread/${cardId}` });
+  }
+  if (pages.includes("mirror")) {
+    targets.push({ label: "Mirror", url: `${baseUrl}/mirror` });
+  }
+  if (pages.includes("lens")) {
+    targets.push({ label: "Lens", url: `${baseUrl}/lens` });
+  }
+  if (pages.includes("map")) {
+    targets.push({ label: "Map index", url: `${baseUrl}/map` });
+  }
+  if (pages.includes("map-sector")) {
+    targets.push({ label: "Map sector", url: `${baseUrl}/map/${encodeURIComponent(mapSlug)}` });
   }
 
   console.log(`FinnWise Lighthouse CI (P1.5-S9) — ${formFactor}`);
   console.log(`Base URL: ${baseUrl}`);
   console.log(`Thread card: ${cardId}`);
+  console.log(`Map slug: ${mapSlug}`);
+  console.log(`Pages: ${pages.join(", ")}`);
   console.log(
     `Budgets: performance≥${budgets.minPerformanceScore}, TBT<${budgets.maxTotalBlockingTimeMs}ms, speed-index<${budgets.maxSpeedIndexMs}ms`,
   );

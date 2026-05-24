@@ -6,9 +6,16 @@ type ConfidenceCompositionProps = {
   measured: number;
   modelled: number;
   judged: number;
+  /** Lens result: PRD §5 explanatory note below the legend. */
+  footnote?: string;
 };
 
-export function ConfidenceComposition({ measured, modelled, judged }: ConfidenceCompositionProps) {
+export function ConfidenceComposition({
+  measured,
+  modelled,
+  judged,
+  footnote,
+}: ConfidenceCompositionProps) {
   const mPct = Math.round(measured * 100);
   const moPct = Math.round(modelled * 100);
   const jPct = Math.max(0, 100 - mPct - moPct);
@@ -41,6 +48,9 @@ export function ConfidenceComposition({ measured, modelled, judged }: Confidence
             {jPct}%
           </li>
         </ul>
+        {footnote ? (
+          <p className="mt-3 text-[12px] leading-relaxed text-slate-600">{footnote}</p>
+        ) : null}
       </CardContent>
     </Card>
   );

@@ -1,6 +1,8 @@
 import { Suspense } from "react";
 
 import { Skeleton } from "@/components/ui/skeleton";
+import { fetchMirrorInitialData } from "@/lib/api/mirrorServer";
+import { createClient } from "@/lib/supabase/server";
 
 import MirrorClient from "./_components/MirrorClient";
 
@@ -18,10 +20,35 @@ function MirrorFallback() {
   );
 }
 
-export default function MirrorPage() {
+function statusFilterFromSearchParams(statusParam?: string): string | null {
+  if (!statusParam || statusParam === "all") return null;
+  return statusParam;
+}
+
+export default async function MirrorPage({
+  searchParams,
+}: {
+  searchParams?: { status?: string };
+}) {
+  const statusFilter = statusFilterFromSearchParams(searchParams?.status);
+
+  let initialPayload = null;
+  const supabase = await createClient();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (session?.access_token) {
+    try {
+      initialPayload = await fetchMirrorInitialData(session.access_token, statusFilter);
+    } catch {
+      initialPayload = null;
+    }
+  }
+
   return (
     <Suspense fallback={<MirrorFallback />}>
-      <MirrorClient />
+      <MirrorClient initialPayload={initialPayload} initialStatusFilter={statusFilter} />
     </Suspense>
   );
 }

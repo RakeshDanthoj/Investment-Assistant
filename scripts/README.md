@@ -37,6 +37,19 @@ Configure the Supabase project dashboard once per environment:
 
 **Returning testers (password sign-in):** After the first magic-link verification, open **Account** in the sidebar (or `/account`) and save a password. On later visits use the **Password** tab on `/sign-in` — no OTP email is sent. Password sign-in must be enabled under **Authentication → Providers → Email** (see step 1 above).
 
+## Signal-fired email (P2-S10)
+
+Add to repo-root `.env.local` (backend reads these; do not commit secrets):
+
+| Variable | Example | Purpose |
+|----------|---------|---------|
+| `EMAIL_PROVIDER` | `resend` or `postmark` | Provider selection |
+| `EMAIL_API_KEY` | *(secret)* | Provider API key |
+| `EMAIL_FROM` | `FinnWise <alerts@yourdomain.com>` | Verified sender |
+| `APP_PUBLIC_URL` | `https://investment-assistant-frontend.vercel.app` | Deep links + unsubscribe via `/backend/unsubscribe` |
+
+When `EMAIL_API_KEY` is unset, the signal monitor still runs; email sends are skipped (logged, not fatal).
+
 ## API latency bench (P1.5-S1)
 
 Measure warm-request latency for Pulse feed and Thread card detail. The bench compares **Render direct** vs **Vercel `/backend/...` proxy** and reads `X-FinnWise-Timing` headers (`db_connect_ms`, `db_query_ms`, `total_ms`).
@@ -146,9 +159,9 @@ SSR fetches in P1.5-S5/S6 use `revalidate: 60` instead of `no-store` so first pa
 
 Lighthouse may flag **"Page prevented back/forward cache restoration"** because client refetch paths use `Cache-Control: no-store`. This is intentional: editorial freshness and filter/view toggles must not serve stale JSON. The warning is acceptable for Phase 1.5; published read paths still cache for 60s where safe.
 
-## Lighthouse (P1.5-S9 / S9b)
+## Lighthouse (P1.5-S9 / S9b, extended in P2-S15)
 
-Lighthouse budgets for **Pulse** (`/pulse`) and **Thread** (`/thread/{cardId}`) on production (or staging). Supports **mobile** (default) and **desktop** (`--desktop` / `pnpm perf:lighthouse:desktop`).
+Lighthouse budgets for **Pulse** (`/pulse`), **Thread** (`/thread/{cardId}`), and (Phase 2) **Mirror**, **Lens**, and **Map** routes on production (or staging). Supports **mobile** (default) and **desktop** (`--desktop` / `pnpm perf:lighthouse:desktop`).
 
 ### Budgets — mobile (Phase 1.5 Definition of Done)
 
@@ -212,6 +225,8 @@ node scripts/lighthouse.mjs --desktop --assert-report="Page Load Performance/New
 |----------|---------|
 | `LIGHTHOUSE_BASE_URL` | Frontend origin (default: `https://investment-assistant-frontend.vercel.app`) |
 | `LIGHTHOUSE_THREAD_CARD_ID` | Published card UUID for Thread (default: same as `BENCH_CARD_ID` in `bench_api_latency.mjs`) |
+| `LIGHTHOUSE_MAP_SLUG` | Sector slug for `/map/{slug}` (default: `it`) |
+| `LIGHTHOUSE_PAGES` | Comma list of pages to audit: `pulse,thread,mirror,lens,map,map-sector` (default: `pulse,thread`) |
 | `LIGHTHOUSE_OUTPUT_DIR` | Where to write JSON reports (default: `Page Load Performance/`) |
 | `LIGHTHOUSE_MIN_PERFORMANCE` | Override min performance score (default: `90`) |
 | `LIGHTHOUSE_MAX_TBT_MS` | Override max TBT (default: `200`) |
@@ -241,6 +256,10 @@ pnpm perf:lighthouse
 pnpm perf:lighthouse:desktop
 pnpm perf:lighthouse -- --pulse-only
 pnpm perf:lighthouse:desktop -- --thread-only
+pnpm perf:lighthouse -- --mirror-only
+pnpm perf:lighthouse -- --lens-only
+pnpm perf:lighthouse -- --map-only
+pnpm perf:lighthouse -- --all
 pnpm perf:lighthouse -- --no-save
 ```
 
@@ -263,8 +282,8 @@ Expect exit code **1** on the baseline Pulse trace (performance 82, Speed Index 
 The **Lighthouse budgets** job in `.github/workflows/ci.yml` runs after the frontend job:
 
 1. `pnpm perf:lighthouse:budget-test` — unit smoke for assertion helpers
-2. `pnpm perf:lighthouse -- --no-save` — live **mobile** audits (enforced)
-3. `pnpm perf:lighthouse:desktop -- --no-save` — live **desktop** audits (enforced; baselines in `Page Load Performance/New loads/`)
+2. `pnpm perf:lighthouse -- --no-save` — live **mobile** audits (enforced; includes Phase 2 surfaces via `LIGHTHOUSE_PAGES`)
+3. `pnpm perf:lighthouse:desktop -- --no-save` — live **desktop** audits (enforced; includes Phase 2 surfaces via `LIGHTHOUSE_PAGES`; baselines in `Page Load Performance/New loads/`)
 
 Reports are not committed from CI; save locally with `pnpm perf:lighthouse` / `pnpm perf:lighthouse:desktop` when capturing evidence for **P1.5-S10**.
 

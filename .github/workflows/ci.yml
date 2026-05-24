@@ -56,11 +56,16 @@ jobs:
           LIGHTHOUSE_BASE_URL: ${{ secrets.LIGHTHOUSE_BASE_URL || 'https://investment-assistant-frontend.vercel.app' }}
           # Omit empty secret so scripts/lighthouse.mjs uses DEFAULT_CARD_ID
           LIGHTHOUSE_THREAD_CARD_ID: ${{ secrets.LIGHTHOUSE_THREAD_CARD_ID || 'e708b82c-f7c7-45e7-a59b-6b66dac8927a' }}
+          # Map sector pages are optional until /map/{slug} is deployed on the target base URL.
+          LIGHTHOUSE_PAGES: pulse,thread,mirror,lens,map
+          LIGHTHOUSE_MAP_SLUG: ${{ secrets.LIGHTHOUSE_MAP_SLUG || 'it' }}
       - name: Desktop Lighthouse (Pulse + Thread)
         run: pnpm perf:lighthouse:desktop -- --no-save
         env:
           LIGHTHOUSE_BASE_URL: ${{ secrets.LIGHTHOUSE_BASE_URL || 'https://investment-assistant-frontend.vercel.app' }}
           LIGHTHOUSE_THREAD_CARD_ID: ${{ secrets.LIGHTHOUSE_THREAD_CARD_ID || 'e708b82c-f7c7-45e7-a59b-6b66dac8927a' }}
+          LIGHTHOUSE_PAGES: pulse,thread,mirror,lens,map
+          LIGHTHOUSE_MAP_SLUG: ${{ secrets.LIGHTHOUSE_MAP_SLUG || 'it' }}
 
   backend:
     name: Backend

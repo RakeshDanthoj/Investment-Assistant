@@ -4,13 +4,9 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { fetchSignalFiredCardId } from "@/lib/api/notificationAlert";
 import { getApiBaseUrl } from "@/lib/api";
 import { createClient } from "@/lib/supabase/client";
-
-type NotificationDto = {
-  card_id: string;
-  kind: string;
-};
 
 export function NotificationBadge() {
   const router = useRouter();
@@ -18,24 +14,19 @@ export function NotificationBadge() {
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+    void (async () => {
       const supabase = createClient();
       const {
         data: { session },
       } = await supabase.auth.getSession();
       if (!session?.access_token || cancelled) return;
       const base = getApiBaseUrl().replace(/\/$/, "");
-      try {
-        const res = await fetch(`${base}/api/notifications?limit=50`, {
-          headers: { Authorization: `Bearer ${session.access_token}` },
-        });
-        if (!res.ok || cancelled) return;
-        const body = (await res.json()) as { items?: NotificationDto[] };
-        const hit = body.items?.find((x) => x.kind === "signal_fired");
-        if (hit?.card_id && !cancelled) setTargetCardId(hit.card_id);
-      } catch {
-        /* missing backend / network — hide badge */
-      }
+      const cardId = await fetchSignalFiredCardId(
+        fetch,
+        `${base}/api/notifications?limit=50`,
+        session.access_token,
+      );
+      if (!cancelled && cardId) setTargetCardId(cardId);
     })();
     return () => {
       cancelled = true;

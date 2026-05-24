@@ -6,9 +6,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import type { MirrorInitialPayload } from "@/lib/api/mirrorServer";
 import { getApiBaseUrl, describeFetchFailure } from "@/lib/api";
 import type {
   MirrorPredictionsResponse,
+  MirrorReasoningGapsResponse,
   MirrorStatsResponse,
   MirrorStreakResponse,
   MirrorUnreadNotification,
@@ -19,6 +21,7 @@ import { createClient } from "@/lib/supabase/client";
 import { MirrorTopbar } from "./MirrorTopbar";
 import { PredictionCard } from "./PredictionCard";
 import { ReadyToGradePanel } from "./ReadyToGradePanel";
+import { ReasoningGapPanel } from "./ReasoningGapPanel";
 import { ResolvedBadge } from "./ResolvedBadge";
 import { StatsStrip } from "./StatsStrip";
 import { StreakTrackerPanel } from "./StreakTrackerPanel";
@@ -35,7 +38,15 @@ function ListSkeleton() {
   );
 }
 
-export default function MirrorClient() {
+type MirrorClientProps = {
+  initialPayload?: MirrorInitialPayload | null;
+  initialStatusFilter?: string | null;
+};
+
+export default function MirrorClient({
+  initialPayload = null,
+  initialStatusFilter = null,
+}: MirrorClientProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -46,17 +57,38 @@ export default function MirrorClient() {
     return raw;
   }, [searchParams]);
 
-  const [loadState, setLoadState] = useState<LoadState>("loading");
+  const hydratedFromServer =
+    initialPayload != null && (initialStatusFilter ?? null) === statusFilter;
+
+  const [loadState, setLoadState] = useState<LoadState>(() =>
+    hydratedFromServer ? "ready" : "loading",
+  );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [stats, setStats] = useState<MirrorStatsResponse | null>(null);
-  const [predictions, setPredictions] = useState<MirrorPredictionsResponse | null>(null);
-  const [streak, setStreak] = useState<MirrorStreakResponse | null>(null);
-  const [unreadNotifications, setUnreadNotifications] = useState<MirrorUnreadNotification[]>([]);
+  const [stats, setStats] = useState<MirrorStatsResponse | null>(
+    () => initialPayload?.stats ?? null,
+  );
+  const [predictions, setPredictions] = useState<MirrorPredictionsResponse | null>(
+    () => initialPayload?.predictions ?? null,
+  );
+  const [streak, setStreak] = useState<MirrorStreakResponse | null>(
+    () => initialPayload?.streak ?? null,
+  );
+  const [gaps, setGaps] = useState<MirrorReasoningGapsResponse | null>(
+    () => initialPayload?.gaps ?? null,
+  );
+  const [gapsRefreshing, setGapsRefreshing] = useState(false);
+  const [unreadNotifications, setUnreadNotifications] = useState<MirrorUnreadNotification[]>(
+    () => initialPayload?.unreadNotifications ?? [],
+  );
   const [expandedPredictionIds, setExpandedPredictionIds] = useState<Set<string>>(() => new Set());
+  const [listLoading, setListLoading] = useState(false);
 
   const cardRefs = useRef<Map<string, HTMLElement>>(new Map());
   const markedReadRef = useRef<Set<string>>(new Set());
   const accessTokenRef = useRef<string | null>(null);
+  const skipInitialLoadRef = useRef(hydratedFromServer);
+  const initialLoadDoneRef = useRef(hydratedFromServer);
+  const prevStatusFilterRef = useRef(statusFilter);
 
   const loadUnread = useCallback(async (token: string) => {
     const base = getApiBaseUrl();
@@ -85,6 +117,51 @@ export default function MirrorClient() {
     setUnreadNotifications((prev) => prev.filter((n) => n.id !== notificationId));
   }, []);
 
+  const loadGaps = useCallback(async (token: string, refresh = false) => {
+    const base = getApiBaseUrl();
+    const path = refresh ? "/api/mirror/gaps/refresh" : "/api/mirror/gaps";
+    const res = await fetch(`${base}${path}`, {
+      method: refresh ? "POST" : "GET",
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    });
+    if (!res.ok) return;
+    const body = (await res.json()) as MirrorReasoningGapsResponse;
+    setGaps(body);
+  }, []);
+
+  const loadPredictionsOnly = useCallback(async () => {
+    setListLoading(true);
+    setErrorMessage(null);
+
+    const token = accessTokenRef.current;
+    if (!token) {
+      setListLoading(false);
+      return;
+    }
+
+    const base = getApiBaseUrl();
+    const headers = { Authorization: `Bearer ${token}` };
+    const statusQuery = statusFilter ? `?status=${encodeURIComponent(statusFilter)}` : "";
+
+    try {
+      const predictionsRes = await fetch(`${base}/api/mirror/predictions${statusQuery}`, {
+        headers,
+        cache: "no-store",
+      });
+      if (!predictionsRes.ok) {
+        const text = await predictionsRes.text().catch(() => "");
+        throw new Error(text || `Request failed (${predictionsRes.status})`);
+      }
+      const predictionsJson = (await predictionsRes.json()) as MirrorPredictionsResponse;
+      setPredictions(predictionsJson);
+    } catch (error) {
+      setErrorMessage(describeFetchFailure(error, "load predictions"));
+    } finally {
+      setListLoading(false);
+    }
+  }, [statusFilter]);
+
   const loadData = useCallback(async () => {
     setLoadState("loading");
     setErrorMessage(null);
@@ -107,15 +184,22 @@ export default function MirrorClient() {
     const statusQuery = statusFilter ? `?status=${encodeURIComponent(statusFilter)}` : "";
 
     try {
-      const [statsRes, predictionsRes, streakRes] = await Promise.all([
+      const [statsRes, predictionsRes, streakRes, gapsRes] = await Promise.all([
         fetch(`${base}/api/mirror/stats`, { headers, cache: "no-store" }),
         fetch(`${base}/api/mirror/predictions${statusQuery}`, { headers, cache: "no-store" }),
         fetch(`${base}/api/mirror/streak`, { headers, cache: "no-store" }),
+        fetch(`${base}/api/mirror/gaps`, { headers, cache: "no-store" }),
         loadUnread(session.access_token),
       ]);
 
-      if (!statsRes.ok || !predictionsRes.ok || !streakRes.ok) {
-        const failed = !statsRes.ok ? statsRes : !predictionsRes.ok ? predictionsRes : streakRes;
+      if (!statsRes.ok || !predictionsRes.ok || !streakRes.ok || !gapsRes.ok) {
+        const failed = !statsRes.ok
+          ? statsRes
+          : !predictionsRes.ok
+            ? predictionsRes
+            : !streakRes.ok
+              ? streakRes
+              : gapsRes;
         const text = await failed.text().catch(() => "");
         throw new Error(text || `Request failed (${failed.status})`);
       }
@@ -123,9 +207,11 @@ export default function MirrorClient() {
       const statsJson = (await statsRes.json()) as MirrorStatsResponse;
       const predictionsJson = (await predictionsRes.json()) as MirrorPredictionsResponse;
       const streakJson = (await streakRes.json()) as MirrorStreakResponse;
+      const gapsJson = (await gapsRes.json()) as MirrorReasoningGapsResponse;
       setStats(statsJson);
       setPredictions(predictionsJson);
       setStreak(streakJson);
+      setGaps(gapsJson);
       setLoadState("ready");
     } catch (error) {
       setLoadState("error");
@@ -134,8 +220,35 @@ export default function MirrorClient() {
   }, [loadUnread, statusFilter]);
 
   useEffect(() => {
-    void loadData();
+    if (skipInitialLoadRef.current) {
+      skipInitialLoadRef.current = false;
+      initialLoadDoneRef.current = true;
+      void (async () => {
+        const supabase = createClient();
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        accessTokenRef.current = session?.access_token ?? null;
+      })();
+      return;
+    }
+    if (!initialLoadDoneRef.current) {
+      void loadData().finally(() => {
+        initialLoadDoneRef.current = true;
+      });
+    }
   }, [loadData]);
+
+  useEffect(() => {
+    if (!initialLoadDoneRef.current) return;
+    if (prevStatusFilterRef.current === statusFilter) return;
+    prevStatusFilterRef.current = statusFilter;
+    if (stats != null && streak != null) {
+      void loadPredictionsOnly();
+    } else {
+      void loadData();
+    }
+  }, [loadData, loadPredictionsOnly, stats, streak, statusFilter]);
 
   const unreadByPredictionId = useMemo(() => {
     const map = new Map<string, MirrorUnreadNotification>();
@@ -191,6 +304,17 @@ export default function MirrorClient() {
     return () => observer.disconnect();
   }, [loadState, markNotificationRead, unreadByPredictionId, unreadNotifications]);
 
+  const handleRefreshGaps = useCallback(async () => {
+    const token = accessTokenRef.current;
+    if (!token) return;
+    setGapsRefreshing(true);
+    try {
+      await loadGaps(token, true);
+    } finally {
+      setGapsRefreshing(false);
+    }
+  }, [loadGaps]);
+
   function onStatusChange(next: string | null) {
     const params = new URLSearchParams(searchParams.toString());
     if (next) params.set("status", next);
@@ -206,11 +330,11 @@ export default function MirrorClient() {
         onStatusChange={onStatusChange}
         notificationSlot={<ResolvedBadge count={unreadNotifications.length} onClick={handleBadgeClick} />}
       />
-      <StatsStrip stats={stats} loading={loadState === "loading"} />
+      <StatsStrip stats={stats} loading={loadState === "loading" && !stats} />
 
       <div className="mx-auto flex w-full max-w-6xl flex-1 gap-6 px-4 py-6 min-[960px]:flex-row">
         <div className="min-w-0 flex-1">
-          {loadState === "loading" ? <ListSkeleton /> : null}
+          {loadState === "loading" || listLoading ? <ListSkeleton /> : null}
 
           {loadState === "error" ? (
             <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-6 text-center">
@@ -261,7 +385,13 @@ export default function MirrorClient() {
 
         <aside className="w-full shrink-0 space-y-4 min-[960px]:w-[280px] min-[960px]:max-w-[35%]">
           <ReadyToGradePanel items={unreadNotifications} onSelect={handleReadyToGradeSelect} />
-          <StreakTrackerPanel streak={streak} loading={loadState === "loading"} />
+          <ReasoningGapPanel
+            gaps={gaps}
+            loading={loadState === "loading" && !gaps}
+            refreshing={gapsRefreshing}
+            onRefresh={() => void handleRefreshGaps()}
+          />
+          <StreakTrackerPanel streak={streak} loading={loadState === "loading" && !streak} />
         </aside>
       </div>
     </div>

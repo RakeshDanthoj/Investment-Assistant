@@ -9,6 +9,7 @@ from urllib.parse import urlencode
 import httpx
 
 from app.sources.base import AdapterSource, RawEvent, SourceAdapter, SourceFailure
+from app.sources.nse_datetime import parse_nse_observed_at
 
 NSE_ORIGIN = "https://www.nseindia.com"
 NSE_API = "https://www.nseindia.com/api/corporate-announcements"
@@ -28,9 +29,14 @@ class NSEAnnouncementsSourceAdapter(SourceAdapter):
 
     adapter_source = AdapterSource.NSE_BSE
 
-    def fetch(self, window: timedelta) -> list[RawEvent]:
+    def fetch(
+        self,
+        window: timedelta,
+        *,
+        period: str | None = None,
+    ) -> list[RawEvent]:
         del window
-        params = {"index": "equities", "period": "1W"}
+        params = {"index": "equities", "period": period or "1W"}
         qs = urlencode(params)
         url = f"{NSE_API}?{qs}"
 
@@ -93,6 +99,8 @@ class NSEAnnouncementsSourceAdapter(SourceAdapter):
             excerpt_bits = [str(sym) for sym in (an_dt_raw, raw_link_text) if sym][:2]
             excerpt = " · ".join(excerpt_bits)[:2000] if excerpt_bits else None
 
+            published_at = parse_nse_observed_at(str(an_dt_raw) if an_dt_raw else None)
+
             if canon in seen:
                 continue
             seen.add(canon)
@@ -100,7 +108,7 @@ class NSEAnnouncementsSourceAdapter(SourceAdapter):
                 RawEvent(
                     title=headline.strip()[:2000],
                     canonical_url=canon,
-                    published_at=None,
+                    published_at=published_at,
                     excerpt=excerpt,
                 )
             )

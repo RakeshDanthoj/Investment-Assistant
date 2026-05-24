@@ -3,11 +3,27 @@
 from __future__ import annotations
 
 import json
+import time
+from collections.abc import Callable
 from typing import Any, Protocol
 from uuid import UUID
 
 from app.services.card_repository import fetch_event_row, insert_draft_card_bundle
-from app.services.cost_guard import consume_slot_or_raise, estimate_cost_usd, merge_usage
+from app.services.lens_pipeline_steps import (
+    STEP_DISSENT,
+    STEP_FACTOR_DB,
+    STEP_FRAMEWORK,
+    STEP_MACRO_SIGNALS,
+    STEP_SYNTHESIS,
+    STEP_VALIDATE,
+)
+from app.services.cost_guard import (
+    check_monthly_budget_or_raise,
+    consume_slot_or_raise,
+    estimate_cost_usd,
+    merge_usage,
+)
+from app.services.pipeline_telemetry import record_pipeline_run
 from app.services.factor_db import fetch_matrix_rows
 from app.services.llm_client import LlmClient, load_prompt_markdown, render_prompt
 from app.services.mmj_validator import validate_mmj_tags
@@ -64,8 +80,21 @@ def _evidence_corpus(evidence_layer: dict[str, Any]) -> str:
     return "\n\n".join(parts).replace(",", "").lower()
 
 
-def _build_evidence_layer(event_row: dict[str, Any]) -> dict[str, Any]:
+MilestoneCallback = Callable[[str], None]
+
+
+def _emit_milestone(on_milestone: MilestoneCallback | None, step: str) -> None:
+    if on_milestone is not None:
+        on_milestone(step)
+
+
+def _build_evidence_layer(
+    event_row: dict[str, Any],
+    *,
+    on_milestone: MilestoneCallback | None = None,
+) -> dict[str, Any]:
     matrix = fetch_matrix_rows(sector_slug="banking")
+    _emit_milestone(on_milestone, STEP_FACTOR_DB)
     lines: list[str] = [
         "### Banking sector factor sensitivities (Factor DB)",
         "Each line: `TICKER | factor_slug | sensitivity −5…+5 | MMJ | source`",
@@ -82,6 +111,7 @@ def _build_evidence_layer(event_row: dict[str, Any]) -> dict[str, Any]:
         "INR/USD, VIX, index prints, or policy rates unless they appear explicitly in "
         "the event title/metadata or Factor DB lines above."
     )
+    _emit_milestone(on_milestone, STEP_MACRO_SIGNALS)
     event_snapshot = {
         "title": event_row.get("title"),
         "category": event_row.get("category"),
@@ -170,6 +200,7 @@ def draft_card_from_event(
     *,
     editor_notes: str | None = None,
     llm: SupportsCompletion | None = None,
+    on_milestone: MilestoneCallback | None = None,
 ) -> UUID:
     """
     Runs synthesis → validators → dissent → framework → persist.
@@ -179,121 +210,155 @@ def draft_card_from_event(
     if row is None:
         raise LookupError(f"event not found: {event_id}")
 
-    evidence_layer = _build_evidence_layer(row)
-    model = llm or LlmClient()
+    started = time.perf_counter()
     usage_acc: dict[str, int] = {"input_tokens": 0, "output_tokens": 0}
+    try:
+        check_monthly_budget_or_raise()
+        evidence_layer = _build_evidence_layer(row, on_milestone=on_milestone)
+        model = llm or LlmClient()
 
-    consume_slot_or_raise()
-    evidence_md = str(evidence_layer.get("markdown") or "")
-    evidence_block = f"{evidence_md}\n\n{evidence_layer.get('macro_stub') or ''}\n"
-    corpus = _evidence_corpus(evidence_layer)
+        consume_slot_or_raise()
+        evidence_md = str(evidence_layer.get("markdown") or "")
+        evidence_block = f"{evidence_md}\n\n{evidence_layer.get('macro_stub') or ''}\n"
+        corpus = _evidence_corpus(evidence_layer)
 
-    syn_t = load_prompt_markdown("synthesis.v1.md")
-    notes_block = (
-        f"\n## Editor notes\n{editor_notes.strip()}\n"
-        if editor_notes and editor_notes.strip()
-        else "\n## Editor notes\n(none)\n"
-    )
-    syn_user = render_prompt(
-        syn_t,
-        {
-            "evidence_markdown": evidence_block,
-            "event_title": str(row.get("title") or ""),
-            "event_category": str(row.get("category") or ""),
-            "confidence_score": str(row.get("confidence_score") or ""),
-            "canonical_url": str(row.get("canonical_url") or ""),
-            "editor_notes": notes_block,
-        },
-    )
-    syn_data, syn_usage = model.complete_json(
-        system="Respond with a single JSON object only. No markdown, no commentary.",
-        user=syn_user,
-        prompt_version=PROMPT_SYNTHESIS_VERSION,
-    )
-    merge_usage(usage_acc, syn_usage)
+        syn_t = load_prompt_markdown("synthesis.v1.md")
+        notes_block = (
+            f"\n## Editor notes\n{editor_notes.strip()}\n"
+            if editor_notes and editor_notes.strip()
+            else "\n## Editor notes\n(none)\n"
+        )
+        syn_user = render_prompt(
+            syn_t,
+            {
+                "evidence_markdown": evidence_block,
+                "event_title": str(row.get("title") or ""),
+                "event_category": str(row.get("category") or ""),
+                "confidence_score": str(row.get("confidence_score") or ""),
+                "canonical_url": str(row.get("canonical_url") or ""),
+                "editor_notes": notes_block,
+            },
+        )
+        syn_data, syn_usage = model.complete_json(
+            system="Respond with a single JSON object only. No markdown, no commentary.",
+            user=syn_user,
+            prompt_version=PROMPT_SYNTHESIS_VERSION,
+        )
+        merge_usage(usage_acc, syn_usage)
 
-    title = str(syn_data.get("title") or row.get("title") or "Untitled card")
-    insight = str(syn_data.get("insight_layer") or "")
-    context = str(syn_data.get("context_layer") or "")
-    assessments = _coerce_assessments(syn_data.get("instrument_assessments"))
-    signals = _coerce_signals(syn_data.get("signals"))
+        title = str(syn_data.get("title") or row.get("title") or "Untitled card")
+        insight = str(syn_data.get("insight_layer") or "")
+        context = str(syn_data.get("context_layer") or "")
+        assessments = _coerce_assessments(syn_data.get("instrument_assessments"))
+        signals = _coerce_signals(syn_data.get("signals"))
 
-    if not insight.strip() or not context.strip():
-        raise ValueError("synthesis returned empty insight_layer or context_layer")
+        if not insight.strip() or not context.strip():
+            raise ValueError("synthesis returned empty insight_layer or context_layer")
 
-    _validate_layers(corpus=corpus, insight=insight, context=context, assessments=assessments)
+        _emit_milestone(on_milestone, STEP_SYNTHESIS)
+        _validate_layers(corpus=corpus, insight=insight, context=context, assessments=assessments)
 
-    dis_t = load_prompt_markdown("dissent.v1.md")
-    dis_user = render_prompt(
-        dis_t,
-        {
-            "evidence_markdown": evidence_block,
-            "insight_layer": insight,
-            "context_layer": context,
-        },
-    )
-    dis_data, dis_usage = model.complete_json(
-        system="Respond with a single JSON object only. No markdown, no commentary.",
-        user=dis_user,
-        prompt_version=PROMPT_DISSENT_VERSION,
-    )
-    merge_usage(usage_acc, dis_usage)
+        dis_t = load_prompt_markdown("dissent.v1.md")
+        dis_user = render_prompt(
+            dis_t,
+            {
+                "evidence_markdown": evidence_block,
+                "insight_layer": insight,
+                "context_layer": context,
+            },
+        )
+        dis_data, dis_usage = model.complete_json(
+            system="Respond with a single JSON object only. No markdown, no commentary.",
+            user=dis_user,
+            prompt_version=PROMPT_DISSENT_VERSION,
+        )
+        merge_usage(usage_acc, dis_usage)
 
-    dissenting_view = str(dis_data.get("dissenting_view") or "").strip()
-    if not dissenting_view:
-        raise DissentQualityError("dissenting_view empty")
-    _validate_dissent(dissenting_view)
-    validate_mmj_tags(prose=dissenting_view)
-    validate_numbers_in_evidence(prose=dissenting_view, evidence_corpus=corpus)
+        dissenting_view = str(dis_data.get("dissenting_view") or "").strip()
+        if not dissenting_view:
+            raise DissentQualityError("dissenting_view empty")
+        _validate_dissent(dissenting_view)
+        _emit_milestone(on_milestone, STEP_DISSENT)
 
-    fw_t = load_prompt_markdown("framework.v1.md")
-    fw_user = render_prompt(
-        fw_t,
-        {
-            "evidence_markdown": evidence_block,
-            "insight_layer": insight,
-            "context_layer": context,
-            "dissenting_view": dissenting_view,
-        },
-    )
-    fw_data, fw_usage = model.complete_json(
-        system="Respond with a single JSON object only. No markdown, no commentary.",
-        user=fw_user,
-        prompt_version=PROMPT_FRAMEWORK_VERSION,
-    )
-    merge_usage(usage_acc, fw_usage)
+        fw_t = load_prompt_markdown("framework.v1.md")
+        fw_user = render_prompt(
+            fw_t,
+            {
+                "evidence_markdown": evidence_block,
+                "insight_layer": insight,
+                "context_layer": context,
+                "dissenting_view": dissenting_view,
+            },
+        )
+        fw_data, fw_usage = model.complete_json(
+            system="Respond with a single JSON object only. No markdown, no commentary.",
+            user=fw_user,
+            prompt_version=PROMPT_FRAMEWORK_VERSION,
+        )
+        merge_usage(usage_acc, fw_usage)
 
-    pattern_name = str(fw_data.get("pattern_name") or "").strip()
-    framework_text = str(fw_data.get("framework_behind_this") or "").strip()
-    _validate_framework(pattern_name, framework_text)
-    validate_mmj_tags(prose=framework_text)
-    validate_numbers_in_evidence(prose=framework_text, evidence_corpus=corpus)
+        pattern_name = str(fw_data.get("pattern_name") or "").strip()
+        framework_text = str(fw_data.get("framework_behind_this") or "").strip()
+        _validate_framework(pattern_name, framework_text)
+        _emit_milestone(on_milestone, STEP_FRAMEWORK)
 
-    cost = estimate_cost_usd(
+        validate_mmj_tags(prose=dissenting_view)
+        validate_numbers_in_evidence(prose=dissenting_view, evidence_corpus=corpus)
+        validate_mmj_tags(prose=framework_text)
+        validate_numbers_in_evidence(prose=framework_text, evidence_corpus=corpus)
+        _emit_milestone(on_milestone, STEP_VALIDATE)
+
+        cost = estimate_cost_usd(
+            input_tokens=int(usage_acc["input_tokens"]),
+            output_tokens=int(usage_acc["output_tokens"]),
+        )
+
+        card_id = insert_draft_card_bundle(
+            event_id=event_id,
+            title=title,
+            insight_layer=insight,
+            context_layer=context,
+            evidence_layer=evidence_layer,
+            dissenting_view=dissenting_view,
+            framework_behind_this=f"**{pattern_name}**\n\n{framework_text}",
+            prompt_version=COMBINED_PROMPT_VERSION,
+            llm_input_tokens=int(usage_acc["input_tokens"]),
+            llm_output_tokens=int(usage_acc["output_tokens"]),
+            llm_cost_usd=cost,
+            signals=signals,
+            instrument_assessments=assessments,
+        )
+    except BaseException as exc:
+        duration_ms = int((time.perf_counter() - started) * 1000)
+        record_pipeline_run(
+            pipeline="card_draft",
+            prompt_version=COMBINED_PROMPT_VERSION,
+            input_tokens=int(usage_acc["input_tokens"]),
+            output_tokens=int(usage_acc["output_tokens"]),
+            duration_ms=duration_ms,
+            status="error",
+            error_message=str(exc),
+            context={"event_id": str(event_id)},
+        )
+        raise
+
+    duration_ms = int((time.perf_counter() - started) * 1000)
+    record_pipeline_run(
+        pipeline="card_draft",
+        prompt_version=COMBINED_PROMPT_VERSION,
         input_tokens=int(usage_acc["input_tokens"]),
         output_tokens=int(usage_acc["output_tokens"]),
+        duration_ms=duration_ms,
+        status="ok",
+        context={"event_id": str(event_id), "card_id": str(card_id)},
     )
-
-    return insert_draft_card_bundle(
-        event_id=event_id,
-        title=title,
-        insight_layer=insight,
-        context_layer=context,
-        evidence_layer=evidence_layer,
-        dissenting_view=dissenting_view,
-        framework_behind_this=f"**{pattern_name}**\n\n{framework_text}",
-        prompt_version=COMBINED_PROMPT_VERSION,
-        llm_input_tokens=int(usage_acc["input_tokens"]),
-        llm_output_tokens=int(usage_acc["output_tokens"]),
-        llm_cost_usd=cost,
-        signals=signals,
-        instrument_assessments=assessments,
-    )
+    return card_id
 
 
 __all__ = [
     "COMBINED_PROMPT_VERSION",
     "DissentQualityError",
     "FrameworkQualityError",
+    "MilestoneCallback",
     "draft_card_from_event",
 ]
