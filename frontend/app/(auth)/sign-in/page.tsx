@@ -19,8 +19,8 @@ export default function SignInPage({ searchParams }: SignInPageProps) {
             Sign in to FinnWise
           </CardTitle>
           <CardDescription>
-            Enter your invited email. We&apos;ll send a one-time magic link — no
-            password required.
+            Returning testers: sign in with your password. First time? Use a magic
+            link to verify your email, then set a password under Account.
           </CardDescription>
           {nextPath !== "/pulse" ? (
             <p className="text-xs text-muted-foreground">

@@ -1,11 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -54,6 +56,10 @@ export default function UserChip({ name, email, onSignOut }: UserChipProps) {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent side="top" align="start" className="w-[--radix-dropdown-menu-trigger-width]">
+          <DropdownMenuItem asChild>
+            <Link href="/account">Account</Link>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
           <DropdownMenuItem disabled={signingOut} onClick={handleSignOut}>
             {signingOut ? "Signing out…" : "Sign out"}
           </DropdownMenuItem>

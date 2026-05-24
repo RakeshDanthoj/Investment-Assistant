@@ -21,7 +21,7 @@ Migrations live in `backend/db/migrations/` (`0003` enums → `0004` core tables
 
 Configure the Supabase project dashboard once per environment:
 
-1. **Authentication → Providers → Email**: enable Email; disable password sign-in (magic link only).
+1. **Authentication → Providers → Email**: enable Email; **enable password sign-in** (magic link for first-time verification; password for returning sign-in).
 2. **Authentication → URL configuration** (required for production magic links):
    - **Site URL**: set to your **production** frontend origin (e.g. `https://investment-assistant-frontend.vercel.app`). If this stays `http://localhost:3000`, magic-link emails from production will redirect to localhost when the requested redirect is not allow-listed.
    - **Redirect URLs** (exact paths; add every host you use):
@@ -34,6 +34,8 @@ Configure the Supabase project dashboard once per environment:
 **Vercel:** set `NEXT_PUBLIC_SITE_URL` to the same production origin as Supabase Site URL (no trailing slash) so server-side callback redirects stay on the correct host behind the Vercel proxy.
 
 **Symptom:** magic link opens `localhost` after requesting sign-in on production → almost always **Site URL** or missing **Redirect URL** in Supabase, not application code.
+
+**Returning testers (password sign-in):** After the first magic-link verification, open **Account** in the sidebar (or `/account`) and save a password. On later visits use the **Password** tab on `/sign-in` — no OTP email is sent. Password sign-in must be enabled under **Authentication → Providers → Email** (see step 1 above).
 
 ## API latency bench (P1.5-S1)
 

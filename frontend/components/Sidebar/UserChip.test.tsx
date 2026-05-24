@@ -18,6 +18,22 @@ describe("UserChip", () => {
     expect(screen.getByText("JS")).toBeInTheDocument();
   });
 
+  it("links to account settings from the menu", async () => {
+    const user = userEvent.setup();
+    render(
+      <UserChip
+        name="Sam Lee"
+        email="sam@finnwise.test"
+        onSignOut={jest.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /Sam Lee/i }));
+
+    const accountLink = await screen.findByRole("menuitem", { name: /account/i });
+    expect(accountLink).toHaveAttribute("href", "/account");
+  });
+
   it("calls onSignOut from the menu", async () => {
     const user = userEvent.setup();
     const onSignOut = jest.fn().mockResolvedValue(undefined);

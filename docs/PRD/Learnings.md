@@ -28,3 +28,12 @@ python scripts/apply_migrations.py
 SELECT filename, applied_at
 FROM public.schema_migrations
 ORDER BY applied_at;
+
+
+
+
+Interview points:
+
+“Led performance remediation for two core product surfaces: cut time-to-content from ~9s to ~2.5s and raised mobile quality scores from ~80 to 96 by fixing backend data access, server-first rendering, and targeted frontend loading — with automated regression checks.”
+
+If you want, I can turn this into a STAR-format answer (Situation / Task / Action / Result) for a specific role (e.g. full-stack vs platform).

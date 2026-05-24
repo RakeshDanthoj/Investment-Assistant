@@ -45,6 +45,8 @@ export const config = {
     "/lens/:path*",
     "/map",
     "/map/:path*",
+    "/account",
+    "/account/:path*",
     "/admin",
     "/admin/:path*",
     "/tester-briefing",
