@@ -78,9 +78,12 @@ class _SeqLlm:
 
 @patch("app.services.card_pipeline.insert_draft_card_bundle", return_value=CARD_ID)
 @patch("app.services.card_pipeline.consume_slot_or_raise")
+@patch("app.services.card_pipeline.check_monthly_budget_or_raise")
 @patch("app.services.card_pipeline.fetch_matrix_rows")
 @patch("app.services.card_pipeline.fetch_event_row")
-def test_draft_card_pipeline_mocked_llm(mock_event, mock_matrix, mock_consume, mock_insert):
+def test_draft_card_pipeline_mocked_llm(
+    mock_event, mock_matrix, mock_budget, mock_consume, mock_insert
+):
     mock_event.return_value = {
         "id": str(EVENT_ID),
         "title": "RBI guidance tweak",
@@ -92,6 +95,7 @@ def test_draft_card_pipeline_mocked_llm(mock_event, mock_matrix, mock_consume, m
     mock_matrix.return_value = _matrix()
     out = draft_card_from_event(EVENT_ID, llm=_SeqLlm())
     assert out == CARD_ID
+    mock_budget.assert_called_once()
     mock_insert.assert_called_once()
     kw = mock_insert.call_args.kwargs
     assert kw["prompt_version"] == "synthesis.v1|dissent.v1|framework.v1"
