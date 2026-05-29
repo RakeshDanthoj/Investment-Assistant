@@ -75,7 +75,11 @@ def _confidence_score(raw: float) -> int:
     return max(0, min(100, int(round(float(raw) * 100))))
 
 
-def seed_events(*, fixture_path: Path = DEFAULT_FIXTURE, apply_migration: bool = True) -> dict[str, int]:
+def seed_events(
+    *,
+    fixture_path: Path = DEFAULT_FIXTURE,
+    apply_migration: bool = True,
+) -> dict[str, int]:
     rows = load_fixture(fixture_path)
     if len(rows) != 20:
         raise ValueError(f"expected 20 synthetic events, got {len(rows)}")
