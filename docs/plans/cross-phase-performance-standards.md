@@ -81,7 +81,7 @@ Audit scope: §1–§4 per route. **Pass** = meets standard; **Partial** = accep
 | Gap | Owner | Status |
 |-----|-------|--------|
 | API feed/card warm p95 &lt; 800 ms on production | Jordan / P2.5-S2 | **Closed** — PO waiver in [P2.5-S6 close-out](../Post%20Implementation%20documentation/Phase2.5_P2.5%20-%20Performance%20close-out%20pre-Phase%203.md) (30 May bench) |
-| Mobile Lighthouse: Mirror, Thread, Lens | Sam / P2.5-S3, S4 | Thread **pass** 29 May; Mirror **variance**; Lens **SI fail** — see close-out |
+| Mobile Lighthouse: Mirror, Thread, Lens | Sam / P2.5-S3, S4 | **Closed** — all pass post–S4 ([close-out](../Post%20Implementation%20documentation/Phase2.5_P2.5%20-%20Performance%20close-out%20pre-Phase%203.md)) |
 | Map `SensitivityMatrix` code-split | Sam / P2.5-S4 | Optional if trace shows heavy chunk |
 
 ---
@@ -93,7 +93,7 @@ See **`docs/plans/finnwise-phase2.5-implementation-tasks.md`** for full stories.
 - [x] All practices above reflected in Mirror, Lens, Map implementations (audit **P2.5-S5**).
 - [x] Lighthouse JSON archived under `Page Load Performance/` for Pulse, Thread, Mirror, Lens, Map index, Map slug (mobile + desktop) — **P2.5-S6** (29 May 2026).
 - [x] Production bench shows **p95 &lt; 800 ms** OR documented PO re-waiver with root cause (**P2.5-S2** — proxy p95 **1298 / 1350 ms**; [close-out](../Post%20Implementation%20documentation/Phase2.5_P2.5%20-%20Performance%20close-out%20pre-Phase%203.md)).
-- [ ] CI Lighthouse job passes on all Phase 2 routes including `/map/{slug}` when deployed — **P2.5-S6** (mobile Lens SI + Mirror variance; desktop green).
+- [x] CI Lighthouse job passes on all Phase 2 routes including `/map/{slug}` when deployed — **P2.5-S6** (post–S4 mobile green; [close-out](../Post%20Implementation%20documentation/Phase2.5_P2.5%20-%20Performance%20close-out%20pre-Phase%203.md)).
 
 ---
 

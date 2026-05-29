@@ -1,0 +1,80 @@
+# P3-S1d — NewsAPI keyword sets per Factor DB macro factor (PRD2 §4.2, G-04).
+# Total daily_calls must equal scheduler.max_daily_calls (100).
+
+scheduler:
+  mode: round_robin
+  max_daily_calls: 100
+
+factors:
+  crude_oil:
+    daily_calls: 15
+    keywords:
+      - crude oil
+      - brent
+      - WTI
+      - OPEC
+      - oil price India
+      - petroleum
+      - ATF price
+      - ONGC
+      - oil ministry
+  dollar_rupee:
+    daily_calls: 15
+    keywords:
+      - rupee dollar
+      - INR USD
+      - RBI forex
+      - currency India
+      - dollar rate
+      - foreign exchange India
+  domestic_interest_rates:
+    daily_calls: 20
+    keywords:
+      - RBI rate
+      - repo rate
+      - monetary policy
+      - MPC meeting
+      - inflation India
+      - CPI India
+      - RBI circular
+  global_risk_sentiment:
+    daily_calls: 10
+    keywords:
+      - FII outflow
+      - FII inflow
+      - foreign institutional
+      - risk off
+      - global selloff
+      - emerging markets
+  monsoon_index:
+    daily_calls: 10
+    keywords:
+      - monsoon India
+      - IMD forecast
+      - rainfall deficit
+      - kharif
+      - rabi
+      - food inflation India
+  government_capex:
+    daily_calls: 10
+    keywords:
+      - union budget
+      - capex India
+      - infrastructure spending
+      - PLI scheme
+      - government spending
+  gst_collections_trend:
+    daily_calls: 10
+    keywords:
+      - GST collection
+      - goods services tax
+      - ministry of finance monthly
+      - consumption India
+  sector_regulatory_environment:
+    daily_calls: 10
+    keywords:
+      - SEBI circular
+      - NSE regulation
+      - RBI regulation
+      - sector policy India
+      - new regulation

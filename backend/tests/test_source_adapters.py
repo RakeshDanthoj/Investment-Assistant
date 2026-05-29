@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import timedelta
 from unittest.mock import MagicMock, patch
 
+from app.services.newsapi_config import FactorKeywordSet, NewsApiSchedulerConfig
 from app.sources.newsapi import NewsAPISourceAdapter
 from app.sources.nse_announcements import NSEAnnouncementsSourceAdapter
 from app.sources.rbi_rss import RBIRSSSourceAdapter
@@ -41,17 +42,33 @@ def test_newsapi_adapter_normalizes_tracking_params() -> None:
             {
                 "title": "India markets drift",
                 "url": "https://news.example.com/a?utm_medium=social",
-                "publishedAt": "2026-05-01T12:00:00Z",
+                "publishedAt": "2026-05-30T12:00:00Z",
                 "description": "desc",
             }
         ]
     }
     rsp = MagicMock()
+    rsp.status_code = 200
     rsp.json.return_value = fixture
-    rsp.raise_for_status.return_value = None
 
+    mock_cfg = NewsApiSchedulerConfig(
+        mode="round_robin",
+        max_daily_calls=100,
+        factors=(
+            FactorKeywordSet(
+                slug="crude_oil",
+                daily_calls=15,
+                keywords=("India", "markets"),
+            ),
+        ),
+    )
     nr = NewsAPISourceAdapter(api_key="k")
     with (
+        patch("app.sources.newsapi.load_newsapi_config", return_value=mock_cfg),
+        patch("app.sources.newsapi.resolve_next_factor", return_value="crude_oil"),
+        patch("app.sources.newsapi.last_polled_factor_slug", return_value=None),
+        patch("app.sources.newsapi.factor_poll_counts_today", return_value={}),
+        patch("app.sources.newsapi.record_factor_poll"),
         patch("app.sources.newsapi.reserve_news_api_call", return_value=True),
         patch("httpx.get", return_value=rsp),
     ):

@@ -93,6 +93,28 @@ def send(
     return True
 
 
+def send_html(*, to: str, subject: str, html: str) -> bool:
+    """Send pre-rendered HTML. Returns False when email is not configured (no-op)."""
+    settings = get_settings()
+    provider = _provider()
+    api_key = settings.email_api_key.strip()
+    from_addr = settings.email_from.strip()
+
+    if not provider or not api_key or not from_addr:
+        domain = to.split("@")[-1] if "@" in to else "unknown"
+        _LOG.info(
+            "email.send_html.skipped_unconfigured",
+            extra={"to_domain": domain},
+        )
+        return False
+
+    if provider == "resend":
+        _send_resend(api_key=api_key, from_addr=from_addr, to=to, subject=subject, html=html)
+    else:
+        _send_postmark(api_key=api_key, from_addr=from_addr, to=to, subject=subject, html=html)
+    return True
+
+
 def _send_resend(*, api_key: str, from_addr: str, to: str, subject: str, html: str) -> None:
     payload = {"from": from_addr, "to": [to], "subject": subject, "html": html}
     with httpx.Client(timeout=20.0) as client:
@@ -122,5 +144,6 @@ __all__ = [
     "email_configured",
     "render_template",
     "send",
+    "send_html",
     "_resolve_public_url",
 ]

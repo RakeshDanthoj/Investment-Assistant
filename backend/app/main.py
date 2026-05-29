@@ -12,6 +12,7 @@ from app.api.admin_review import router as admin_review_router
 from app.api.admin_signal_queue import router as admin_signal_queue_router
 from app.api.cards import router as cards_router
 from app.api.cards_detail import router as cards_detail_router
+from app.api.editor_watchlist import router as editor_watchlist_router
 from app.api.email_preferences import router as email_preferences_router
 from app.api.factor_db import router as factor_db_router
 from app.api.feed import router as feed_router
@@ -43,7 +44,11 @@ class AdminNoStoreCacheMiddleware(BaseHTTPMiddleware):
     ) -> Response:
         response = await call_next(request)
         path = request.url.path
-        if path.startswith("/api/admin") or path.startswith("/admin"):
+        if (
+            path.startswith("/api/admin")
+            or path.startswith("/api/editor")
+            or path.startswith("/admin")
+        ):
             response.headers["Cache-Control"] = NO_STORE_CACHE
         return response
 
@@ -91,6 +96,7 @@ app.include_router(admin_router, prefix="/admin")
 app.include_router(admin_review_router, prefix="/api/admin")
 app.include_router(admin_signal_queue_router, prefix="/api/admin")
 app.include_router(admin_metrics_router, prefix="/api/admin")
+app.include_router(editor_watchlist_router, prefix="/api")
 app.include_router(factor_db_router, prefix="/api", tags=["factor-db"])
 app.include_router(feed_router, prefix="/api", tags=["feed"])
 app.include_router(instruments_router, prefix="/api", tags=["instruments"])

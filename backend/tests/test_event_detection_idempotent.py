@@ -29,6 +29,7 @@ def test_second_detection_run_is_duplicate() -> None:
 
     def persist_track(
         *,
+        raw: RawEvent,
         title: str,
         category: EventCategory,
         event_source: AdapterSource | str,
@@ -36,7 +37,7 @@ def test_second_detection_run_is_duplicate() -> None:
         confidence_score: int,
         source_url: str | None,
     ) -> str:
-        del title, category, confidence_score, source_url
+        del raw, title, category, confidence_score, source_url
         src_val = event_source.value if isinstance(event_source, AdapterSource) else event_source
         key = (src_val, canonical_url)
         if key in inserted_keys:

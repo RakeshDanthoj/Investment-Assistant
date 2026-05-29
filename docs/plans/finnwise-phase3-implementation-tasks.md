@@ -9,7 +9,7 @@ _generated for independent execution without prd-planner_
 - **Summary**: Phase 3 deepens analytical rigour and prepares FinnWise for a regulated public posture. This plan **merges** the original Phase 3 stories (P3-S1a through P3-S9) with the **PRD2 intelligence gap workstreams** (G-01 through G-15). Week 1 starts with synthetic historical seed (G-13) because live Mirror/Lens data is unavailable. Data-pipeline hardening (dedup, NewsAPI, watchlist, freshness) precedes the rule-based confidence scorer and gate swap. Editorial integrity (hard number gate, checklist, section regen) ships before FoW `is_major` and signal override measurement. NLP filings extraction runs on **GitHub Actions** (Gemini Flash), not Render. **P3-S6 (marketing) and P3-S7 (billing) are formally deferred** per PRD2 G-14 — appendix reference only. P3-S2 interaction model is **gated** until 30 days after synthetic seed is live.
 - **Tech stack**: FastAPI backend, Supabase/Postgres (Session pooler for GH Actions), Next.js frontend (Vercel), Gemini Pro (card synthesis), Gemini Flash (NLP extraction), GitHub Actions (NLP nightly + Render keep-alive + monthly FP report), Render free tier API. Config via YAML where noted (`newsapi_keywords.yaml`, `entity_map.yaml`, `confidence_config.py`).
 - **Slicing approach**: vertical slices (UI + API + DB minimum per story). Parent task IDs are **global** across this file (`1.0`–`25.0`). Each story has **≤ 6 sub-tasks**. Dedicated **test-gate stories** sit between milestones to verify acceptance before downstream work proceeds.
-- **Prerequisite**: Phase 2 shipped and stable, including Phase 2.5 performance close-out ([evidence + conditional PO sign-off](../Post%20Implementation%20documentation/Phase2.5_P2.5%20-%20Performance%20close-out%20pre-Phase%203.md) 30 May 2026). Factor DB covers all 8 sectors. **Live Mirror/Lens ≥3 months is replaced for Phase 3 build start by synthetic seed (P3-S0).**
+- **Prerequisite**: Phase 2 shipped and stable; **Phase 2.5 closed** 30 May 2026 ([close-out](../Post%20Implementation%20documentation/Phase2.5_P2.5%20-%20Performance%20close-out%20pre-Phase%203.md) · [S6 handover](../Post%20Implementation%20documentation/Phase2.5_P2.5-S6%20-%20Evidence%20archive%20and%20Phase%20close-out.md); API proxy p95 PO-waived). Factor DB covers all 8 sectors. **Live Mirror/Lens ≥3 months is replaced for Phase 3 build start by synthetic seed (P3-S0).**
 
 ## PO decision registry (binding for this plan)
 
@@ -140,9 +140,9 @@ _Automate slow review loops, close PRD2 intelligence gaps, harden the platform, 
 
 **Acceptance criteria**
 
-- [ ] `test_synthetic_isolation.py`: Pulse feed, Thread detail, Mirror list return zero synthetic rows when seeded data exists.
-- [ ] `test_query_synthetic_filter.py`: CI grep/assertion that user-facing query modules import or apply synthetic filter.
-- [ ] Failing test blocks merge (added to existing CI workflow).
+- [x] `test_synthetic_isolation.py`: Pulse feed, Thread detail, Mirror list return zero synthetic rows when seeded data exists.
+- [x] `test_query_synthetic_filter.py`: CI grep/assertion that user-facing query modules import or apply synthetic filter.
+- [x] Failing test blocks merge (added to existing CI workflow).
 
 #### Relevant files
 
@@ -154,12 +154,12 @@ _Automate slow review loops, close PRD2 intelligence gaps, harden the platform, 
 
 #### Tasks (checkboxes)
 
-- [ ] **2.0** Synthetic isolation verification gate
-  - [ ] **2.1** Integration tests: Pulse, Thread, Mirror exclude `is_synthetic = TRUE`.
-  - [ ] **2.2** Query-path guard test: fail if known read modules omit synthetic filter.
-  - [ ] **2.3** Wire tests into CI; verify red/green locally with seed present.
-  - [ ] **2.4** Add negative test: service-role admin query *can* read synthetic (smoke).
-  - [ ] **2.5** Document isolation contract in `docs/PRD/FinnWise_PRD2_Intelligence_Architecture.md` cross-ref note (one paragraph).
+- [x] **2.0** Synthetic isolation verification gate
+  - [x] **2.1** Integration tests: Pulse, Thread, Mirror exclude `is_synthetic = TRUE`.
+  - [x] **2.2** Query-path guard test: fail if known read modules omit synthetic filter.
+  - [x] **2.3** Wire tests into CI; verify red/green locally with seed present.
+  - [x] **2.4** Add negative test: service-role admin query *can* read synthetic (smoke).
+  - [x] **2.5** Document isolation contract in `docs/PRD/FinnWise_PRD2_Intelligence_Architecture.md` cross-ref note (one paragraph).
 
 ---
 
@@ -178,11 +178,11 @@ _Automate slow review loops, close PRD2 intelligence gaps, harden the platform, 
 
 **Acceptance criteria**
 
-- [ ] `dedup_key = sha256(category + normalised_entity + 4h_window + headline_hash)` for **all categories** (`headline_hash` = normalised first 100 chars).
-- [ ] `ON CONFLICT (dedup_key) DO UPDATE` increments `source_count`, appends `sources[]`, recomputes `confidence_raw`.
-- [ ] `dedup_review_queue` captures cross-category same-window collisions for Sunday review.
-- [ ] `entity_map.yaml` holds top 30+ entities (editable without deploy).
-- [ ] `source_count > 5` sets `force_editorial_review` flag on event.
+- [x] `dedup_key = sha256(category + normalised_entity + 4h_window + headline_hash)` for **all categories** (`headline_hash` = normalised first 100 chars).
+- [x] `ON CONFLICT (dedup_key) DO UPDATE` increments `source_count`, appends `sources[]`, recomputes `confidence_raw`.
+- [x] `dedup_review_queue` captures cross-category same-window collisions for Sunday review.
+- [x] `entity_map.yaml` holds top 30+ entities (editable without deploy).
+- [x] `source_count > 5` sets `force_editorial_review` flag on event.
 
 #### Relevant files
 
@@ -196,13 +196,13 @@ _Automate slow review loops, close PRD2 intelligence gaps, harden the platform, 
 
 #### Tasks (checkboxes)
 
-- [ ] **3.0** Event de-duplication pipeline
-  - [ ] **3.1** Migration: `dedup_key` unique index, `dedup_review_queue`, `force_editorial_review` on `events`.
-  - [ ] **3.2** `event_dedup.py`: key for all categories includes `headline_hash`; entity map from YAML.
-  - [ ] **3.3** Upsert path integrated into event detection job (post-ingest).
-  - [ ] **3.4** Cross-category collision → `dedup_review_queue` row (no auto-merge).
-  - [ ] **3.5** `source_count > 5` guardrail flag.
-  - [ ] **3.6** Unit tests: same wire across outlets merges; different headlines same entity do not false-merge.
+- [x] **3.0** Event de-duplication pipeline
+  - [x] **3.1** Migration: `dedup_key` unique index, `dedup_review_queue`, `force_editorial_review` on `events`.
+  - [x] **3.2** `event_dedup.py`: key for all categories includes `headline_hash`; entity map from YAML.
+  - [x] **3.3** Upsert path integrated into event detection job (post-ingest).
+  - [x] **3.4** Cross-category collision → `dedup_review_queue` row (no auto-merge).
+  - [x] **3.5** `source_count > 5` guardrail flag.
+  - [x] **3.6** Unit tests: same wire across outlets merges; different headlines same entity do not false-merge.
 
 ---
 
@@ -221,10 +221,10 @@ _Automate slow review loops, close PRD2 intelligence gaps, harden the platform, 
 
 **Acceptance criteria**
 
-- [ ] `newsapi_keywords.yaml`: 8 factor sets, 100 calls/day total per PRD2 Section 4.2.
-- [ ] Round-robin scheduler: one factor per detection cron tick; logs `poll_status` (`ok` | `empty` | `error`).
-- [ ] 429 rate-limit → RSS fallback (ET Markets, Mint) per PRD2 fallback chain.
-- [ ] `factor_poll_log` records `factor_id`, `polled_at`, `status`, `article_count`.
+- [x] `newsapi_keywords.yaml`: 8 factor sets, 100 calls/day total per PRD2 Section 4.2.
+- [x] Round-robin scheduler: one factor per detection cron tick; logs `poll_status` (`ok` | `empty` | `error`).
+- [x] 429 rate-limit → RSS fallback (ET Markets, Mint) per PRD2 fallback chain.
+- [x] `factor_poll_log` records `factor_id`, `polled_at`, `status`, `article_count`.
 
 #### Relevant files
 
@@ -237,13 +237,13 @@ _Automate slow review loops, close PRD2 intelligence gaps, harden the platform, 
 
 #### Tasks (checkboxes)
 
-- [ ] **4.0** NewsAPI factor keyword scheduler
-  - [ ] **4.1** `newsapi_keywords.yaml` with PRD2 keyword sets and daily call budgets.
-  - [ ] **4.2** Round-robin scheduler in adapter; respect 100 calls/day hard cap.
-  - [ ] **4.3** Migration + write `factor_poll_log` on each poll.
-  - [ ] **4.4** Distinguish empty (200, zero articles) vs error (429/5xx); trigger RSS fallback on 429.
-  - [ ] **4.5** Surface last-poll summary in editorial digest email template (log-only fields).
-  - [ ] **4.6** Tests: cap not exceeded; rotation order; empty vs error classification.
+- [x] **4.0** NewsAPI factor keyword scheduler
+  - [x] **4.1** `newsapi_keywords.yaml` with PRD2 keyword sets and daily call budgets.
+  - [x] **4.2** Round-robin scheduler in adapter; respect 100 calls/day hard cap.
+  - [x] **4.3** Migration + write `factor_poll_log` on each poll.
+  - [x] **4.4** Distinguish empty (200, zero articles) vs error (429/5xx); trigger RSS fallback on 429.
+  - [x] **4.5** Surface last-poll summary in editorial digest email template (log-only fields).
+  - [x] **4.6** Tests: cap not exceeded; rotation order; empty vs error classification.
 
 ---
 
@@ -262,10 +262,10 @@ _Automate slow review loops, close PRD2 intelligence gaps, harden the platform, 
 
 **Acceptance criteria**
 
-- [ ] `watchlist_items` table per PRD2 schema; 5 seed rows via migration.
-- [ ] `/editor/watchlist` lists items; status `watching|escalated|closed`.
-- [ ] One-click **Escalate** creates `events` row with `source='watchlist'` (manual only — no auto-escalation in Phase 3).
-- [ ] Sunday digest section lists pending watchlist + `dedup_review_queue` (max 10 items).
+- [x] `watchlist_items` table per PRD2 schema; 5 seed rows via migration.
+- [x] `/editor/watchlist` lists items; status `watching|escalated|closed`.
+- [x] One-click **Escalate** creates `events` row with `source='watchlist'` (manual only — no auto-escalation in Phase 3).
+- [x] Sunday digest section lists pending watchlist + `dedup_review_queue` (max 10 items).
 
 #### Relevant files
 
@@ -278,13 +278,13 @@ _Automate slow review loops, close PRD2 intelligence gaps, harden the platform, 
 
 #### Tasks (checkboxes)
 
-- [ ] **5.0** Slow-burn watchlist
-  - [ ] **5.1** Migration: `watchlist_items` + 5 seed categories.
-  - [ ] **5.2** API: list, patch status, `POST .../escalate` → `events` insert.
-  - [ ] **5.3** `/editor/watchlist` page (table, status dropdown, Escalate button).
-  - [ ] **5.4** Admin allow-list gate (reuse Phase 1 pattern).
-  - [ ] **5.5** Digest email template: watchlist + dedup queue section (cap 10).
-  - [ ] **5.6** Test: escalate creates event with correct category and source.
+- [x] **5.0** Slow-burn watchlist
+  - [x] **5.1** Migration: `watchlist_items` + 5 seed categories.
+  - [x] **5.2** API: list, patch status, `POST .../escalate` → `events` insert.
+  - [x] **5.3** `/editor/watchlist` page (table, status dropdown, Escalate button).
+  - [x] **5.4** Admin allow-list gate (reuse Phase 1 pattern).
+  - [x] **5.5** Digest email template: watchlist + dedup queue section (cap 10).
+  - [x] **5.6** Test: escalate creates event with correct category and source.
 
 ---
 
@@ -1208,7 +1208,7 @@ _Automate slow review loops, close PRD2 intelligence gaps, harden the platform, 
 
 ### Tasks by developer — Sam
 
-- [ ] **4.0** NewsAPI factor keyword scheduler
+- [x] **4.0** NewsAPI factor keyword scheduler
 - [ ] **6.0** Market facts freshness + fallback chain
 - [ ] **9.0** Confidence explainability UI
 - [ ] **13.0** Targeted section regen

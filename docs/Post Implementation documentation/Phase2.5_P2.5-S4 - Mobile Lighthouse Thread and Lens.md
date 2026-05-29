@@ -1,16 +1,24 @@
 # Post Implementation — P2.5-S4 (Mobile Lighthouse: Thread + Lens)
 
-**Version:** v1.0 | **Date:** 30-05-2026  
+**Version:** v1.1 | **Date:** 30-05-2026  
 **Story ID:** P2.5-S4  
-**Reference plan:** `docs/plans/finnwise-phase2.5-implementation-tasks.md`
+**Reference plan:** `docs/plans/finnwise-phase2.5-implementation-tasks.md`  
+**Phase close-out:** [Phase2.5_P2.5 - Performance close-out pre-Phase 3.md](./Phase2.5_P2.5%20-%20Performance%20close-out%20pre-Phase%203.md)
+
+**Story status: CLOSED** — Vercel deploy verified; mobile budgets green (29 May 2026).
 
 ---
 
 ## Summary
 
-Production mobile Lighthouse (24 May 2026 baseline) failed on **Thread** (SI **4172 ms**) and **Lens** (TBT **272 ms**). Thread was blocked on a full-document SSR wait for `fetchCardDetail()`; Lens ran `GET /api/lens/queries/me` on mount and loaded editorial fonts on both Thread and Lens route layouts. Thread also pulled `PredictionLogger` and session-holdings work onto the critical path.
+Production mobile Lighthouse (24 May 2026 baseline) failed on **Thread** (SI **4172 ms**) and **Lens** (TBT **272 ms**). Thread was blocked on a full-document SSR wait for `fetchCardDetail()`; Lens ran `GET /api/lens/queries/me` on mount. This story shipped streaming SSR, `deferAfterPaint`, scoped fonts, and dynamic `PredictionLogger`.
 
-This story ships frontend perf fixes aligned with Mirror (P2.5-S3). **Lighthouse budget sign-off remains operator-owned** after Vercel deploy.
+**Post-deploy verification (production Vercel):**
+
+| Route | Perf | TBT | SI | Status |
+|-------|------|-----|-----|--------|
+| `/thread/{cardId}` | 95 | 25 ms | 2929 ms | Pass (attempt 2/2) |
+| `/lens` | 94 | 28 ms | 2488 ms | Pass (attempt 2/2) |
 
 ---
 
@@ -42,29 +50,16 @@ This story ships frontend perf fixes aligned with Mirror (P2.5-S3). **Lighthouse
 
 ---
 
-## Operator follow-up (acceptance not complete until done)
+## Post-deploy results (29 May 2026)
 
-1. **Deploy** frontend to Vercel (Thread streaming + Lens deferral).
-2. **Smoke Thread:** signed-in `/thread/{cardId}` — Network tab should show card data via RSC (no client refetch on first paint when SSR succeeds).
-3. **Smoke Lens:** signed-in `/lens` — `GET /api/lens/queries/me` should start **after** FCP (idle/deferred), not in the first network burst.
-4. **Lighthouse mobile** (2 attempts each):
-   ```powershell
-   $env:LIGHTHOUSE_PAGES="thread,lens"
-   node scripts/lighthouse.mjs
-   ```
-   Targets: Thread perf ≥90, SI <3400 ms, TBT <200 ms; Lens perf ≥90, TBT <200 ms.
-5. Mark plan story acceptance checkboxes when budgets are green.
+| Route | Metric | 24 May baseline | Post–S4 deploy |
+|-------|--------|-----------------|----------------|
+| `/thread/{cardId}` | Speed Index | 4172 ms | **2929 ms** |
+| `/thread/{cardId}` | TBT | 140 ms | **25 ms** |
+| `/lens` | TBT | 272 ms | **28 ms** |
+| `/lens` | Speed Index | 1876 ms | **2488 ms** |
 
----
-
-## Baseline vs target
-
-| Route | Metric | 24 May 2026 (mobile prod) | Target |
-|-------|--------|---------------------------|--------|
-| `/thread/{cardId}` | Speed Index | 4172 ms | <3400 ms |
-| `/thread/{cardId}` | Performance | 91 | ≥90 |
-| `/lens` | TBT | 272 ms | <200 ms |
-| `/lens` | Performance | 90 | ≥90 |
+Archive: `Page Load Performance/lighthouse-ci-mobile-*-2026-05-29T1859-thread-*`, `*lens-*`
 
 ---
 

@@ -474,6 +474,10 @@ ALTER TABLE user_predictions ADD COLUMN is_synthetic BOOLEAN DEFAULT FALSE;
 -- Synthetic rows accessible only via service role key (admin/job use)
 ```
 
+#### Synthetic isolation verification (P3-T1)
+
+Triple-layer isolation is enforced in production as follows: **(1)** Postgres RLS hides `is_synthetic = TRUE` rows from the `authenticated` role on `events`, `signals`, `track_record`, `user_predictions`, and `card_confidence_history`; **(2)** the FastAPI service layer applies `SyntheticFilterMixin` (`is_synthetic IS NOT TRUE`) on all Pulse feed, Thread card-detail, Mirror prediction, and market-facts read paths, because the API connects via `SUPABASE_DB_URL` as `postgres` and bypasses RLS; **(3)** CI runs `test_query_synthetic_filter.py` (static guard on known read modules) and `test_synthetic_isolation.py` (integration: Pulse, Thread, Mirror return zero synthetic rows when seed data exists; service-role SQL smoke confirms synthetic rows remain visible for admin/calibration jobs). See migration `0021_synthetic_isolation.sql` and Phase 3 task **P3-T1**.
+
 ---
 
 ## 8. Phase 3 Scope Decisions

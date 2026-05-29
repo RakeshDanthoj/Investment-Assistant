@@ -10,7 +10,7 @@ from datetime import timedelta
 from app.core.settings import get_settings
 from app.services.event_classification import infer_event_category
 from app.services.event_confidence import score
-from app.services.event_persistence import persist_draft_event
+from app.services.event_dedup import persist_deduped_event
 from app.sources.base import AdapterSource, RawEvent, SourceAdapter, SourceFailure
 from app.sources.newsapi import NewsAPISourceAdapter
 from app.sources.nse_announcements import NSEAnnouncementsSourceAdapter
@@ -48,7 +48,7 @@ def run_event_detection(
 ) -> DetectionRunSummary:
     adapters_list = list(adapters) if adapters is not None else default_adapters()
     window_eff = window or timedelta(hours=4)
-    persist_fn: PersistFn = persist or persist_draft_event
+    persist_fn: PersistFn = persist or persist_deduped_event
 
     summary = DetectionRunSummary()
 
@@ -90,6 +90,7 @@ def _persist_single(
     score_val = score(adapter_src, raw)
 
     outcome = persist_fn(
+        raw=raw,
         title=raw.title,
         category=cat,
         event_source=adapter_src,

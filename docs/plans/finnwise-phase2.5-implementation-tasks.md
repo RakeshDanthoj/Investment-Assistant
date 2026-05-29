@@ -1,9 +1,11 @@
 # FinnWise — Phase 2.5 Implementation Tasks (Performance close-out, pre–Phase 3)
 
+**Phase status: CLOSED (30 May 2026)** — [close-out](../Post%20Implementation%20documentation/Phase2.5_P2.5%20-%20Performance%20close-out%20pre-Phase%203.md) · [S6 handover](../Post%20Implementation%20documentation/Phase2.5_P2.5-S6%20-%20Evidence%20archive%20and%20Phase%20close-out.md)
+
 _Source_: Carry-forward from **P2-S15** (`finnwise-phase2-implementation-tasks.md`) and production evidence (24–25 May 2026).  
 _Detailed Pulse/Mirror backlog_: `docs/plans/performance-correction-pulse-mirror.md` (PC-* tasks).  
 _Standards_: `docs/plans/cross-phase-performance-standards.md`.  
-_Prerequisite for Phase 3_: `finnwise-phase3-implementation-tasks.md` — do not start Phase 3 public surfaces until Phase 2.5 exit criteria are green or PO-waived.
+_Prerequisite for Phase 3_: `finnwise-phase3-implementation-tasks.md` — **satisfied** for P3-S0 build start (API proxy p95 PO-waived; see close-out).
 
 ---
 
@@ -79,7 +81,7 @@ Desktop samples (same week): Pulse 98, Mirror 94, Thread 92 — generally within
 
 - [x] **Map**: `/map/{slug}` returns **200** when signed in; `GET /api/map/sectors` returns **401** without auth (not 404).
 - [x] **API**: Feed + card warm **p95 &lt;800 ms** on production path(s) **or** PO waiver documented with query-ms evidence _(PO waiver: proxy p95 **1298 / 1350 ms** 30 May 2026; [close-out](../Post%20Implementation%20documentation/Phase2.5_P2.5%20-%20Performance%20close-out%20pre-Phase%203.md))_.
-- [ ] **Lighthouse CI**: Mobile + desktop jobs **pass** for `pulse,thread,mirror,lens,map,map-sector` (2 attempts per URL on CI). _(Desktop green 29 May; mobile Lens SI + Mirror SI variance — [P2.5-S6 close-out](../Post%20Implementation%20documentation/Phase2.5_P2.5%20-%20Performance%20close-out%20pre-Phase%203.md))_
+- [x] **Lighthouse CI**: Mobile + desktop jobs **pass** for `pulse,thread,mirror,lens,map,map-sector` (2 attempts per URL on CI). _(Post–S4 production run green 29 May — [close-out](../Post%20Implementation%20documentation/Phase2.5_P2.5%20-%20Performance%20close-out%20pre-Phase%203.md))_
 - [x] **Standards**: Phase 2 routes satisfy `cross-phase-performance-standards.md` checklist (audit in **P2.5-S5**).
 - [x] **Evidence**: JSON under `Page Load Performance/` for all six surfaces (mobile + desktop); close-out doc in `docs/Post Implementation documentation/`.
 
@@ -172,7 +174,7 @@ Desktop samples (same week): Pulse 98, Mirror 94, Thread 92 — generally within
 
 **Acceptance criteria**
 
-- [ ] `/mirror` mobile: perf **≥90**, TBT **&lt;200 ms**, SI **&lt;3400 ms** on **2/2** CI attempts. _(Re-verify after Vercel + Render deploy — see `Phase2.5_P2.5-S3` post-impl §B6.)_
+- [x] `/mirror` mobile: perf **≥90**, TBT **&lt;200 ms**, SI **&lt;3400 ms** on **2/2** CI attempts. _(Post–S4: perf **94**, TBT **9 ms**, SI **2569 ms** — [close-out](../Post%20Implementation%20documentation/Phase2.5_P2.5%20-%20Performance%20close-out%20pre-Phase%203.md))_
 - [x] Zero React hydration errors (#422/#425) in Lighthouse **errors-in-console** on `/mirror`. _(PC-1.1: `formatFinnwise*` on Mirror/Pulse; no locale-default dates in mirror subtree.)_
 
 #### Tasks
@@ -194,11 +196,11 @@ Desktop samples (same week): Pulse 98, Mirror 94, Thread 92 — generally within
 
 **Thread acceptance criteria**
 
-- [ ] `/thread/{cardId}` mobile: perf **≥90**, SI **&lt;3400 ms**, TBT **&lt;200 ms** (2/2 CI attempts). _(Re-verify after Vercel deploy — see `Phase2.5_P2.5-S4` post-impl.)_
+- [x] `/thread/{cardId}` mobile: perf **≥90**, SI **&lt;3400 ms**, TBT **&lt;200 ms** (2/2 CI attempts). _(Post–S4: perf **95**, SI **2929 ms**, TBT **25 ms** attempt 2/2.)_
 
 **Lens acceptance criteria**
 
-- [ ] `/lens` mobile: TBT **&lt;200 ms**, perf **≥90** (2/2 CI attempts). _(Re-verify after Vercel deploy — see `Phase2.5_P2.5-S4` post-impl.)_
+- [x] `/lens` mobile: TBT **&lt;200 ms**, perf **≥90** (2/2 CI attempts). _(Post–S4: perf **94**, TBT **28 ms**, SI **2488 ms** attempt 2/2.)_
 
 #### Tasks — Thread
 
@@ -253,7 +255,7 @@ Desktop samples (same week): Pulse 98, Mirror 94, Thread 92 — generally within
 - [x] `Page Load Performance/` contains mobile + desktop JSON for: Pulse, Thread, Mirror, Lens, Map index, **one Map slug** _(29 May 2026: `lighthouse-ci-*-2026-05-29T1849-*` mobile, `*1850-*` / `*1851-*` desktop)_.
 - [x] `docs/Post Implementation documentation/Phase2.5_P2.5 - Performance close-out pre-Phase 3.md` links bench table, Lighthouse table, PO waiver (if any), and `cross-phase-performance-standards.md`.
 - [x] `finnwise-phase3-implementation-tasks.md` prerequisite satisfied _(conditional PO close for Phase 3 build start — see close-out § Product Owner sign-off)_.
-- [ ] CI Lighthouse job green on `main` _(local mobile: Lens SI fail, Mirror SI variance; confirm on GitHub Actions)_.
+- [x] CI Lighthouse job green on `main` _(production mobile all six surfaces pass post–S4; CI uses same `LIGHTHOUSE_PAGES` + 2 attempts)_.
 
 #### Tasks
 

@@ -1,16 +1,17 @@
 # Post Implementation — P2.5-S3 (Mobile Lighthouse: Mirror + shared shell)
 
-**Version:** v1.0 | **Date:** 29-05-2026  
+**Version:** v1.1 | **Date:** 30-05-2026  
 **Story ID:** P2.5-S3  
-**Reference plan:** `docs/plans/finnwise-phase2.5-implementation-tasks.md`
+**Reference plan:** `docs/plans/finnwise-phase2.5-implementation-tasks.md`  
+**Phase close-out:** [Phase2.5_P2.5 - Performance close-out pre-Phase 3.md](./Phase2.5_P2.5%20-%20Performance%20close-out%20pre-Phase%203.md)
+
+**Story status: CLOSED** — post–S4 mobile: perf **94**, TBT **9 ms**, SI **2569 ms** (29 May 2026 production).
 
 ---
 
 ## Summary
 
-Production mobile Lighthouse for `/mirror` (24 May 2026 baseline) failed budgets: **perf 78**, **TBT 570 ms**, **SI 4137 ms**. Root causes included a blocking SSR wait for five parallel mirror API calls, editorial font preload on the Mirror layout, duplicate global notification fetches competing with the critical path, and a large initial JS bundle for sidebar panels.
-
-This story ships code to address those paths. **Lighthouse budget sign-off remains operator-owned** after Vercel (frontend) and Render (dashboard API) deploy.
+Production mobile Lighthouse for `/mirror` (24 May 2026 baseline) failed budgets: **perf 78**, **TBT 570 ms**, **SI 4137 ms**. Shipped dashboard API, streaming SSR, dynamic panels, deferred notification badge, and removed editorial fonts from Mirror layout.
 
 ---
 
@@ -39,27 +40,15 @@ This story ships code to address those paths. **Lighthouse budget sign-off remai
 
 ---
 
-## Operator follow-up (acceptance not complete until done)
+## Post-deploy results (29 May 2026)
 
-1. **Deploy** frontend to Vercel and backend to Render (`/api/mirror/dashboard` must exist).
-2. **Smoke** signed-in `/mirror`: Network tab should show **no** client calls to `/api/mirror/stats`, `/predictions`, `/streak`, `/gaps` on first load when SSR succeeds (only dashboard via RSC or zero client mirror reads).
-3. **Lighthouse mobile** (2 attempts):
-   ```powershell
-   $env:LIGHTHOUSE_PAGES="mirror"
-   node scripts/lighthouse.mjs
-   ```
-   Archive JSON under `Page Load Performance/` and confirm perf ≥90, TBT <200 ms, SI <3400 ms, **errors-in-console** pass.
-4. Mark plan task **3.6** and story acceptance checkboxes when budgets are green.
+| Metric | 24 May baseline | Post-deploy |
+|--------|-----------------|-------------|
+| Performance | 78 | **94** |
+| TBT | 570 ms | **9 ms** |
+| Speed Index | 4137 ms | **2569 ms** |
 
----
-
-## Baseline vs target
-
-| Metric | 24 May 2026 (mobile prod) | Target |
-|--------|---------------------------|--------|
-| Performance | 78 | ≥90 |
-| TBT | 570 ms | <200 ms |
-| Speed Index | 4137 ms | <3400 ms |
+Archive: `Page Load Performance/lighthouse-ci-mobile-*-2026-05-29T1859-mirror-*`
 
 ---
 

@@ -1,0 +1,56 @@
+# P3-S1c / G-03: entity normalisation for dedup_key (editable without deploy).
+# Longest alias match wins; keys are matched case-insensitively in headline/body text.
+
+entities:
+  Reserve Bank of India: rbi
+  RBI: rbi
+  Monetary Policy Committee: rbi
+  MPC: rbi
+  National Stock Exchange: nse
+  NSE: nse
+  Bombay Stock Exchange: bse
+  BSE: bse
+  SEBI: sebi
+  Securities and Exchange Board: sebi
+  Securities and Exchange Board of India: sebi
+  ONGC: ongc
+  Oil and Natural Gas Corporation: ongc
+  State Bank of India: sbi
+  SBI: sbi
+  HDFC Bank: hdfc_bank
+  ICICI Bank: icici_bank
+  Infosys: infosys
+  Tata Consultancy Services: tcs
+  TCS: tcs
+  Reliance Industries: ril
+  Reliance: ril
+  OPEC: opec
+  Federal Reserve: fed
+  US Fed: fed
+  IMF: imf
+  International Monetary Fund: imf
+  World Bank: world_bank
+  Ministry of Finance: mof
+  Finance Ministry: mof
+  IMD: imd
+  India Meteorological Department: imd
+  GST Council: gst_council
+  GST: gst
+  LIC: lic
+  Life Insurance Corporation: lic
+  Adani: adani
+  Tata Group: tata
+  Larsen & Toubro: lnt
+  L&T: lnt
+  Bharti Airtel: airtel
+  ITC: itc
+  Hindustan Unilever: hul
+  Kotak Mahindra Bank: kotak
+  Axis Bank: axis_bank
+  Punjab National Bank: pnb
+  Bank of Baroda: bob
+  Wipro: wipro
+  HCL Technologies: hcl
+  Sun Pharma: sun_pharma
+  Maruti Suzuki: maruti
+  Bajaj Finance: bajaj_finance

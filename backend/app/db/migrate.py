@@ -23,6 +23,9 @@ MIGRATION_FILES = (
     "0020_rate_limit_observability.sql",
     "0021_synthetic_isolation.sql",
     "0022_feed_card_perf.sql",
+    "0023_dedup_key_review_queue.sql",
+    "0024_factor_poll_log.sql",
+    "0025_watchlist_items.sql",
 )
 
 _SCHEMA_MIGRATIONS_DDL = """
