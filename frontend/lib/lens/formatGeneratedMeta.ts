@@ -1,15 +1,12 @@
-/** Meta row: "Generated in Xs · Date" (P2-S8). */
+import { formatFinnwiseDate } from "@/lib/format/dateTime";
+
+/** Meta row: "Generated in Xs · Date" (P2-S8 / PC-1.1). */
 
 export function formatGeneratedMeta(
   generationSeconds: number | null | undefined,
   isoDate: string,
 ): string {
-  const date = new Date(isoDate);
-  const dateLabel = date.toLocaleDateString("en-IN", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
+  const dateLabel = formatFinnwiseDate(isoDate);
   if (generationSeconds == null || generationSeconds < 1) {
     return dateLabel;
   }

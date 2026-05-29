@@ -4,6 +4,7 @@ import { useCallback, useEffect, useReducer, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { getApiBaseUrl, describeFetchFailure } from "@/lib/api";
+import { deferAfterPaint } from "@/lib/deferAfterPaint";
 import type { Horizon } from "@/lib/onboarding/state";
 import type { LensQueriesResponse, LensQueryCreateResponse } from "@/lib/lens/types";
 import {
@@ -14,13 +15,16 @@ import {
 import { createClient } from "@/lib/supabase/client";
 
 import { ExampleGrid } from "./ExampleGrid";
-import { LensTopbar } from "./LensTopbar";
 import { LoadingCard } from "./LoadingCard";
 import { QueryHistory } from "./QueryHistory";
 import { QueryInput } from "./QueryInput";
 import { ResultCard } from "./ResultCard";
 
-export default function LensClient() {
+type LensClientProps = {
+  signedIn?: boolean;
+};
+
+export default function LensClient({ signedIn = true }: LensClientProps) {
   const [state, dispatch] = useReducer(lensReducer, undefined, initialLensState);
   const [history, setHistory] = useState<LensQueriesResponse["items"]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
@@ -61,8 +65,21 @@ export default function LensClient() {
   }, []);
 
   useEffect(() => {
-    void loadHistory();
-  }, [loadHistory]);
+    if (!signedIn) {
+      setHistoryLoading(false);
+      setHistoryError("Sign in to use The Lens.");
+      return;
+    }
+    let cancelled = false;
+    void deferAfterPaint(async () => {
+      if (!cancelled) {
+        await loadHistory();
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [loadHistory, signedIn]);
 
   useEffect(() => {
     if (historyLoading) return;
@@ -135,7 +152,6 @@ export default function LensClient() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-      <LensTopbar />
       <div
         className={
           state.view === "result"

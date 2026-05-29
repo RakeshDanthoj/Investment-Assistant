@@ -423,8 +423,8 @@ x-finnwise-timing: db_query_ms=449.46, total_ms=668.05, connection_count=1
 | Tasks 2.1–2.5 complete in repo | **Yes** |
 | `connection_count` = 1 | **Yes** |
 | `db_query_ms` below wall p95 | **Yes** (card; feed after deploy) |
-| Proxy wall p95 &lt;800 ms | **Pending / likely waiver** — re-bench in P2.5-S6 |
-| Final table in Phase 2.5 close-out | **P2.5-S6** |
+| Proxy wall p95 &lt;800 ms | **PO waiver** — feed **1298 ms**, card **1350 ms** (30 May 2026) |
+| Final table in Phase 2.5 close-out | **Done** — [P2.5-S6 close-out](./Phase2.5_P2.5%20-%20Performance%20close-out%20pre-Phase%203.md) |
 
 ---
 

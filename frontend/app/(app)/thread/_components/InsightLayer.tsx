@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useMemo } from "react";
 
 import type { CardDetailResponse } from "@/lib/cards/threadTypes";
@@ -13,7 +14,11 @@ import { HoldingCallout } from "./HoldingCallout";
 import { EmptyLayerState } from "./EmptyLayerState";
 import { FrameworkBehindThis } from "./FrameworkBehindThis";
 import { InstrumentCard } from "./InstrumentCard";
-import { PredictionLogger } from "./PredictionLogger";
+
+const PredictionLogger = dynamic(
+  () => import("./PredictionLogger").then((m) => ({ default: m.PredictionLogger })),
+  { ssr: false },
+);
 
 type InsightLayerProps = Pick<
   CardDetailResponse,

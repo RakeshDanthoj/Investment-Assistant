@@ -6,6 +6,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { getApiBaseUrl } from "@/lib/api";
+import { deferAfterPaint } from "@/lib/deferAfterPaint";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
@@ -69,7 +70,9 @@ export function PredictionLogger({ cardId }: PredictionLoggerProps) {
       }
     }
 
-    void loadExisting();
+    void deferAfterPaint(() => {
+      if (!cancelled) void loadExisting();
+    });
     return () => {
       cancelled = true;
     };

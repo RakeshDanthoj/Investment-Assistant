@@ -13,6 +13,10 @@ jest.mock("../../../../lib/api", () => ({
   getApiBaseUrl: () => "http://localhost:8000",
 }));
 
+jest.mock("../../../../lib/deferAfterPaint", () => ({
+  deferAfterPaint: (fn: () => unknown) => Promise.resolve(fn()),
+}));
+
 const mockGetSession = jest.fn();
 
 jest.mock("../../../../lib/supabase/client", () => ({

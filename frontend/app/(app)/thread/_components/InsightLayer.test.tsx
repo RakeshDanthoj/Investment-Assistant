@@ -1,8 +1,17 @@
 /** @jest-environment jsdom */
 
+import type { ComponentType } from "react";
 import { render, screen } from "@testing-library/react";
 
 import { InsightLayer } from "./InsightLayer";
+
+jest.mock("next/dynamic", () => (loader: () => Promise<{ default: ComponentType<{ cardId: string }> }>) => {
+  const { PredictionLogger } = jest.requireMock<{ PredictionLogger: ComponentType<{ cardId: string }> }>(
+    "./PredictionLogger",
+  );
+  void loader();
+  return PredictionLogger;
+});
 
 jest.mock("./PredictionLogger", () => ({
   PredictionLogger: ({ cardId }: { cardId: string }) => (

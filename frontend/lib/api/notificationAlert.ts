@@ -7,21 +7,10 @@ type NotificationDto = {
   kind: string;
 };
 
+import { deferAfterPaint } from "@/lib/deferAfterPaint";
+
 let inFlight: Promise<string | null> | null = null;
 let cachedCardId: string | null | undefined;
-
-function defer<T>(fn: () => Promise<T>): Promise<T> {
-  return new Promise((resolve, reject) => {
-    const run = () => {
-      void fn().then(resolve, reject);
-    };
-    if (typeof requestIdleCallback === "function") {
-      requestIdleCallback(() => run(), { timeout: 2000 });
-    } else {
-      setTimeout(run, 0);
-    }
-  });
-}
 
 export async function fetchSignalFiredCardId(
   fetchImpl: typeof fetch,
@@ -31,7 +20,7 @@ export async function fetchSignalFiredCardId(
   if (cachedCardId !== undefined) return cachedCardId;
   if (inFlight) return inFlight;
 
-  inFlight = defer(async () => {
+  inFlight = deferAfterPaint(async () => {
     try {
       const res = await fetchImpl(url, {
         headers: { Authorization: `Bearer ${accessToken}` },

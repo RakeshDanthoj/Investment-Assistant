@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import { deferAfterPaint } from "@/lib/deferAfterPaint";
 import {
   HOLDINGS_CHANGED_EVENT,
   getSessionHoldings,
@@ -26,12 +27,18 @@ export function useSessionHoldings(): {
   }, []);
 
   useEffect(() => {
-    void refresh();
+    let cancelled = false;
+    void deferAfterPaint(() => {
+      if (!cancelled) void refresh();
+    });
     const onChange = () => {
       void refresh();
     };
     window.addEventListener(HOLDINGS_CHANGED_EVENT, onChange);
-    return () => window.removeEventListener(HOLDINGS_CHANGED_EVENT, onChange);
+    return () => {
+      cancelled = true;
+      window.removeEventListener(HOLDINGS_CHANGED_EVENT, onChange);
+    };
   }, [refresh]);
 
   return { holdings, refresh, loading };

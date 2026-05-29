@@ -1,3 +1,6 @@
+/** Fixed locale avoids hydration drift from `undefined` locale (PC-1.1). */
+const LOCALE = "en-IN";
+
 const UNITS: { unit: Intl.RelativeTimeFormatUnit; ms: number }[] = [
   { unit: "year", ms: 365 * 24 * 60 * 60 * 1000 },
   { unit: "month", ms: 30 * 24 * 60 * 60 * 1000 },
@@ -13,7 +16,7 @@ export function formatRelativeDate(iso: string): string {
   if (Number.isNaN(then)) return "";
 
   const diffMs = then - Date.now();
-  const rtf = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
+  const rtf = new Intl.RelativeTimeFormat(LOCALE, { numeric: "auto" });
 
   for (const { unit, ms } of UNITS) {
     if (Math.abs(diffMs) >= ms || unit === "minute") {
