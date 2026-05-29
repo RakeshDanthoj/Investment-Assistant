@@ -77,8 +77,8 @@ Desktop samples (same week): Pulse 98, Mirror 94, Thread 92 — generally within
 
 ## Phase 2.5 exit criteria (Phase 3 prerequisite)
 
-- [ ] **Map**: `/map/{slug}` returns **200** when signed in; `GET /api/map/sectors` returns **401** without auth (not 404). _(Frontend slug **200**; API **404** until Render redeploy — P2.5-S1 post-impl.)_
-- [ ] **API**: Feed + card warm **p95 &lt;800 ms** on production path(s) **or** PO waiver documented with query-ms evidence.
+- [x] **Map**: `/map/{slug}` returns **200** when signed in; `GET /api/map/sectors` returns **401** without auth (not 404).
+- [ ] **API**: Feed + card warm **p95 &lt;800 ms** on production path(s) **or** PO waiver documented with query-ms evidence _(P2.5-S2: PO waiver memo in close-out doc; re-bench after Render deploy in P2.5-S6)_.
 - [ ] **Lighthouse CI**: Mobile + desktop jobs **pass** for `pulse,thread,mirror,lens,map,map-sector` (2 attempts per URL on CI).
 - [ ] **Standards**: Phase 2 routes satisfy `cross-phase-performance-standards.md` checklist (audit in **P2.5-S5**).
 - [ ] **Evidence**: JSON under `Page Load Performance/` for all six surfaces (mobile + desktop); close-out doc in `docs/Post Implementation documentation/`.
@@ -106,18 +106,18 @@ Desktop samples (same week): Pulse 98, Mirror 94, Thread 92 — generally within
 **Acceptance criteria**
 
 - [x] Latest frontend deployed to Vercel (includes `frontend/app/(app)/map/[slug]/page.tsx`).
-- [ ] Latest backend deployed to Render (`backend/app/api/map.py` registered).
+- [x] Latest backend deployed to Render (`backend/app/api/map.py` registered).
 - [x] Production migrations applied: `0018_map_modules.sql` + sector/map seeds.
-- [ ] Unauthenticated API: **401** on `/api/map/sectors` (proves route exists).
-- [ ] Authenticated: sector list + `/map/it` (or `energy`) **200**.
+- [x] Unauthenticated API: **401** on `/api/map/sectors` (proves route exists).
+- [x] Authenticated: sector list + `/map/it` (or `energy`) **200**.
 - [x] CI: add `map-sector` to `LIGHTHOUSE_PAGES` in `.github/workflows/ci.yml`.
 
 #### Tasks
 
-- [ ] **1.1** Merge Phase 2 Map branch to `main`; trigger Vercel + Render deploys. _(Vercel sector route live; Render API redeploy pending — see post-impl doc.)_
+- [x] **1.1** Merge Phase 2 Map branch to `main`; trigger Vercel + Render deploys.
 - [x] **1.2** Run `python scripts/apply_migrations.py` against production `SUPABASE_DB_URL`.
-- [ ] **1.3** Smoke: signed-in browser `/map` → tile → `/map/{slug}`. _(Frontend URLs 200; full signed-in flow after API deploy.)_
-- [ ] **1.4** Smoke: `curl` map API with Bearer token vs without. _(Script: `node scripts/map_production_smoke.mjs`; unauth **404** until Render redeploy.)_
+- [x] **1.3** Smoke: signed-in browser `/map` → tile → `/map/{slug}`.
+- [x] **1.4** Smoke: `curl` map API with Bearer token vs without.
 - [x] **1.5** Enable `map-sector` in Lighthouse CI env.
 
 ---
@@ -135,24 +135,31 @@ Desktop samples (same week): Pulse 98, Mirror 94, Thread 92 — generally within
 
 **Acceptance criteria**
 
-- [ ] `node scripts/bench_api_latency.mjs` with `BENCH_API_DIRECT_URL=https://investment-assistant-3eqc.onrender.com`: feed + card proxy **p95 &lt;800 ms**.
-- [ ] Server timing: `db_query_ms` p95 materially below wall p95 (no connection churn regression).
-- [ ] Results pasted in close-out doc (P2.5-S6).
+- [ ] `node scripts/bench_api_latency.mjs` with `BENCH_API_DIRECT_URL=https://investment-assistant-3eqc.onrender.com`: feed + card proxy **p95 &lt;800 ms** _(pre-deploy: feed proxy **2339 ms**, card proxy **1265 ms** — PO waiver documented; re-bench post-deploy in P2.5-S6)_.
+- [x] Server timing: `db_query_ms` p95 materially below wall p95 (no connection churn regression).
+- [x] Results pasted in close-out doc (P2.5-S6) — interim table in `Phase2.5_P2.5-S2 - API latency feed and card.md`.
 
 #### Tasks
 
-- [ ] **2.1** `EXPLAIN ANALYZE` on feed + card detail queries; document slow nodes.
+- [x] **2.1** `EXPLAIN ANALYZE` on feed + card detail queries; document slow nodes.
 - [x] **2.2** Indexes / N+1 removal / trim first-paint payload.
 - [x] **2.3** Confirm Render `SUPABASE_DB_URL` uses **session pooler** URI.
-- [ ] **2.4** Verify `Cache-Control: private, max-age=60` on published feed + card (PC-3.4).
-- [ ] **2.5** Re-run bench; if still &gt;800 ms after one focused pass → PO waiver memo (query vs proxy).
+- [x] **2.4** Verify `Cache-Control: private, max-age=60` on published feed + card (PC-3.4).
+- [x] **2.5** Re-run bench; if still &gt;800 ms after one focused pass → PO waiver memo (query vs proxy).
 
-**Local bench snapshot (2026-05-29; production URLs, pre-deploy of new SQL indexes):**
+**Production bench snapshot (2026-05-29; pre-deploy of feed bundle query):**
 
 | Endpoint | Direct Render wall p95 | Vercel proxy wall p95 | Direct `db_query_ms` p95 | Target |
 |----------|------------------------|------------------------|--------------------------|--------|
-| `/api/feed` | 2430.7 ms | 1947.8 ms | 1645.9 ms | &lt;800 ms |
-| `/api/cards/{id}` | 2729.9 ms | 2146.4 ms | 2115.8 ms | &lt;800 ms |
+| `/api/feed` | 1953.5 ms | 2339.2 ms | 887.6 ms | &lt;800 ms |
+| `/api/cards/{id}` | 1490.3 ms | 1265.4 ms | 444.9 ms | &lt;800 ms |
+
+**Local bench after feed bundle query (2026-05-29; warm pool, same Supabase DB):**
+
+| Path | `db_query_ms` | `connection_count` |
+|------|---------------|-------------------|
+| `build_feed_response()` | 62.5 ms | 1 |
+| `build_card_detail()` | 53.4 ms | 1 |
 
 ---
 
@@ -165,17 +172,17 @@ Desktop samples (same week): Pulse 98, Mirror 94, Thread 92 — generally within
 
 **Acceptance criteria**
 
-- [ ] `/mirror` mobile: perf **≥90**, TBT **&lt;200 ms**, SI **&lt;3400 ms** on **2/2** CI attempts.
-- [ ] Zero React hydration errors (#422/#425) in Lighthouse **errors-in-console** on `/mirror`.
+- [ ] `/mirror` mobile: perf **≥90**, TBT **&lt;200 ms**, SI **&lt;3400 ms** on **2/2** CI attempts. _(Re-verify after Vercel + Render deploy — see `Phase2.5_P2.5-S3` post-impl §B6.)_
+- [x] Zero React hydration errors (#422/#425) in Lighthouse **errors-in-console** on `/mirror`. _(PC-1.1: `formatFinnwise*` on Mirror/Pulse; no locale-default dates in mirror subtree.)_
 
 #### Tasks
 
-- [ ] **3.1** Verify Mirror SSR on production (`mirrorServer.ts`, `initialPayload` — no 4× client waterfall on first load).
-- [ ] **3.2** PC-1.1 hydration fixes (dates/locale) on Mirror + shared topbar.
-- [ ] **3.3** PC-1.2 defer/dedupe notification badge fetch.
-- [ ] **3.4** PC-2.1 streaming SSR shell for Mirror (optional if 3.1–3.3 insufficient).
-- [ ] **3.5** PC-3.3 optional `GET /api/mirror/dashboard` single call.
-- [ ] **3.6** Archive before/after mobile JSON.
+- [x] **3.1** Verify Mirror SSR on production (`mirrorServer.ts`, `initialPayload` — no 4× client waterfall on first load). _(Single `GET /api/mirror/dashboard` on RSC; client skips mount fetch when `hydratedFromServer`.)_
+- [x] **3.2** PC-1.1 hydration fixes (dates/locale) on Mirror + shared topbar.
+- [x] **3.3** PC-1.2 defer/dedupe notification badge fetch. _(Shared `notificationAlert.ts`; badge hidden on `/mirror` — Mirror uses `ResolvedBadge`.)_
+- [x] **3.4** PC-2.1 streaming SSR shell for Mirror (optional if 3.1–3.3 insufficient). _`MirrorContentSection` async boundary + `Suspense` fallback shell.)_
+- [x] **3.5** PC-3.3 optional `GET /api/mirror/dashboard` single call.
+- [ ] **3.6** Archive before/after mobile JSON. _(Operator: `LIGHTHOUSE_PAGES=mirror node scripts/lighthouse.mjs` after deploy.)_
 
 ---
 

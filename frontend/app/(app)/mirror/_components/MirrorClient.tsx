@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -20,11 +21,27 @@ import { createClient } from "@/lib/supabase/client";
 
 import { MirrorTopbar } from "./MirrorTopbar";
 import { PredictionCard } from "./PredictionCard";
-import { ReadyToGradePanel } from "./ReadyToGradePanel";
-import { ReasoningGapPanel } from "./ReasoningGapPanel";
 import { ResolvedBadge } from "./ResolvedBadge";
 import { StatsStrip } from "./StatsStrip";
-import { StreakTrackerPanel } from "./StreakTrackerPanel";
+
+const ReadyToGradePanel = dynamic(
+  () => import("./ReadyToGradePanel").then((m) => ({ default: m.ReadyToGradePanel })),
+  { loading: () => <SidebarPanelSkeleton /> },
+);
+
+const ReasoningGapPanel = dynamic(
+  () => import("./ReasoningGapPanel").then((m) => ({ default: m.ReasoningGapPanel })),
+  { loading: () => <SidebarPanelSkeleton /> },
+);
+
+const StreakTrackerPanel = dynamic(
+  () => import("./StreakTrackerPanel").then((m) => ({ default: m.StreakTrackerPanel })),
+  { loading: () => <SidebarPanelSkeleton /> },
+);
+
+function SidebarPanelSkeleton() {
+  return <Skeleton className="h-32 w-full rounded-lg" aria-hidden />;
+}
 
 type LoadState = "loading" | "ready" | "error";
 

@@ -7,16 +7,32 @@ from typing import Literal
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, status
+from psycopg.rows import dict_row
 from pydantic import BaseModel
 
-from app.api.mirror_notifications import router as mirror_notifications_router
+from app.api.mirror_gaps import MirrorGapsResponse, ReasoningGapItem
+from app.api.mirror_notifications import (
+    MirrorNotificationItem,
+    MirrorUnreadNotificationsResponse,
+)
+from app.api.mirror_notifications import (
+    _row_to_item as mirror_notification_row_to_item,
+)
+from app.api.mirror_notifications import (
+    router as mirror_notifications_router,
+)
+from app.api.mirror_streak import MirrorStreakResponse, StreakCellResponse
 from app.core.auth import CurrentUser
+from app.db.connection import connection
 from app.services.mirror_predictions import (
     MirrorPredictionRow,
     list_predictions,
     stats_for_user,
 )
 from app.services.mirror_stats import MirrorStatsResult
+from app.services.mirror_streak import StreakCell, streak_for_user
+from app.services.notify_on_grade import list_unread_card_graded
+from app.services.reasoning_gap_detector import ReasoningGap, analyse_with_meta
 
 router = APIRouter(prefix="/mirror", tags=["mirror"])
 router.include_router(mirror_notifications_router)
@@ -57,6 +73,14 @@ class MirrorStatsResponse(BaseModel):
     market_tone: Literal["strong", "developing", "neutral"]
 
 
+class MirrorDashboardResponse(BaseModel):
+    stats: MirrorStatsResponse
+    predictions: MirrorPredictionsResponse
+    streak: MirrorStreakResponse
+    gaps: MirrorGapsResponse
+    unread_notifications: MirrorUnreadNotificationsResponse
+
+
 def _row_to_item(row: MirrorPredictionRow) -> MirrorPredictionItem:
     return MirrorPredictionItem(
         id=row.id,
@@ -86,6 +110,31 @@ def _stats_to_response(stats: MirrorStatsResult) -> MirrorStatsResponse:
         mechanism_tone=stats.mechanism_tone,
         market_tone=stats.market_tone,
     )
+
+
+def _streak_cell_to_response(cell: StreakCell) -> StreakCellResponse:
+    return StreakCellResponse(letter=cell.letter, grade=cell.grade)
+
+
+def _gap_to_item(gap: ReasoningGap) -> ReasoningGapItem:
+    return ReasoningGapItem(
+        gap_type=gap.gap_type,
+        gap_name=gap.gap_name,
+        pattern_explanation=gap.pattern_explanation,
+        linked_map_module_id=str(gap.linked_map_module_id),
+        linked_map_module_name=gap.linked_map_module_name,
+    )
+
+
+def _unread_notifications_for_user(user_id: UUID) -> MirrorUnreadNotificationsResponse:
+    with connection() as conn, conn.cursor(row_factory=dict_row) as cur:
+        rows = list_unread_card_graded(cur, str(user_id))
+    items: list[MirrorNotificationItem] = []
+    for row in rows:
+        item = mirror_notification_row_to_item(row)
+        if item is not None:
+            items.append(item)
+    return MirrorUnreadNotificationsResponse(count=len(items), items=items)
 
 
 def _db_unavailable(exc: RuntimeError) -> None:
@@ -127,3 +176,47 @@ def get_mirror_stats(current_user: CurrentUser) -> MirrorStatsResponse:
     except RuntimeError as exc:
         _db_unavailable(exc)
     return _stats_to_response(stats)
+
+
+@router.get("/dashboard", response_model=MirrorDashboardResponse)
+def get_mirror_dashboard(
+    current_user: CurrentUser,
+    status_filter: MirrorStatusQuery = Query(default=None, alias="status"),
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+) -> MirrorDashboardResponse:
+    """Single round-trip payload for Mirror SSR (P2.5-S3 / PC-3.3)."""
+    user_id = UUID(current_user.id)
+    try:
+        stats = stats_for_user(user_id)
+        rows = list_predictions(
+            user_id,
+            status=status_filter,
+            limit=limit,
+            offset=offset,
+        )
+        streak = streak_for_user(user_id)
+        gaps, insufficient = analyse_with_meta(user_id)
+        unread = _unread_notifications_for_user(user_id)
+    except RuntimeError as exc:
+        _db_unavailable(exc)
+
+    return MirrorDashboardResponse(
+        stats=_stats_to_response(stats),
+        predictions=MirrorPredictionsResponse(
+            items=[_row_to_item(row) for row in rows],
+            limit=limit,
+            offset=offset,
+        ),
+        streak=MirrorStreakResponse(
+            cells=[_streak_cell_to_response(c) for c in streak.cells],
+            mechanism_accuracy_pct=streak.mechanism_accuracy_pct,
+            market_accuracy_pct=streak.market_accuracy_pct,
+            summary=streak.summary,
+        ),
+        gaps=MirrorGapsResponse(
+            items=[_gap_to_item(g) for g in gaps],
+            insufficient_history=insufficient,
+        ),
+        unread_notifications=unread,
+    )

@@ -18,47 +18,32 @@ export type MirrorInitialPayload = {
   unreadNotifications: MirrorUnreadNotification[];
 };
 
-async function fetchMirrorJson<T>(
-  path: string,
-  accessToken: string,
-): Promise<T> {
-  const endpoint = `${getServerApiBaseUrl()}${path}`;
-  const response = await fetch(endpoint, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-    cache: "no-store",
-  });
-  if (!response.ok) {
-    const text = await response.text().catch(() => "");
-    throw new Error(describeHttpFailure(response.status, text, "load The Mirror"));
-  }
-  return (await response.json()) as T;
-}
+type MirrorDashboardResponse = MirrorInitialPayload & {
+  unread_notifications: MirrorUnreadNotificationsResponse;
+};
 
 export async function fetchMirrorInitialData(
   accessToken: string,
   statusFilter: string | null,
 ): Promise<MirrorInitialPayload> {
   const statusQuery = statusFilter ? `?status=${encodeURIComponent(statusFilter)}` : "";
+  const endpoint = `${getServerApiBaseUrl()}/api/mirror/dashboard${statusQuery}`;
 
-  const [stats, predictions, streak, gaps, unread] = await Promise.all([
-    fetchMirrorJson<MirrorStatsResponse>("/api/mirror/stats", accessToken),
-    fetchMirrorJson<MirrorPredictionsResponse>(
-      `/api/mirror/predictions${statusQuery}`,
-      accessToken,
-    ),
-    fetchMirrorJson<MirrorStreakResponse>("/api/mirror/streak", accessToken),
-    fetchMirrorJson<MirrorReasoningGapsResponse>("/api/mirror/gaps", accessToken),
-    fetchMirrorJson<MirrorUnreadNotificationsResponse>(
-      "/api/mirror/notifications/unread",
-      accessToken,
-    ),
-  ]);
+  const response = await fetch(endpoint, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+    next: { revalidate: 60 },
+  });
+  if (!response.ok) {
+    const text = await response.text().catch(() => "");
+    throw new Error(describeHttpFailure(response.status, text, "load The Mirror"));
+  }
 
+  const body = (await response.json()) as MirrorDashboardResponse;
   return {
-    stats,
-    predictions,
-    streak,
-    gaps,
-    unreadNotifications: unread.items ?? [],
+    stats: body.stats,
+    predictions: body.predictions,
+    streak: body.streak,
+    gaps: body.gaps,
+    unreadNotifications: body.unread_notifications.items ?? [],
   };
 }

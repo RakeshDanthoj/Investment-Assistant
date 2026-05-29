@@ -42,6 +42,7 @@ type SidebarProps = {
 
 export default function Sidebar({ userName, userEmail }: SidebarProps) {
   const pathname = usePathname();
+  const showSignalNotificationBadge = !pathname.startsWith("/mirror");
 
   return (
     <aside className="flex h-svh w-[220px] shrink-0 flex-col border-r border-border bg-sidebar">
@@ -57,7 +58,7 @@ export default function Sidebar({ userName, userEmail }: SidebarProps) {
           </div>
           <div className="flex items-center gap-2">
             <PhaseBadge />
-            <NotificationBadge />
+            {showSignalNotificationBadge ? <NotificationBadge /> : null}
           </div>
         </div>
       </div>

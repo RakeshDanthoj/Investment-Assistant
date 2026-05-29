@@ -1,0 +1,45 @@
+---
+description: Mandatory CI checks before finishing any code change — run same commands as GitHub Actions
+alwaysApply: true
+---
+
+# CI-ready changes (mandatory)
+
+**Every execution that edits code must finish with CI-green locally.** Do not mark work complete until checks pass. Read `.cursor/skills/ci-ready-changes/SKILL.md` for traps and patterns.
+
+## Before finishing
+
+1. Identify touched jobs: `backend` (`backend/**`), `frontend` (`frontend/**`), or both.
+2. Run the matching commands from repo root.
+3. Fix all failures and re-run until green.
+4. Report what ran and the result in the final summary.
+
+## Commands (mirror `.github/workflows/ci.yml`)
+
+**Backend:**
+```
+python -m ruff check backend
+python -m pytest -q backend/tests
+```
+
+**Frontend:**
+```
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm build
+```
+(From `frontend/`; `pnpm install` at repo root if deps changed.)
+
+## While editing (prevent common CI failures)
+
+- Ruff line length **100**; keep imports sorted (I001).
+- `backend/scripts/*` with `sys.path.insert`: import `app.*` inside `main()`, not at module level (E402).
+- Register new `@pytest.mark.*` in `backend/pyproject.toml`.
+- New migrations: add static SQL tests (`test_*_migration_sql.py`).
+
+## Never
+
+- Say "should pass" without running the commands.
+- Fix only one reported lint line without full `ruff check backend`.
+- Skip CI checks because the task was "small".

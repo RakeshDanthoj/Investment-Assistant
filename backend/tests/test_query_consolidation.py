@@ -23,13 +23,11 @@ def _timed_mock_connection():
         record_db_query(0.5)
 
 
-@patch("app.services.feed._fetch_fog_of_war_conn", return_value=False)
-@patch("app.services.feed._fetch_pulse_rows_conn", return_value=([], None))
+@patch("app.services.feed._fetch_feed_bundle_conn", return_value=([], False))
 @patch("app.services.feed.connection")
 def test_build_feed_uses_single_connection(
     mock_connection: MagicMock,
-    mock_rows: MagicMock,
-    mock_fog: MagicMock,
+    mock_bundle: MagicMock,
 ) -> None:
     mock_connection.side_effect = _timed_mock_connection
 
@@ -37,8 +35,7 @@ def test_build_feed_uses_single_connection(
         build_feed_response(session_id=None, horizon=None, category=None)
 
     assert timer.snapshot()["connection_count"] == 1
-    mock_rows.assert_called_once()
-    mock_fog.assert_called_once()
+    mock_bundle.assert_called_once()
 
 
 def test_fetch_card_detail_bundle_uses_single_connection() -> None:

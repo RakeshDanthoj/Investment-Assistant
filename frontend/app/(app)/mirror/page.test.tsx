@@ -10,9 +10,8 @@ jest.mock("../../../lib/supabase/server", () => ({
   })),
 }));
 
-jest.mock("./_components/MirrorClient", () => ({
-  __esModule: true,
-  default: function MockMirrorClient() {
+jest.mock("./MirrorContentSection", () => ({
+  MirrorContentSection: function MockMirrorContentSection() {
     return (
       <div data-testid="mirror-client">
         <span>The Mirror</span>
@@ -24,7 +23,7 @@ jest.mock("./_components/MirrorClient", () => ({
 
 describe("MirrorPage", () => {
   it("contains no rupee figures in the rendered subtree", async () => {
-    const page = await MirrorPage({ searchParams: {} });
+    const page = MirrorPage({ searchParams: {} });
     const { container } = render(page);
     expect(container.textContent).not.toMatch(/₹/);
     expect(screen.getByTestId("mirror-client")).toBeInTheDocument();

@@ -32,6 +32,7 @@ export default function AppShell({
   userEmail,
 }: AppShellProps) {
   const pathname = usePathname();
+  const showSignalNotificationBadge = !pathname.startsWith("/mirror");
 
   return (
     <div className="flex h-svh flex-col overflow-hidden bg-background">
@@ -71,7 +72,7 @@ export default function AppShell({
         </nav>
         <div className="flex shrink-0 items-center gap-2">
           <PhaseBadge />
-          <NotificationBadge />
+          {showSignalNotificationBadge ? <NotificationBadge /> : null}
         </div>
       </header>
 
