@@ -30,6 +30,10 @@ FROM public.schema_migrations
 ORDER BY applied_at;
 
 
+Monitoring Job:
+
+cd backend
+python -m app.jobs.signal_monitor
 
 
 Interview points:

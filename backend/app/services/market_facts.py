@@ -11,6 +11,7 @@ from psycopg.rows import dict_row
 
 from app.core.settings import Settings, get_settings
 from app.db.connection import connection
+from app.db.queries.base import SyntheticFilterMixin
 from app.services.market_facts_adapters import (
     DEFAULT_EVENTS_LIMIT,
     collect_market_stream_facts,
@@ -35,10 +36,12 @@ def fetch_recent_event_facts(
         ref = ref.replace(tzinfo=UTC)
     cutoff = since or (ref - timedelta(hours=6))
 
-    stmt = """
+    synth = SyntheticFilterMixin.events_not_synthetic("events")
+    stmt = f"""
     SELECT id::text AS source_id, title, created_at
     FROM public.events
     WHERE created_at >= %s
+      AND {synth}
     ORDER BY created_at DESC
     LIMIT %s
     """

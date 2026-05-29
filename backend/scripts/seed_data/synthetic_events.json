@@ -1,0 +1,222 @@
+[
+  {
+    "external_id": "syn-2025-01-inr-usd-87",
+    "title": "INR weakens past 87 per USD on broad dollar strength",
+    "category": "macro",
+    "occurred_at": "2025-01-08T06:30:00+00:00",
+    "confidence_raw": 0.68,
+    "confidence_effective": 0.68,
+    "is_major": false,
+    "lifecycle_state": "resolved",
+    "source_url": "https://www.rbi.org.in/scripts/ReferenceRateArchive.aspx"
+  },
+  {
+    "external_id": "syn-2025-01-rbi-liquidity-injection",
+    "title": "RBI announces liquidity injection via variable rate repo",
+    "category": "rbi_policy",
+    "occurred_at": "2025-01-17T08:00:00+00:00",
+    "confidence_raw": 0.81,
+    "confidence_effective": 0.81,
+    "is_major": false,
+    "lifecycle_state": "resolved",
+    "source_url": "https://www.rbi.org.in/Scripts/BS_PressReleaseDisplay.aspx"
+  },
+  {
+    "external_id": "syn-2025-01-it-tcs-infy-results",
+    "title": "TCS and Infosys Q3 FY25 results set tone for IT sector guidance",
+    "category": "india_specific",
+    "occurred_at": "2025-01-10T12:00:00+00:00",
+    "confidence_raw": 0.72,
+    "confidence_effective": 0.72,
+    "is_major": false,
+    "lifecycle_state": "resolved",
+    "source_url": "https://www.nseindia.com/companies-listing/corporate-filings-announcements"
+  },
+  {
+    "external_id": "syn-2025-01-hdfc-bank-results",
+    "title": "HDFC Bank Q3 FY25 earnings: deposit growth and NIM in focus",
+    "category": "india_specific",
+    "occurred_at": "2025-01-18T11:30:00+00:00",
+    "confidence_raw": 0.7,
+    "confidence_effective": 0.7,
+    "is_major": false,
+    "lifecycle_state": "resolved",
+    "source_url": "https://www.nseindia.com/companies-listing/corporate-filings-announcements"
+  },
+  {
+    "external_id": "syn-2025-02-union-budget-2025-26",
+    "title": "Union Budget 2025-26: capex, fiscal deficit, and consumption measures",
+    "category": "budget",
+    "occurred_at": "2025-02-01T11:00:00+00:00",
+    "confidence_raw": 0.88,
+    "confidence_effective": 0.88,
+    "is_major": true,
+    "lifecycle_state": "resolved",
+    "source_url": "https://www.indiabudget.gov.in/"
+  },
+  {
+    "external_id": "syn-2025-02-rbi-mpc-rate-hold",
+    "title": "RBI MPC keeps repo rate unchanged at February 2025 meeting",
+    "category": "rbi_policy",
+    "occurred_at": "2025-02-07T06:00:00+00:00",
+    "confidence_raw": 0.86,
+    "confidence_effective": 0.86,
+    "is_major": true,
+    "lifecycle_state": "resolved",
+    "source_url": "https://www.rbi.org.in/Scripts/BS_PressReleaseDisplay.aspx"
+  },
+  {
+    "external_id": "syn-2025-02-sbi-quarterly-results",
+    "title": "SBI Q3 FY25 results: credit growth and asset quality update",
+    "category": "india_specific",
+    "occurred_at": "2025-02-08T10:00:00+00:00",
+    "confidence_raw": 0.69,
+    "confidence_effective": 0.69,
+    "is_major": false,
+    "lifecycle_state": "resolved",
+    "source_url": "https://www.nseindia.com/companies-listing/corporate-filings-announcements"
+  },
+  {
+    "external_id": "syn-2025-02-pharma-usfda-action",
+    "title": "USFDA observations on major Indian pharma plant weigh on sector",
+    "category": "regulatory",
+    "occurred_at": "2025-02-20T14:00:00+00:00",
+    "confidence_raw": 0.74,
+    "confidence_effective": 0.74,
+    "is_major": false,
+    "lifecycle_state": "resolved",
+    "source_url": "https://www.fda.gov/inspections-compliance-enforcement-and-criminal-investigations/inspection-references/inspection-observations"
+  },
+  {
+    "external_id": "syn-2025-03-fii-outflow-spike",
+    "title": "FII selling accelerates; Nifty sees multi-session outflows",
+    "category": "macro",
+    "occurred_at": "2025-03-05T09:15:00+00:00",
+    "confidence_raw": 0.77,
+    "confidence_effective": 0.77,
+    "is_major": false,
+    "lifecycle_state": "resolved",
+    "source_url": "https://www.nseindia.com/reports/fii-dii"
+  },
+  {
+    "external_id": "syn-2025-03-crude-opec-cut",
+    "title": "Crude oil jumps after OPEC+ extends supply cuts",
+    "category": "macro",
+    "occurred_at": "2025-03-12T07:00:00+00:00",
+    "confidence_raw": 0.79,
+    "confidence_effective": 0.79,
+    "is_major": false,
+    "lifecycle_state": "resolved",
+    "source_url": "https://www.opec.org/opec_web/en/press_room.htm"
+  },
+  {
+    "external_id": "syn-2025-03-pli-auto-sector",
+    "title": "Government expands PLI scheme coverage for auto and advanced chemistry cells",
+    "category": "regulatory",
+    "occurred_at": "2025-03-18T10:30:00+00:00",
+    "confidence_raw": 0.71,
+    "confidence_effective": 0.71,
+    "is_major": false,
+    "lifecycle_state": "resolved",
+    "source_url": "https://pib.gov.in/Pressreleaseshare.aspx"
+  },
+  {
+    "external_id": "syn-2025-03-nse-fo-expiry-anomaly",
+    "title": "NSE F&O weekly expiry sees unusual open-interest build in index options",
+    "category": "regulatory",
+    "occurred_at": "2025-03-27T09:30:00+00:00",
+    "confidence_raw": 0.66,
+    "confidence_effective": 0.66,
+    "is_major": false,
+    "lifecycle_state": "resolved",
+    "source_url": "https://www.nseindia.com/market-data/equity-derivatives-turnover"
+  },
+  {
+    "external_id": "syn-2025-04-rbi-rate-cut-25bps",
+    "title": "RBI cuts repo rate by 25 bps at April 2025 MPC",
+    "category": "rbi_policy",
+    "occurred_at": "2025-04-09T06:00:00+00:00",
+    "confidence_raw": 0.9,
+    "confidence_effective": 0.9,
+    "is_major": true,
+    "lifecycle_state": "resolved",
+    "source_url": "https://www.rbi.org.in/Scripts/BS_PressReleaseDisplay.aspx"
+  },
+  {
+    "external_id": "syn-2025-04-pahalgam-market-reaction",
+    "title": "Markets react to Pahalgam attack; defence and safe-haven flows dominate",
+    "category": "geopolitical",
+    "occurred_at": "2025-04-23T05:00:00+00:00",
+    "confidence_raw": 0.84,
+    "confidence_effective": 0.84,
+    "is_major": true,
+    "lifecycle_state": "resolved",
+    "source_url": "https://pib.gov.in/Pressreleaseshare.aspx"
+  },
+  {
+    "external_id": "syn-2025-04-nifty-bank-circuit",
+    "title": "Nifty Bank index hits lower circuit amid concentrated selling in lenders",
+    "category": "india_specific",
+    "occurred_at": "2025-04-28T09:45:00+00:00",
+    "confidence_raw": 0.87,
+    "confidence_effective": 0.87,
+    "is_major": true,
+    "lifecycle_state": "resolved",
+    "source_url": "https://www.nseindia.com/market-data/live-market-indices"
+  },
+  {
+    "external_id": "syn-2025-04-us-tariff-india-impact",
+    "title": "US tariff announcement raises India export and rupee implications",
+    "category": "geopolitical",
+    "occurred_at": "2025-04-15T18:00:00+00:00",
+    "confidence_raw": 0.76,
+    "confidence_effective": 0.76,
+    "is_major": false,
+    "lifecycle_state": "resolved",
+    "source_url": "https://ustr.gov/"
+  },
+  {
+    "external_id": "syn-2025-04-gold-ath-india",
+    "title": "Domestic gold prices touch record highs in India",
+    "category": "macro",
+    "occurred_at": "2025-04-19T06:00:00+00:00",
+    "confidence_raw": 0.73,
+    "confidence_effective": 0.73,
+    "is_major": false,
+    "lifecycle_state": "resolved",
+    "source_url": "https://www.ibja.co.in/"
+  },
+  {
+    "external_id": "syn-2025-05-india-pakistan-tensions",
+    "title": "India-Pakistan tensions escalate; markets price geopolitical risk premium",
+    "category": "geopolitical",
+    "occurred_at": "2025-05-10T04:30:00+00:00",
+    "confidence_raw": 0.85,
+    "confidence_effective": 0.85,
+    "is_major": true,
+    "lifecycle_state": "resolved",
+    "source_url": "https://pib.gov.in/Pressreleaseshare.aspx"
+  },
+  {
+    "external_id": "syn-2025-06-rbi-mpc-june",
+    "title": "RBI June 2025 MPC: policy stance and liquidity guidance",
+    "category": "rbi_policy",
+    "occurred_at": "2025-06-06T06:00:00+00:00",
+    "confidence_raw": 0.83,
+    "confidence_effective": 0.83,
+    "is_major": true,
+    "lifecycle_state": "resolved",
+    "source_url": "https://www.rbi.org.in/Scripts/BS_PressReleaseDisplay.aspx"
+  },
+  {
+    "external_id": "syn-2025-06-monsoon-kerala-onset",
+    "title": "Monsoon onset declared over Kerala; agriculture and FMCG channels watch rainfall",
+    "category": "macro",
+    "occurred_at": "2025-06-01T03:00:00+00:00",
+    "confidence_raw": 0.78,
+    "confidence_effective": 0.78,
+    "is_major": false,
+    "lifecycle_state": "resolved",
+    "source_url": "https://mausam.imd.gov.in/"
+  }
+]

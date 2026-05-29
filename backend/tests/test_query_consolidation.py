@@ -85,7 +85,7 @@ def test_fetch_card_detail_bundle_uses_single_connection() -> None:
 
     assert bundle is not None
     assert timer.snapshot()["connection_count"] == 1
-    assert mock_cur.execute.call_count == 4
+    assert mock_cur.execute.call_count == 1
 
 
 @patch("app.services.card_detail.fetch_card_detail_bundle")

@@ -103,6 +103,17 @@ BENCH_API_DIRECT_URL=http://127.0.0.1:8000 node scripts/bench_api_latency.mjs
 curl -s http://127.0.0.1:8000/health/db | jq
 ```
 
+## Map production smoke (P2.5-S1)
+
+Verifies Vercel `/map` routes and Render `/api/map/*` after deploy:
+
+```bash
+node scripts/map_production_smoke.mjs
+MAP_SMOKE_BEARER_TOKEN=<supabase_access_token> node scripts/map_production_smoke.mjs
+```
+
+Unauthenticated `/api/map/sectors` must return **401** (not **404**). **404** means the Map router is missing from the deployed Render image.
+
 ### P1.5-S1 baseline (2026-05-23, pre-remediation)
 
 Lighthouse mobile traces (`Page Load Performance/`) showed ~8s API wait via Vercel proxy. Local bench with S1 - instrumentation (direct Supabase `:5432`, no pool) on 2026-05-23:

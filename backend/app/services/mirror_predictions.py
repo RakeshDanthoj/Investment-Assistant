@@ -10,6 +10,7 @@ from uuid import UUID
 from psycopg.rows import dict_row
 
 from app.db.connection import connection
+from app.db.queries.base import SyntheticFilterMixin
 from app.services.mirror_stats import (
     MirrorStatsResult,
     PredictionGradeSnapshot,
@@ -70,7 +71,7 @@ def _parse_ts(value: object) -> datetime | None:
 
 
 def _list_sql(*, status: MirrorStatusFilter) -> str:
-    base = """
+    base = f"""
     SELECT
       up.id,
       up.card_id,
@@ -88,6 +89,8 @@ def _list_sql(*, status: MirrorStatusFilter) -> str:
     INNER JOIN public.cards c ON c.id = up.card_id
     INNER JOIN public.events e ON e.id = c.event_id
     WHERE up.user_id = %s::uuid
+      AND {SyntheticFilterMixin.predictions_not_synthetic("up")}
+      AND {SyntheticFilterMixin.events_not_synthetic("e")}
     """
 
     if status == "resolved":
@@ -160,7 +163,7 @@ def list_predictions(
 
 
 def stats_for_user(user_id: UUID) -> MirrorStatsResult:
-    stmt = """
+    stmt = f"""
     SELECT
       up.mechanism_accuracy,
       up.business_accuracy,
@@ -168,6 +171,7 @@ def stats_for_user(user_id: UUID) -> MirrorStatsResult:
       up.gap_insight
     FROM public.user_predictions up
     WHERE up.user_id = %s::uuid
+      AND {SyntheticFilterMixin.predictions_not_synthetic("up")}
     """
     snapshots: list[PredictionGradeSnapshot] = []
     with connection() as conn, conn.cursor(row_factory=dict_row) as cur:

@@ -1,92 +1,831 @@
 # FinnWise — Phase 3 Implementation Tasks (Intelligence Deepening, Months 10–18)
 
-_Source PRD_: `FinnWise_PRD_v3_Final.md` — Section 10 / Phase 3, with binding decisions in §6, §7, §11, §12, §14.
+_Source PRD_: `FinnWise_PRD_v3_Final.md` Section 10 / Phase 3, **superseded for intelligence architecture by** `FinnWise_PRD2_Intelligence_Architecture.md` + `FinnWise_PRD2_SSA_Solution_Design.md`  
+_PO decisions applied_: G-01 Option B + `unique_publisher_count` + explainability (Phase 3 only) · G-02 narrow MEDIUM (0.55–0.74) · G-03 headline_hash **all categories** · G-13 synthetic seed **Week 1** · G-14 defer P3-S6/P3-S7  
 _generated for independent execution without prd-planner_
 
 ## Overview
 
-- **Summary**: Phase 3 deepens analytical rigour and prepares FinnWise for a regulated public posture. Workstreams: an NLP pipeline that automates factor-DB extraction from quarterly filings (replacing manual weekly review), a compound-event Fog of War model that auto-suppresses confidence on interaction effects, a formal SEBI compliance audit with mandatory tester-briefing flow hardening, a productisation assessment dossier (RA-registration research, pricing model, scalability review), and — only if and when registration is obtained — a public marketing site, multi-tenant onboarding, paywall infrastructure, and the final published version of The Map. Phase 3 is **gated**: marketing, paywall, and public-launch stories cannot ship until the SEBI go/no-go (P3-S8) is green.
-- **Tech stack additions** (over Phase 2): NLP toolchain (spaCy + a small LLM extractor running on Render), background queue (e.g. RQ or Celery on Redis), Stripe-equivalent for India billing (Razorpay or similar — research as part of P3-S7), Sentry/observability for hardening. Single `.env.local` continues.
-- **Slicing approach**: vertical slices where stories ship code; for strategic/research stories (SEBI audit, productisation dossier) the deliverable is a written artefact + workflow change, not running code — these are still scoped as parent + sub-tasks. Parent task IDs are **per-phase** — this file uses `1.0`–`9.0`. All PRD §6 / §8.6 / §11 invariants remain in force.
-- **Prerequisite**: Phase 2 shipped and stable, including **Phase 2.5** performance close-out (`docs/plans/finnwise-phase2.5-implementation-tasks.md` — carries forward **P2-S15** harness work + API/Lighthouse/Map deploy). `docs/plans/cross-phase-performance-standards.md` satisfied. Factor DB covers all 8 sectors. Mirror + Lens have ≥3 months of live data.
+- **Summary**: Phase 3 deepens analytical rigour and prepares FinnWise for a regulated public posture. This plan **merges** the original Phase 3 stories (P3-S1a through P3-S9) with the **PRD2 intelligence gap workstreams** (G-01 through G-15). Week 1 starts with synthetic historical seed (G-13) because live Mirror/Lens data is unavailable. Data-pipeline hardening (dedup, NewsAPI, watchlist, freshness) precedes the rule-based confidence scorer and gate swap. Editorial integrity (hard number gate, checklist, section regen) ships before FoW `is_major` and signal override measurement. NLP filings extraction runs on **GitHub Actions** (Gemini Flash), not Render. **P3-S6 (marketing) and P3-S7 (billing) are formally deferred** per PRD2 G-14 — appendix reference only. P3-S2 interaction model is **gated** until 30 days after synthetic seed is live.
+- **Tech stack**: FastAPI backend, Supabase/Postgres (Session pooler for GH Actions), Next.js frontend (Vercel), Gemini Pro (card synthesis), Gemini Flash (NLP extraction), GitHub Actions (NLP nightly + Render keep-alive + monthly FP report), Render free tier API. Config via YAML where noted (`newsapi_keywords.yaml`, `entity_map.yaml`, `confidence_config.py`).
+- **Slicing approach**: vertical slices (UI + API + DB minimum per story). Parent task IDs are **global** across this file (`1.0`–`25.0`). Each story has **≤ 6 sub-tasks**. Dedicated **test-gate stories** sit between milestones to verify acceptance before downstream work proceeds.
+- **Prerequisite**: Phase 2 shipped and stable, including Phase 2.5 performance close-out. Factor DB covers all 8 sectors. **Live Mirror/Lens ≥3 months is replaced for Phase 3 build start by synthetic seed (P3-S0).**
+
+## PO decision registry (binding for this plan)
+
+| Gap | PO decision |
+|-----|-------------|
+| G-01 | Option B + `unique_publisher_count` (10% weight); explainability API + UI in **Phase 3 only** |
+| G-02 | Narrow MEDIUM: HIGH ≥ 0.75 · MEDIUM 0.55–0.74 · LOW &lt; 0.55; store `confidence_raw` + `confidence_effective` |
+| G-03 | `headline_hash` in dedup key for **all event categories** |
+| G-13 | Synthetic seed **Week 1** (first story) |
+| G-14 | P3-S6 / P3-S7 **deferred** — no active tasks |
 
 ## Performance standards (inherit Phase 1.5 + Phase 2)
 
-Phase 3 adds **marketing**, **public Map**, **billing**, and higher load. Every new route MUST comply with **`docs/plans/cross-phase-performance-standards.md`** (exit verified in Phase 2.5):
+Every new route MUST comply with `docs/plans/cross-phase-performance-standards.md`:
 
-| Phase 3 workstream | Perf requirement |
-|--------------------|------------------|
-| **P3-S5** SLOs / k6 | Pulse p95 &lt;800 ms, Thread &lt;1.2 s — aligns with P1.5 / Phase 2.5 API target |
-| **P3-S6** Marketing site | Static/RSC where possible; Lighthouse on key pages before gate |
-| **P3-S9** Public Map | Shared components with app Map; dynamic matrix; Lighthouse + a11y |
-| **P3-S8** Go/no-go | Checklist item: cross-phase perf standards + Phase 2.5 close-out evidence |
-
-Do not benchmark `next dev`. Extend `scripts/lighthouse.mjs` when adding primary public or `(app)` entry routes.
+| Workstream | Perf requirement |
+|------------|------------------|
+| Confidence breakdown API | Cache 60s per `event_id`; p95 &lt; 200ms |
+| P3-S5 SLOs / k6 | Pulse p95 &lt;800 ms, Thread &lt;1.2 s |
+| P3-S9 Public Map | Lighthouse + a11y on sector deep-dives |
+| P3-S8 Go/no-go | Cross-phase perf standards + Phase 2.5 evidence |
 
 ## Team plan
 
 | Developer | Focus | Total points |
 |-----------|-------|---------------|
-| Jordan | NLP extraction service, compound-event Fog of War model, scalability + observability hardening | 18 |
-| Sam | Public marketing site, paywall + billing infrastructure, final Map experience | 17 |
-| Riley | Human-in-loop NLP review tooling, SEBI compliance audit, productisation dossier, Phase 3 go/no-go gate | 14 |
+| Jordan | Synthetic seed, dedup, confidence scorer/gate, FoW `is_major`, NLP job (GH Actions), interaction model, observability | 38 |
+| Sam | NewsAPI scheduler, market-facts freshness, confidence explainability UI, section regen, Map public | 25 |
+| Riley | Isolation test gate, watchlist, number validator, editorial checklist, signal override, NLP review, SEBI/dossier/gate | 27 |
 
 ---
 
 ## Phase 3: Intelligence Deepening
 
-_Automate the slow Phase 1/2 review loops, harden the platform for higher load, complete the legal posture, and decide (with evidence) whether to transition from research project to regulated product._ · **Duration estimate:** 36 weeks (9 months).
+_Automate slow review loops, close PRD2 intelligence gaps, harden the platform, complete legal posture, and decide whether to transition from research project to regulated product._ · **Duration estimate:** 36 weeks (9 months); **PRD2 foundation milestones:** Weeks 1–4.
 
-### Story P3-S1a — NLP filings extraction service
+### Milestone map (execution order)
+
+| Order | Story ID | Milestone | Depends on |
+|-------|----------|-----------|------------|
+| 1 | P3-S0 | Synthetic seed Week 1 | — |
+| 2 | P3-T1 | Isolation test gate | P3-S0 |
+| 3 | P3-S1c | Dedup (all categories) | P3-S0 |
+| 4 | P3-S1d ∥ P3-S1e | NewsAPI ∥ Watchlist | P3-S0 |
+| 5 | P3-S1f | Market facts freshness | P3-S1c |
+| 6 | P3-T2 | Data pipeline test gate | P3-S1c, S1d, S1e, S1f |
+| 7 | P3-S1g | Confidence scorer + gate | P3-T2 |
+| 8 | P3-S1h | Explainability UI | P3-S1g |
+| 9 | P3-T3 | Confidence test gate | P3-S1g, S1h |
+| 10 | P3-S1i | Number validator hard gate | P3-T3 |
+| 11 | P3-S1j ∥ P3-S1k | Checklist ∥ Section regen | P3-S1i |
+| 12 | P3-T4 | Editorial integrity test gate | P3-S1i, S1j, S1k |
+| 13 | P3-S1l | FoW `is_major` + banner | P3-T4 |
+| 14 | P3-S1m | Signal override log | P3-S1l |
+| 15 | P3-T5 | FoW + signal test gate | P3-S1l, S1m |
+| 16 | P3-S1a | NLP filings (GH Actions) | P3-T2 |
+| 17 | P3-S1b | NLP proposals review | P3-S1a |
+| 18 | P3-S2 | Interaction model | P3-S0 + **30-day soak** |
+| 19 | P3-S3 ∥ P3-S5 | SEBI audit ∥ Observability | Phase 2 |
+| 20 | P3-S4 | Productisation dossier | P3-S3, P3-S5 |
+| 21 | P3-S8 | Go/no-go gate | P3-S3, S4, S5 |
+| 22 | P3-S9 | Map public deep-dives | Phase 2 P2-S11 |
+| — | P3-S6, P3-S7 | **Deferred** (G-14) | P3-S8 green + RA path |
+
+**Parallel-safe now:** `{P3-S1d, P3-S1e}` · `{P3-S1j, P3-S1k}` · `{P3-S3, P3-S5}` (after Week 4 foundation)
+
+---
+
+### Story P3-S0 — Synthetic historical seed + triple-layer isolation (G-13)
 
 - **Assigned:** Jordan
-- **Points:** 7
-- **Layers:** Services, DB, Scheduled jobs
-- **Depends on:** Phase 2 (factor DB across 8 sectors)
-- **Parallel with:** P3-S1b, P3-S2
+- **Points:** 5
+- **Layers:** DB, Scripts, CI
+- **Depends on:** _None — Week 1 start_
+- **Parallel with:** _None (blocks calibration / FoW backtest)_
+- **Gaps:** G-13
 
 **User story**
 
-> As the platform, I want a scheduled job that ingests recent NSE/BSE quarterly filings and extracts proposed updates to factor sensitivities — each carrying an MMJ tag and source URL — so that the weekly manual review described in PRD §7.3 is replaced by a verified-on-review pipeline.
+> As the solo builder, I want 20 verifiable Indian financial events (Jan–Jun 2025) seeded into production tables with `is_synthetic = TRUE`, so that confidence calibration, FoW backtest, and P3-S2 prerequisites exist without live Mirror/Lens testers.
 
 **Acceptance criteria**
 
-- [ ] Job runs nightly; processes filings published in the last 24 hours.
-- [ ] Each extracted sensitivity is a **proposed** row written to `factor_sensitivity_proposals`, never overwriting the live `instrument_factor_sensitivity` (human approval in P3-S1b is required).
-- [ ] Every proposal carries: `instrument_id`, `factor_id`, `proposed_sensitivity`, `mmj_tag`, `source_url` (filing PDF or HTML), `source_excerpt`, `confidence`, `extracted_at`.
-- [ ] Extraction never invents numbers — extractor is constrained to numbers + qualitative claims present in the filing text (test fixture proves rejection of out-of-source numbers).
-- [ ] Job is idempotent over (filing_url, instrument, factor).
-- [ ] Performance: processes ≥100 filings/night within Render free-tier limits.
+- [x] Migration adds `is_synthetic`, `confidence_raw`, `confidence_effective`, `is_major`, `dedup_key` columns where missing.
+- [x] 20 events seeded; 7 with `is_major = TRUE`; idempotent re-run (UPSERT on `external_id`).
+- [x] RLS policies hide synthetic rows from `authenticated` role on `events`, `signals`, `track_record`, `user_predictions`, `card_confidence_history`.
+- [x] Service-layer `SyntheticFilterMixin` applied to all user-facing read paths.
+- [x] Seed script runnable: `python backend/scripts/seed_synthetic_events.py`.
 
 **Tech notes**
 
-- Use a small LLM extraction step bracketed by deterministic preprocessing (spaCy NER for instruments + factor keywords). LLM constrained to JSON-only outputs validated by Pydantic.
+- DB: `00XX_synthetic_isolation.sql` | Script: `seed_synthetic_events.py` + `synthetic_events.json` | No UI
 
 #### Relevant files
 
 | Path | Type | Purpose |
 |------|------|---------|
-| `backend/app/jobs/nlp_filings_extract.py` | create | Scheduled job entrypoint |
-| `backend/app/services/nlp/filings_loader.py` | create | Pulls NSE/BSE filings + caches PDFs |
-| `backend/app/services/nlp/preprocess.py` | create | spaCy pipeline for instruments + factor keywords |
-| `backend/app/services/nlp/extractor.py` | create | LLM-extraction wrapper, JSON-strict |
-| `backend/app/services/nlp/source_guard.py` | create | Rejects numbers not in source excerpt |
-| `backend/db/migrations/0016_factor_sensitivity_proposals.sql` | create | Proposals table + indexes |
-| `backend/tests/test_extractor_rejects_out_of_source_numbers.py` | create | Hallucination guard |
-| `backend/tests/test_filings_extract_idempotent.py` | create | Re-run = zero new rows |
-| `backend/tests/test_filings_loader_caching.py` | create | PDF cache hits |
+| `backend/db/migrations/0021_synthetic_isolation.sql` | create | Columns + RLS |
+| `backend/scripts/seed_synthetic_events.py` | create | Idempotent seed |
+| `backend/scripts/seed_data/synthetic_events.json` | create | 20 event definitions |
+| `backend/app/db/queries/base.py` | modify | `SyntheticFilterMixin` |
+| `backend/tests/test_synthetic_seed_idempotent.py` | create | Re-run produces zero dupes |
 
 #### Tasks (checkboxes)
 
-- [ ] **1.0** NLP filings extraction service
-  - [ ] **1.1** Migration: `factor_sensitivity_proposals` with unique `(filing_url, instrument_id, factor_id)`.
-  - [ ] **1.2** `filings_loader.fetch(window)` — caches PDFs/HTML under `backend/.cache/filings/` (gitignored).
-  - [ ] **1.3** `preprocess.extract_candidates(text)` — spaCy NER + factor keyword spans + window-of-context excerpts.
-  - [ ] **1.4** `extractor.propose(candidate)` — LLM call returning strict JSON `{instrument, factor, sensitivity, mmj_tag, confidence}`.
-  - [ ] **1.5** `source_guard.assert_grounded(proposal, excerpt)` — every numeric or claim token must appear (literal or normalised) in the excerpt.
-  - [ ] **1.6** Persist proposals; dedupe via unique constraint.
-  - [ ] **1.7** Render nightly cron entry.
-  - [ ] **1.8** Test: out-of-source rejection; idempotency; caching test.
+- [x] **1.0** Synthetic historical seed + triple-layer isolation
+  - [x] **1.1** Migration: `is_synthetic` + confidence/is_major/dedup columns + RLS on all affected tables.
+  - [x] **1.2** `seed_synthetic_events.py` + JSON fixture (20 events, 7 `is_major`).
+  - [x] **1.3** `SyntheticFilterMixin` wired into feed, thread, mirror query modules.
+  - [x] **1.4** Run seed against dev/staging; verify 20 rows via service role.
+  - [x] **1.5** Idempotency test: second run inserts zero new rows.
+  - [x] **1.6** Document seed command in `backend/scripts/README.md`.
+
+---
+
+### Story P3-T1 — Synthetic isolation verification gate
+
+- **Assigned:** Riley
+- **Points:** 2
+- **Layers:** Tests, CI
+- **Depends on:** P3-S0
+- **Parallel with:** P3-S1c (may start after 1.1 migration lands)
+- **Gaps:** G-13
+
+**User story**
+
+> As the platform, I want automated proof that synthetic rows never leak into Pulse, Thread, or Mirror responses, so that Week 1 seed data cannot corrupt user-facing trust metrics.
+
+**Acceptance criteria**
+
+- [ ] `test_synthetic_isolation.py`: Pulse feed, Thread detail, Mirror list return zero synthetic rows when seeded data exists.
+- [ ] `test_query_synthetic_filter.py`: CI grep/assertion that user-facing query modules import or apply synthetic filter.
+- [ ] Failing test blocks merge (added to existing CI workflow).
+
+#### Relevant files
+
+| Path | Type | Purpose |
+|------|------|---------|
+| `backend/tests/test_synthetic_isolation.py` | create | API integration |
+| `backend/tests/test_query_synthetic_filter.py` | create | Static/query guard |
+| `.github/workflows/ci.yml` | modify | Run new tests |
+
+#### Tasks (checkboxes)
+
+- [ ] **2.0** Synthetic isolation verification gate
+  - [ ] **2.1** Integration tests: Pulse, Thread, Mirror exclude `is_synthetic = TRUE`.
+  - [ ] **2.2** Query-path guard test: fail if known read modules omit synthetic filter.
+  - [ ] **2.3** Wire tests into CI; verify red/green locally with seed present.
+  - [ ] **2.4** Add negative test: service-role admin query *can* read synthetic (smoke).
+  - [ ] **2.5** Document isolation contract in `docs/PRD/FinnWise_PRD2_Intelligence_Architecture.md` cross-ref note (one paragraph).
+
+---
+
+### Story P3-S1c — Event de-duplication pipeline (G-03)
+
+- **Assigned:** Jordan
+- **Points:** 5
+- **Layers:** DB, Services, Jobs
+- **Depends on:** P3-S0 (migration baseline)
+- **Parallel with:** P3-S1d, P3-S1e (after 1.1)
+- **Gaps:** G-03
+
+**User story**
+
+> As the platform, I want the same real-world event from multiple sources to merge into one queue row with accumulating `source_count`, so that confidence scoring and editorial review are not duplicated.
+
+**Acceptance criteria**
+
+- [ ] `dedup_key = sha256(category + normalised_entity + 4h_window + headline_hash)` for **all categories** (`headline_hash` = normalised first 100 chars).
+- [ ] `ON CONFLICT (dedup_key) DO UPDATE` increments `source_count`, appends `sources[]`, recomputes `confidence_raw`.
+- [ ] `dedup_review_queue` captures cross-category same-window collisions for Sunday review.
+- [ ] `entity_map.yaml` holds top 30+ entities (editable without deploy).
+- [ ] `source_count > 5` sets `force_editorial_review` flag on event.
+
+#### Relevant files
+
+| Path | Type | Purpose |
+|------|------|---------|
+| `backend/app/services/event_dedup.py` | create | Key computation + upsert |
+| `backend/app/config/entity_map.yaml` | create | Entity normalisation |
+| `backend/db/migrations/00XX_dedup_key_review_queue.sql` | create | `dedup_key` unique + review queue |
+| `backend/tests/test_event_dedup.py` | create | Merge + headline_hash all categories |
+| `backend/tests/test_dedup_review_queue.py` | create | Cross-category flag |
+
+#### Tasks (checkboxes)
+
+- [ ] **3.0** Event de-duplication pipeline
+  - [ ] **3.1** Migration: `dedup_key` unique index, `dedup_review_queue`, `force_editorial_review` on `events`.
+  - [ ] **3.2** `event_dedup.py`: key for all categories includes `headline_hash`; entity map from YAML.
+  - [ ] **3.3** Upsert path integrated into event detection job (post-ingest).
+  - [ ] **3.4** Cross-category collision → `dedup_review_queue` row (no auto-merge).
+  - [ ] **3.5** `source_count > 5` guardrail flag.
+  - [ ] **3.6** Unit tests: same wire across outlets merges; different headlines same entity do not false-merge.
+
+---
+
+### Story P3-S1d — NewsAPI factor keyword scheduler (G-04)
+
+- **Assigned:** Sam
+- **Points:** 3
+- **Layers:** Config, Services
+- **Depends on:** P3-S0
+- **Parallel with:** P3-S1c, P3-S1e
+- **Gaps:** G-04
+
+**User story**
+
+> As the platform, I want NewsAPI calls allocated across 8 Factor DB macro factors within the 100 calls/day cap, so that ingestion targets Indian financial signal, not generic noise.
+
+**Acceptance criteria**
+
+- [ ] `newsapi_keywords.yaml`: 8 factor sets, 100 calls/day total per PRD2 Section 4.2.
+- [ ] Round-robin scheduler: one factor per detection cron tick; logs `poll_status` (`ok` | `empty` | `error`).
+- [ ] 429 rate-limit → RSS fallback (ET Markets, Mint) per PRD2 fallback chain.
+- [ ] `factor_poll_log` records `factor_id`, `polled_at`, `status`, `article_count`.
+
+#### Relevant files
+
+| Path | Type | Purpose |
+|------|------|---------|
+| `backend/app/config/newsapi_keywords.yaml` | create | Keywords + allocation |
+| `backend/app/sources/newsapi_adapter.py` | modify | Round-robin + logging |
+| `backend/db/migrations/00XX_factor_poll_log.sql` | create | Poll audit |
+| `backend/tests/test_newsapi_scheduler.py` | create | 100/day cap + rotation |
+
+#### Tasks (checkboxes)
+
+- [ ] **4.0** NewsAPI factor keyword scheduler
+  - [ ] **4.1** `newsapi_keywords.yaml` with PRD2 keyword sets and daily call budgets.
+  - [ ] **4.2** Round-robin scheduler in adapter; respect 100 calls/day hard cap.
+  - [ ] **4.3** Migration + write `factor_poll_log` on each poll.
+  - [ ] **4.4** Distinguish empty (200, zero articles) vs error (429/5xx); trigger RSS fallback on 429.
+  - [ ] **4.5** Surface last-poll summary in editorial digest email template (log-only fields).
+  - [ ] **4.6** Tests: cap not exceeded; rotation order; empty vs error classification.
+
+---
+
+### Story P3-S1e — Slow-burn watchlist (G-05)
+
+- **Assigned:** Riley
+- **Points:** 3
+- **Layers:** DB, API, UI
+- **Depends on:** P3-S0
+- **Parallel with:** P3-S1c, P3-S1d
+- **Gaps:** G-05
+
+**User story**
+
+> As the Product Owner, I want a DB-backed watchlist for slow-burn events (monsoon, budget cycle, regulatory reviews) with a simple review UI, so that long-lead risks are not lost as a solo builder.
+
+**Acceptance criteria**
+
+- [ ] `watchlist_items` table per PRD2 schema; 5 seed rows via migration.
+- [ ] `/editor/watchlist` lists items; status `watching|escalated|closed`.
+- [ ] One-click **Escalate** creates `events` row with `source='watchlist'` (manual only — no auto-escalation in Phase 3).
+- [ ] Sunday digest section lists pending watchlist + `dedup_review_queue` (max 10 items).
+
+#### Relevant files
+
+| Path | Type | Purpose |
+|------|------|---------|
+| `backend/db/migrations/00XX_watchlist_items.sql` | create | Table + seeds |
+| `backend/app/routes/editor_watchlist.py` | create | CRUD + escalate |
+| `frontend/app/(app)/editor/watchlist/page.tsx` | create | Review UI |
+| `backend/tests/test_watchlist_escalate.py` | create | Escalate → event row |
+
+#### Tasks (checkboxes)
+
+- [ ] **5.0** Slow-burn watchlist
+  - [ ] **5.1** Migration: `watchlist_items` + 5 seed categories.
+  - [ ] **5.2** API: list, patch status, `POST .../escalate` → `events` insert.
+  - [ ] **5.3** `/editor/watchlist` page (table, status dropdown, Escalate button).
+  - [ ] **5.4** Admin allow-list gate (reuse Phase 1 pattern).
+  - [ ] **5.5** Digest email template: watchlist + dedup queue section (cap 10).
+  - [ ] **5.6** Test: escalate creates event with correct category and source.
+
+---
+
+### Story P3-S1f — Market facts freshness + fallback chain (G-06)
+
+- **Assigned:** Sam
+- **Points:** 3
+- **Layers:** Services, UI
+- **Depends on:** P3-S1c
+- **Parallel with:** _None until dedup lands_
+- **Gaps:** G-06
+
+**User story**
+
+> As a user, I want market fact chips to show freshness (green/amber/red) and the editorial pipeline to pause when critical facts are unavailable, so that stale or missing data never silently drives cards.
+
+**Acceptance criteria**
+
+- [ ] Freshness tristate: `fresh` | `stale` | `unavailable` per fact row.
+- [ ] Revised fallback chains (no investing.com scrape): yfinance → Open Exchange Rates → RBI ref (INR/USD); NSE CSV → CDSL → stale flag.
+- [ ] `critical_facts.yaml` (≤5 facts): if `unavailable`, card generation held in queue.
+- [ ] Pulse/Thread chips show freshness dot (existing pattern extended).
+
+#### Relevant files
+
+| Path | Type | Purpose |
+|------|------|---------|
+| `backend/app/config/critical_facts.yaml` | create | Critical fact IDs |
+| `backend/app/services/market_facts_adapters.py` | modify | Tristate + fallbacks |
+| `backend/app/services/card_pipeline.py` | modify | Critical-fact hold |
+| `backend/tests/test_market_facts_freshness.py` | create | Tristate + hold |
+| `frontend/components/market-facts/FreshnessDot.tsx` | modify | Red/amber/green |
+
+#### Tasks (checkboxes)
+
+- [ ] **6.0** Market facts freshness + fallback chain
+  - [ ] **6.1** `critical_facts.yaml` + adapter fallback order per PRD2 (no investing.com).
+  - [ ] **6.2** Tristate freshness on merged fact stream; staleness thresholds documented.
+  - [ ] **6.3** Card pipeline: hold queue when any critical fact is `unavailable`.
+  - [ ] **6.4** `FreshnessDot` on Pulse/Thread market fact chips.
+  - [ ] **6.5** Loading/error states when facts degraded (editorial queue banner).
+  - [ ] **6.6** Tests: unavailable critical fact blocks publish path; stale allows with flag.
+
+---
+
+### Story P3-T2 — Data pipeline integration test gate
+
+- **Assigned:** Jordan
+- **Points:** 2
+- **Layers:** Tests
+- **Depends on:** P3-S1c, P3-S1d, P3-S1e, P3-S1f
+- **Parallel with:** _None_
+- **Gaps:** G-03, G-04, G-05, G-06
+
+**User story**
+
+> As the platform, I want an integration test gate proving dedup, NewsAPI scheduling, watchlist escalation, and freshness gates work together, before confidence scoring depends on clean event rows.
+
+**Acceptance criteria**
+
+- [ ] End-to-end fixture: 3 duplicate ingests → 1 event row, `source_count = 3`.
+- [ ] NewsAPI mock: 8-factor rotation completes without exceeding daily cap.
+- [ ] Watchlist escalate → event visible in editorial queue.
+- [ ] Critical fact `unavailable` → card remains `held` in pipeline.
+
+#### Relevant files
+
+| Path | Type | Purpose |
+|------|------|---------|
+| `backend/tests/test_data_pipeline_integration.py` | create | Cross-service E2E |
+
+#### Tasks (checkboxes)
+
+- [ ] **7.0** Data pipeline integration test gate
+  - [ ] **7.1** Fixture ingests for dedup merge assertion.
+  - [ ] **7.2** Mock NewsAPI rotation + cap test in integration module.
+  - [ ] **7.3** Watchlist escalate → editorial queue visibility assertion.
+  - [ ] **7.4** Critical-fact hold assertion on card pipeline.
+  - [ ] **7.5** CI green required before P3-S1g branch merges.
+
+---
+
+### Story P3-S1g — Rule-based confidence scorer + gate swap (G-01, G-02)
+
+- **Assigned:** Jordan
+- **Points:** 8
+- **Layers:** Services, DB, Config
+- **Depends on:** P3-T2
+- **Parallel with:** _None_
+- **Gaps:** G-01, G-02
+
+**User story**
+
+> As the platform, I want a debuggable rule-based confidence score (0–1) driving HIGH/MEDIUM/LOW routing, replacing the Phase 1 source-count gate, so that every editorial routing decision has an auditable numeric basis.
+
+**Acceptance criteria**
+
+- [ ] `confidence_scorer.py`: weights — source_count 30%, source_quality 30%, factor_db_match 25%, recency 5%, **unique_publisher 10%** (post-dedup counts).
+- [ ] `confidence_raw` and `confidence_effective` stored; FoW applies `FOG_DAMPENER = 0.6` to effective only.
+- [ ] Thresholds: HIGH ≥ 0.75 · MEDIUM 0.55–0.74 · LOW &lt; 0.55 (`confidence_config.py`, `calibration_status: provisional`).
+- [ ] `confidence_score_audit` row per computation (inputs JSON, `scorer_version`).
+- [ ] `is_major` auto-set when raw ≥ 0.75 AND factor_match ≥ 2 AND category in qualifying set.
+- [ ] `confidence_gate.route()` replaced — old direct/partial source-count logic removed.
+
+#### Relevant files
+
+| Path | Type | Purpose |
+|------|------|---------|
+| `backend/app/core/confidence_config.py` | create | Weights, thresholds, dampener |
+| `backend/app/services/confidence_scorer.py` | create | Scorer + is_major |
+| `backend/app/services/confidence_gate.py` | modify | Float-tier routing |
+| `backend/db/migrations/00XX_confidence_audit.sql` | create | Audit table |
+| `backend/app/routes/events.py` | modify | `GET .../confidence-breakdown` |
+| `backend/tests/test_confidence_scorer.py` | create | Weights + synthetic fixtures |
+| `backend/tests/test_confidence_gate.py` | modify | Narrow band tiers |
+
+#### Tasks (checkboxes)
+
+- [ ] **8.0** Rule-based confidence scorer + gate swap
+  - [ ] **8.1** `confidence_config.py` with PO weights/thresholds; `calibration_status: provisional`.
+  - [ ] **8.2** `confidence_scorer.py` including `unique_publisher_count` (post-dedup, domain-level).
+  - [ ] **8.3** Migration `confidence_score_audit`; write audit on every upsert.
+  - [ ] **8.4** Replace `confidence_gate.route()`; wire into signal monitoring + card pipeline.
+  - [ ] **8.5** `GET /api/events/{id}/confidence-breakdown` JSON (inputs + sources).
+  - [ ] **8.6** Tests: 20 synthetic events ≥80% tier match hand-grade; narrow MEDIUM band boundaries.
+
+---
+
+### Story P3-S1h — Confidence explainability UI (G-01 Phase 3)
+
+- **Assigned:** Sam
+- **Points:** 3
+- **Layers:** UI
+- **Depends on:** P3-S1g
+- **Parallel with:** _None_
+- **Gaps:** G-01
+
+**User story**
+
+> As a user reviewing a card, I want to see *why* the system assigned this confidence tier, so that I trust routing decisions when they look surprising.
+
+**Acceptance criteria**
+
+- [ ] Thread aside **ConfidenceComposition** loads breakdown API; shows 5 input bars + source list with `retrieved_at`.
+- [ ] Displays `confidence_raw`, `confidence_effective`, tier label, FoW dampener when active.
+- [ ] Loading and error states; no layout shift on Pulse/Thread (perf: breakdown fetched on expand only).
+- [ ] `source_count > 5` shows editorial escalation badge.
+
+#### Relevant files
+
+| Path | Type | Purpose |
+|------|------|---------|
+| `frontend/app/(app)/thread/_components/aside/ConfidenceComposition.tsx` | modify | Breakdown UI |
+| `frontend/lib/api/confidenceBreakdown.ts` | create | API client |
+| `frontend/lib/api/confidenceBreakdown.test.ts` | create | Client + shape test |
+
+#### Tasks (checkboxes)
+
+- [ ] **9.0** Confidence explainability UI
+  - [ ] **9.1** API client for `confidence-breakdown` endpoint.
+  - [ ] **9.2** Expandable panel: five weighted inputs + tier explanation copy.
+  - [ ] **9.3** Source list with timestamps; FoW dampener callout when effective &lt; raw.
+  - [ ] **9.4** Fetch on expand only (lazy); skeleton loading state.
+  - [ ] **9.5** Escalation badge when `force_editorial_review`.
+  - [ ] **9.6** Component test: renders breakdown fixture; error state on 404.
+
+---
+
+### Story P3-T3 — Confidence scoring verification gate
+
+- **Assigned:** Riley
+- **Points:** 2
+- **Layers:** Tests
+- **Depends on:** P3-S1g, P3-S1h
+- **Parallel with:** _None_
+- **Gaps:** G-01, G-02
+
+**User story**
+
+> As the platform, I want proof that the new scorer, narrow thresholds, and explainability API agree before editorial hard gates depend on scores.
+
+**Acceptance criteria**
+
+- [ ] API test: breakdown sums match stored `confidence_raw` within epsilon.
+- [ ] FoW active: effective score = raw × 0.6; tier derived from effective.
+- [ ] UI test (RTL): expanded panel shows all five inputs from fixture.
+- [ ] Regression: signal monitor uses new gate tiers (no Phase 1 count heuristic).
+
+#### Relevant files
+
+| Path | Type | Purpose |
+|------|------|---------|
+| `backend/tests/test_confidence_breakdown_api.py` | create | API contract |
+| `frontend/app/(app)/thread/_components/aside/ConfidenceComposition.test.tsx` | create | UI fixture |
+
+#### Tasks (checkboxes)
+
+- [ ] **10.0** Confidence scoring verification gate
+  - [ ] **10.1** API test: breakdown vs stored scores + FoW dampener.
+  - [ ] **10.2** Signal monitor integration test with tier fixtures.
+  - [ ] **10.3** RTL test: ConfidenceComposition expand/collapse + five inputs.
+  - [ ] **10.4** Document Day 30/60 recalibration ritual in `docs/plans/phase3-calibration.md`.
+  - [ ] **10.5** CI required green before P3-S1i starts.
+
+---
+
+### Story P3-S1i — Number validator hard publish gate (G-07)
+
+- **Assigned:** Riley
+- **Points:** 5
+- **Layers:** API, UI, Services
+- **Depends on:** P3-T3
+- **Parallel with:** _None_
+- **Gaps:** G-07
+
+**User story**
+
+> As the editor, I cannot publish a card until every numeric token in Insight/Context appears in Evidence, so that the LLM-never-invents-numbers invariant is enforced in software, not habit.
+
+**Acceptance criteria**
+
+- [ ] `number_validator.check()` returns structured `FAIL` with ungrounded numbers by sentence.
+- [ ] `POST /api/cards/{id}/publish` returns **422** on FAIL (no override endpoint).
+- [ ] Publish button disabled on card load when validator ≠ PASS.
+- [ ] Comparative quantifiers ("doubled", "record high") logged as soft warnings only.
+
+#### Relevant files
+
+| Path | Type | Purpose |
+|------|------|---------|
+| `backend/app/services/number_validator.py` | modify | Structured FAIL |
+| `backend/app/routes/cards.py` | modify | 422 on publish |
+| `frontend/app/(app)/editor/cards/[id]/PublishGate.tsx` | create | Disabled + diff UI |
+| `backend/tests/test_number_validator.py` | extend | Ungrounded cases |
+| `backend/tests/test_publish_gate.py` | create | 422 + PASS paths |
+
+#### Tasks (checkboxes)
+
+- [ ] **11.0** Number validator hard publish gate
+  - [ ] **11.1** Extend validator: structured `ungrounded[]` + `missing_provenance[]`.
+  - [ ] **11.2** Publish route returns 422 with diff payload on FAIL.
+  - [ ] **11.3** `PublishGate.tsx`: disable Publish; render sentence-level diff list.
+  - [ ] **11.4** Soft-warning log for comparative quantifiers (non-blocking).
+  - [ ] **11.5** Loading/error on card load when validator service unavailable.
+  - [ ] **11.6** Tests: publish blocked with ungrounded number; passes when Evidence added.
+
+---
+
+### Story P3-S1j — Editorial checklist — 4 automated + 1 manual (G-15)
+
+- **Assigned:** Riley
+- **Points:** 3
+- **Layers:** Services, UI
+- **Depends on:** P3-S1i
+- **Parallel with:** P3-S1k
+- **Gaps:** G-15
+
+**User story**
+
+> As the editor, I want five checklist items with four automated PASS checks before Publish activates, so that solo-builder fatigue cannot skip SEBI-critical steps.
+
+**Acceptance criteria**
+
+- [ ] Auto: (1) number validator PASS, (2) dissent len &gt; 100, (3) max Evidence age ≤ 18 months, (4) SEBI keyword scan PASS with allowlist (`repo rate hold` allowed).
+- [ ] Manual: (5) plain English — editor tick required.
+- [ ] All five PASS → Publish enabled (still requires number validator PASS).
+
+#### Relevant files
+
+| Path | Type | Purpose |
+|------|------|---------|
+| `backend/app/services/editorial_checklist.py` | create | Orchestrator |
+| `backend/app/services/sebi_compliance_scan.py` | create | Pattern scan |
+| `backend/app/config/sebi_compliance_patterns.yaml` | create | Blocked terms + allowlist |
+| `frontend/app/(app)/editor/cards/[id]/ChecklistPanel.tsx` | modify | 4 auto + 1 manual |
+| `backend/tests/test_editorial_checklist.py` | create | All five gates |
+
+#### Tasks (checkboxes)
+
+- [ ] **12.0** Editorial checklist — 4 automated + 1 manual
+  - [ ] **12.1** `editorial_checklist.py` runs four automated checks on card load.
+  - [ ] **12.2** `sebi_compliance_scan.py` + YAML allowlist patterns.
+  - [ ] **12.3** Evidence freshness auto-check (18-month max age).
+  - [ ] **12.4** `ChecklistPanel.tsx`: PASS/FAIL per item; manual tick for plain English.
+  - [ ] **12.5** PublishGate integrates checklist — all PASS required.
+  - [ ] **12.6** Tests: SEBI false positive on "hold rate"; block on "buy"; dissent length.
+
+---
+
+### Story P3-S1k — Targeted section regen (G-09)
+
+- **Assigned:** Sam
+- **Points:** 3
+- **Layers:** API, UI
+- **Depends on:** P3-S1i
+- **Parallel with:** P3-S1j
+- **Gaps:** G-09
+
+**User story**
+
+> As the editor, when I reject one ICE section I want only that section regenerated with my annotation, so that approved sections and LLM cost are preserved.
+
+**Acceptance criteria**
+
+- [ ] `POST /api/cards/{id}/regenerate-section` with `section` + `editor_note` (max 500 chars).
+- [ ] Full regen available but confirm if `full_regen_count >= 1`; blocked at ≥2 without PO flag clear.
+- [ ] `regen_history` JSONB on card records each regen.
+- [ ] Post-regen: number_validator + consistency check (entity names vs approved sections).
+
+#### Relevant files
+
+| Path | Type | Purpose |
+|------|------|---------|
+| `backend/app/services/card_regen.py` | create | Section + full regen |
+| `backend/app/services/consistency_check.py` | create | Post-regen validation |
+| `backend/app/routes/cards.py` | extend | Regen endpoints |
+| `frontend/app/(app)/editor/cards/[id]/RegenSection.tsx` | create | Section picker + note |
+| `backend/tests/test_card_regen.py` | create | Section-only regen |
+
+#### Tasks (checkboxes)
+
+- [ ] **13.0** Targeted section regen
+  - [ ] **13.1** `card_regen.py`: single-section LLM call with approved sections as read-only context.
+  - [ ] **13.2** `regen_history` JSONB migration + write on each regen.
+  - [ ] **13.3** Full regen tiered confirm + `full_regen_count` guard.
+  - [ ] **13.4** `RegenSection.tsx`: section select, note field, submit + loading/error.
+  - [ ] **13.5** Post-regen validator + consistency check hook.
+  - [ ] **13.6** Tests: only target section hash changes; full regen count enforced.
+
+---
+
+### Story P3-T4 — Editorial integrity verification gate
+
+- **Assigned:** Jordan
+- **Points:** 2
+- **Layers:** Tests
+- **Depends on:** P3-S1i, P3-S1j, P3-S1k
+- **Parallel with:** _None_
+- **Gaps:** G-07, G-09, G-15
+
+**User story**
+
+> As the platform, I want end-to-end proof that publish is impossible until number validation and checklist pass, before FoW changes confidence routing.
+
+**Acceptance criteria**
+
+- [ ] E2E: card with ungrounded number → Publish 422 + button disabled.
+- [ ] E2E: fix Evidence → validator PASS → checklist auto items PASS → manual tick → publish 200.
+- [ ] Section regen does not bypass validator.
+
+#### Relevant files
+
+| Path | Type | Purpose |
+|------|------|---------|
+| `backend/tests/test_editorial_integrity_e2e.py` | create | Publish gate E2E |
+
+#### Tasks (checkboxes)
+
+- [ ] **14.0** Editorial integrity verification gate
+  - [ ] **14.1** E2E fixture card: fail publish without Evidence.
+  - [ ] **14.2** E2E: full happy path through checklist + publish.
+  - [ ] **14.3** Regen section then fail validator → publish still blocked.
+  - [ ] **14.4** CI gate before P3-S1l branch merges.
+  - [ ] **14.5** Link test evidence in Phase 3 go/no-go checklist template (P3-S8 prep).
+
+---
+
+### Story P3-S1l — Fog of War `is_major` model + named banner (G-10)
+
+- **Assigned:** Jordan
+- **Points:** 5
+- **Layers:** Services, DB, UI
+- **Depends on:** P3-T4
+- **Parallel with:** _None_
+- **Gaps:** G-10
+
+**User story**
+
+> As a user, when three or more major events are active I want Fog of War to activate with named reasons, and confidence dampening applied via `confidence_effective`, not opaque heuristics.
+
+**Acceptance criteria**
+
+- [ ] FoW when `COUNT(is_major AND active) >= 3` (configurable threshold default 3).
+- [ ] `is_major` from scorer unless `is_major_override` set (audit: who/when).
+- [ ] Feed returns `fog_of_war_reason.active_major_events[]` for banner.
+- [ ] `FOG_MODEL=heuristic` feature flag (default); P3-S2 switches to `interaction` later.
+- [ ] Never mutate `confidence_raw` in place; dampener writes `card_confidence_history` only.
+
+#### Relevant files
+
+| Path | Type | Purpose |
+|------|------|---------|
+| `backend/app/services/fog_of_war.py` | create | Extract + detect |
+| `backend/app/services/feed.py` | modify | Named reason payload |
+| `backend/app/core/feature_flags.py` | create | `FOG_MODEL` |
+| `frontend/app/(app)/pulse/_components/FogOfWarBanner.tsx` | modify | Named events |
+| `backend/tests/test_fog_of_war_detector.py` | rewrite | `is_major` based |
+
+#### Tasks (checkboxes)
+
+- [ ] **15.0** Fog of War `is_major` model + named banner
+  - [ ] **15.1** `fog_of_war.py`: detection on `is_major` events; override columns migration if missing.
+  - [ ] **15.2** Feed API: `fog_of_war` + `fog_of_war_reason` structured payload.
+  - [ ] **15.3** `FogOfWarBanner.tsx`: list active major headlines + factor overlap summary.
+  - [ ] **15.4** `feature_flags.py`: `FOG_MODEL` env; heuristic path only in this story.
+  - [ ] **15.5** Verify dampener uses `confidence_effective`; history table writes on dampen.
+  - [ ] **15.6** Tests: 3 majors → fog true; override respected; banner JSON contract.
+
+---
+
+### Story P3-S1m — Signal override log + FP measurement (G-11)
+
+- **Assigned:** Riley
+- **Points:** 3
+- **Layers:** DB, API, UI, CI
+- **Depends on:** P3-S1l
+- **Parallel with:** _None_
+- **Gaps:** G-11
+
+**User story**
+
+> As the Product Owner, I want every dismissed auto-signal to record a structured outcome so that false-positive rate is measurable and feeds threshold recalibration.
+
+**Acceptance criteria**
+
+- [ ] `signal_override_log` table per PRD2 Section 6.4.
+- [ ] Dismiss modal: mandatory `final_outcome` ∈ {confirmed, incorrect, ambiguous}.
+- [ ] Monthly GH Action writes `docs/notes/signal-override-log-YYYY-MM.md`; opens issue if FP &gt; 10%.
+- [ ] FP rate formula documented in note; links to `confidence_config.py` for recalibration.
+
+#### Relevant files
+
+| Path | Type | Purpose |
+|------|------|---------|
+| `backend/db/migrations/00XX_signal_override_log.sql` | create | Schema |
+| `backend/app/routes/signals.py` | modify | Mandatory override |
+| `frontend/app/(app)/editor/signals/OverrideModal.tsx` | create | Structured dismiss |
+| `.github/workflows/signal_fp_monthly.yml` | create | Monthly report |
+| `backend/tests/test_signal_override_log.py` | create | FP formula unit |
+
+#### Tasks (checkboxes)
+
+- [ ] **16.0** Signal override log + FP measurement
+  - [ ] **16.1** Migration `signal_override_log` + indexes.
+  - [ ] **16.2** API: dismiss requires `final_outcome`; no silent dismiss.
+  - [ ] **16.3** `OverrideModal.tsx` integrated into signal queue UI.
+  - [ ] **16.4** `signal_fp_monthly.yml` report + issue creation on &gt;10%.
+  - [ ] **16.5** `docs/plans/phase3-calibration.md`: tie FP rate to Day 30/60 threshold review.
+  - [ ] **16.6** Tests: FP rate calculation on fixture overrides.
+
+---
+
+### Story P3-T5 — Fog of War + signal measurement test gate
+
+- **Assigned:** Sam
+- **Points:** 2
+- **Layers:** Tests
+- **Depends on:** P3-S1l, P3-S1m
+- **Parallel with:** P3-S1a (may start after P3-T2)
+- **Gaps:** G-10, G-11
+
+**User story**
+
+> As the platform, I want verification that FoW banner, dampener, and override logging work together before the NLP batch job adds load.
+
+**Acceptance criteria**
+
+- [ ] Feed integration test: 3 synthetic `is_major` events → `fog_of_war: true` + named list.
+- [ ] Effective scores dampened; `confidence_raw` unchanged on event row.
+- [ ] Override dismiss without outcome → 400; with `incorrect` → appears in FP query.
+
+#### Relevant files
+
+| Path | Type | Purpose |
+|------|------|---------|
+| `backend/tests/test_fog_signal_integration.py` | create | FoW + override E2E |
+
+#### Tasks (checkboxes)
+
+- [ ] **17.0** Fog of War + signal measurement test gate
+  - [ ] **17.1** Feed test with synthetic majors seed fixture.
+  - [ ] **17.2** Assert raw vs effective scores under FoW.
+  - [ ] **17.3** Override API mandatory field tests.
+  - [ ] **17.4** CI green before P3-S1a NLP workflow merges.
+  - [ ] **17.5** Export fixture IDs for P3-S2 backtest script (prep).
+
+---
+
+### Story P3-S1a — NLP filings extraction service (G-08, G-12)
+
+- **Assigned:** Jordan
+- **Points:** 7
+- **Layers:** Services, DB, GitHub Actions
+- **Depends on:** P3-T2 (data pipeline stable)
+- **Parallel with:** P3-T5, P3-S3
+- **Gaps:** G-08, G-12
+
+**User story**
+
+> As the platform, I want a **GitHub Actions** nightly job that ingests NSE/BSE filings and proposes factor-sensitivity updates via **Gemini Flash**, with grounded extraction only, so that manual weekly review is replaced by a verify-on-approve pipeline without Render cold-start failures.
+
+**Acceptance criteria**
+
+- [ ] Workflow `nlp_filings_extract.yml` runs 1am IST; `workflow_dispatch` for manual runs; 50-min timeout.
+- [ ] `render_keepalive.yml` pings `/health` every 10 min during market hours (weekdays).
+- [ ] Model from `NLP_EXTRACTION_MODEL` env (default active Gemini Flash); health check step before batch.
+- [ ] Proposals → `factor_sensitivity_proposals`; never overwrites live sensitivities.
+- [ ] `source_guard`: every extracted value must appear in source excerpt.
+- [ ] `job_runs` table records success/failure; failure opens GitHub Issue `nlp-job-failure`.
+- [ ] Idempotent on `(filing_url, instrument_id, factor_id)`.
+
+**Tech notes**
+
+- GH Actions uses Session pooler `SUPABASE_DB_URL`. spaCy model cached via Actions cache. Card synthesis remains Gemini Pro on Render.
+
+#### Relevant files
+
+| Path | Type | Purpose |
+|------|------|---------|
+| `.github/workflows/nlp_filings_extract.yml` | create | Nightly job |
+| `.github/workflows/render_keepalive.yml` | create | Keep-alive |
+| `backend/app/jobs/nlp_filings_extract.py` | create | Job entrypoint |
+| `backend/app/services/nlp/filings_loader.py` | create | NSE/BSE fetch + cache |
+| `backend/app/services/nlp/preprocess.py` | create | spaCy candidates |
+| `backend/app/services/nlp/extractor.py` | create | Gemini Flash JSON |
+| `backend/app/services/nlp/source_guard.py` | create | Grounding check |
+| `backend/db/migrations/00XX_factor_sensitivity_proposals.sql` | create | Proposals table |
+| `backend/db/migrations/00XX_job_runs.sql` | create | Job observability |
+| `backend/requirements-nlp.txt` | create | NLP deps |
+| `backend/tests/test_extractor_rejects_out_of_source_numbers.py` | create | Hallucination guard |
+| `backend/tests/test_filings_extract_idempotent.py` | create | Idempotency |
+
+#### Tasks (checkboxes)
+
+- [ ] **18.0** NLP filings extraction service (GH Actions + Gemini Flash)
+  - [ ] **18.1** Migrations: `factor_sensitivity_proposals` + `job_runs`.
+  - [ ] **18.2** `filings_loader` + local cache; `preprocess` + `extractor` (Flash, JSON-strict).
+  - [ ] **18.3** `source_guard` + persist proposals; idempotent unique constraint.
+  - [ ] **18.4** `nlp_filings_extract.yml` + `render_keepalive.yml`; secrets documented in `scripts/README.md`.
+  - [ ] **18.5** Failure → GitHub Issue; success/failure written to `job_runs`.
+  - [ ] **18.6** Tests: out-of-source rejection; idempotency; mock workflow env health check.
 
 ---
 
@@ -94,46 +833,43 @@ _Automate the slow Phase 1/2 review loops, harden the platform for higher load, 
 
 - **Assigned:** Riley
 - **Points:** 5
-- **Layers:** UI (internal), API, DB
+- **Layers:** UI, API, DB
 - **Depends on:** P3-S1a
-- **Parallel with:** P3-S2, P3-S3
+- **Parallel with:** P3-S2 (spec only until soak complete), P3-S3
+- **Gaps:** _(original P3-S1b)_
 
 **User story**
 
-> As the Product Owner, I want an internal review screen that lists NLP-proposed factor-sensitivity changes side-by-side with the live values and the cited source excerpt, so that I can approve or reject each proposal in seconds — keeping the human-judgement loop while removing manual collection effort.
+> As the Product Owner, I want an internal review screen listing NLP-proposed factor-sensitivity changes beside live values and source excerpts, so that I can approve or reject in seconds.
 
 **Acceptance criteria**
 
-- [ ] `/admin/factor-db/proposals` lists all `pending` proposals sorted by confidence desc.
-- [ ] Each row shows: current live sensitivity, proposed sensitivity, source excerpt with highlighted span, source URL, MMJ tag, confidence.
-- [ ] One-click Approve → upserts the live `instrument_factor_sensitivity` row; one-click Reject → marks proposal `rejected` with optional note.
-- [ ] Approved upsert preserves the original source URL + retrieved-at + MMJ tag (immutable provenance).
-- [ ] Bulk-approve only available for proposals with confidence ≥0.9 and MMJ ∈ {MEASURED, MODELLED} (PRD §6.2 — `JUDGED` always single-review).
-- [ ] Review actions logged for later audit (timestamp, user, decision, note).
+- [ ] `/admin/factor-db/proposals` lists `pending` proposals sorted by confidence desc.
+- [ ] Approve → upserts live `instrument_factor_sensitivity` preserving provenance; Reject → `rejected` + note.
+- [ ] Bulk-approve only when confidence ≥0.9 and MMJ ∈ {MEASURED, MODELLED}.
+- [ ] Digest shows last NLP `job_runs` status (success/failure + timestamp).
+- [ ] Audit log per decision.
 
 #### Relevant files
 
 | Path | Type | Purpose |
 |------|------|---------|
-| `frontend/app/admin/factor-db/proposals/page.tsx` | create | Internal review list |
-| `frontend/app/admin/factor-db/proposals/_components/ProposalRow.tsx` | create | Row + actions |
-| `frontend/app/admin/factor-db/proposals/_components/SourceExcerptViewer.tsx` | create | Highlighted span |
-| `backend/app/api/factor_db_proposals.py` | create | List + approve + reject |
-| `backend/app/services/factor_db_proposals.py` | create | Workflow service |
-| `backend/db/migrations/0017_factor_db_proposal_audit.sql` | create | Decision audit log |
-| `backend/tests/test_proposal_approve_upserts_live.py` | create | Approve writes live + preserves provenance |
-| `backend/tests/test_bulk_approve_gating.py` | create | Bulk-approve constraint enforced |
+| `frontend/app/admin/factor-db/proposals/page.tsx` | create | Review list |
+| `frontend/app/admin/factor-db/proposals/_components/ProposalRow.tsx` | create | Row actions |
+| `backend/app/api/factor_db_proposals.py` | create | List/approve/reject |
+| `backend/app/services/factor_db_proposals.py` | create | Workflow |
+| `backend/db/migrations/00XX_factor_db_proposal_audit.sql` | create | Audit |
+| `backend/tests/test_proposal_approve_upserts_live.py` | create | Approve path |
 
 #### Tasks (checkboxes)
 
-- [ ] **2.0** Human-in-loop review tooling for NLP proposals
-  - [ ] **2.1** Migration: `factor_db_proposal_audit(proposal_id, user_id, action, note, at)`.
-  - [ ] **2.2** `GET /api/factor-db/proposals?state=pending` + `POST /api/factor-db/proposals/{id}/approve` + `/reject`.
-  - [ ] **2.3** Service: approve upserts live, writes provenance, records audit.
-  - [ ] **2.4** Bulk endpoint with the gating constraint.
-  - [ ] **2.5** Page UI + `ProposalRow` + `SourceExcerptViewer` with span highlight.
-  - [ ] **2.6** Admin allow-list gate (reuse from Phase 1 S5).
-  - [ ] **2.7** Test: approve flow; bulk-approve gating; audit row written.
+- [ ] **19.0** Human-in-loop review tooling for NLP proposals
+  - [ ] **19.1** Migration: `factor_db_proposal_audit`.
+  - [ ] **19.2** APIs: list pending, approve, reject, bulk-approve with gating.
+  - [ ] **19.3** Approve service: upsert live row + immutable provenance fields.
+  - [ ] **19.4** Admin UI: `ProposalRow` + source excerpt highlight.
+  - [ ] **19.5** Digest integration: last `job_runs` NLP status line.
+  - [ ] **19.6** Tests: approve upsert; bulk gate; audit row written.
 
 ---
 
@@ -141,46 +877,44 @@ _Automate the slow Phase 1/2 review loops, harden the platform for higher load, 
 
 - **Assigned:** Jordan
 - **Points:** 6
-- **Layers:** Services, DB, UI integration
-- **Depends on:** Phase 2 (Mirror grading history), Phase 1 (Fog of War banner from P1-S9)
-- **Parallel with:** P3-S1a, P3-S5
+- **Layers:** Services, DB, UI
+- **Depends on:** P3-S0 + **30 days synthetic live** + P3-S1l
+- **Parallel with:** P3-S1b, P3-S5
+- **Gaps:** G-10 (Phase 3 model), original P3-S2
+
+> **Gate:** Do not start implementation until synthetic seed has been live ≥30 days and `card_confidence_history` has accumulated.
 
 **User story**
 
-> As the platform, I want a model that detects interaction effects between simultaneously active events (e.g. a crude shock + an RBI policy meeting) and automatically suppresses card confidence in the affected window, so that Fog of War is triggered by structural reasoning, not a fixed "≥3 active majors" heuristic.
+> As the platform, I want interaction detection between simultaneously active events to dampen confidence structurally, replacing the fixed ≥3 majors heuristic when the model is confident.
 
 **Acceptance criteria**
 
-- [ ] `interaction_detector.analyse(active_events)` returns a list of detected interaction pairs/triples with: factor overlap, evidence strength, suggested confidence dampener (0–0.5).
-- [ ] When triggered, card-level direction and magnitude confidence are dampened by the suggested factor; original values preserved in `track_record`.
-- [ ] Fog of War banner now shows the *reason* (e.g. "crude price + RBI policy interaction — confidence dampened 30%"), not a generic banner.
-- [ ] The Phase 1 ≥3 heuristic stays as a fallback when the model abstains.
-- [ ] Backtest: replay 6 months of historical events; emit a report comparing model-driven vs heuristic Fog of War triggers (`notes/fog-of-war-backtest.md`).
+- [ ] `interaction_detector.analyse(active_events)` returns pairs/triples with factor overlap + suggested dampener.
+- [ ] `FOG_MODEL=interaction` enables model path; `heuristic` remains fallback when model abstains.
+- [ ] Dampener writes `card_confidence_history` only; never mutates original values.
+- [ ] Backtest script replays synthetic + accumulated history → `notes/fog-of-war-backtest.md`.
+- [ ] Ship behind feature flag; revert to heuristic if FP &gt;10% in first month.
 
 #### Relevant files
 
 | Path | Type | Purpose |
 |------|------|---------|
-| `backend/app/services/interaction_detector.py` | create | Factor-overlap detector |
-| `backend/app/services/confidence_dampener.py` | create | Apply suggested dampener |
-| `backend/app/jobs/recompute_active_card_confidence.py` | create | Triggered when a new event activates |
-| `backend/db/migrations/0018_card_confidence_history.sql` | create | History table for replay |
-| `backend/app/api/feed.py` | modify | Banner reason string passthrough |
-| `frontend/app/(app)/pulse/_components/FogOfWarBanner.tsx` | modify | Render reason |
-| `backend/tests/test_interaction_detector.py` | create | Fixture event sets → expected interactions |
-| `scripts/fog_of_war_backtest.py` | create | 6-month replay → markdown report |
-| `notes/fog-of-war-backtest.md` | create | Output (gitignored) |
+| `backend/app/services/interaction_detector.py` | create | Factor-overlap model |
+| `backend/app/services/confidence_dampener.py` | create | Apply dampener |
+| `backend/db/migrations/00XX_card_confidence_history.sql` | create | History |
+| `scripts/fog_of_war_backtest.py` | create | Replay report |
+| `backend/tests/test_interaction_detector.py` | create | Fixture pairs |
 
 #### Tasks (checkboxes)
 
-- [ ] **3.0** Compound-event Fog of War — interaction model
-  - [ ] **3.1** Migration: `card_confidence_history` for non-destructive dampener record.
-  - [ ] **3.2** `interaction_detector.analyse()` — factor-overlap, sector-overlap, time-window heuristics.
-  - [ ] **3.3** `confidence_dampener.apply(card, suggestion)` writes new history row, never mutates original.
-  - [ ] **3.4** `recompute_active_card_confidence` job on every new active event.
-  - [ ] **3.5** API + UI updates so banner displays the structured reason.
-  - [ ] **3.6** Backtest script: replay 6 months, emit comparative report.
-  - [ ] **3.7** Test: per-fixture detection; dampener non-destruction; banner reason rendered.
+- [ ] **20.0** Compound-event Fog of War — interaction model
+  - [ ] **20.1** Migration `card_confidence_history` if not present from P3-S1l.
+  - [ ] **20.2** `interaction_detector.analyse()` + abstain path to heuristic.
+  - [ ] **20.3** `confidence_dampener.apply()` + recompute job on new active event.
+  - [ ] **20.4** Feature flag switch `FOG_MODEL`; banner shows interaction reason string.
+  - [ ] **20.5** Backtest script + markdown report template.
+  - [ ] **20.6** Tests: detection fixtures; non-destructive dampener; flag fallback.
 
 ---
 
@@ -188,43 +922,42 @@ _Automate the slow Phase 1/2 review loops, harden the platform for higher load, 
 
 - **Assigned:** Riley
 - **Points:** 4
-- **Layers:** Compliance, UI (admin), Docs
-- **Depends on:** Phase 1 (P1-S14 tester acceptance), Phase 2 (no new financial data persistence)
-- **Parallel with:** P3-S1, P3-S2
+- **Layers:** Compliance, UI, Docs
+- **Depends on:** Phase 1 P1-S14
+- **Parallel with:** P3-S1a, P3-S5
+- **Gaps:** _(original P3-S3)_
 
 **User story**
 
-> As the Product Owner, I want a formal SEBI legal review of all UI copy + the editorial pipeline + the bias audit log, captured in a tracker with sign-off lines, so that no public launch (P3-S6, P3-S7) can ship without explicit legal approval per PRD §11.1.
+> As the Product Owner, I want a formal SEBI legal review captured in a tracker with sign-off lines, so that any future public launch cannot ship without explicit legal approval.
 
 **Acceptance criteria**
 
-- [ ] `notes/sebi-legal-review-tracker.md` (gitignored) lists every screen and every editorial promise with reviewer sign-off lines.
-- [ ] A SEBI-specialised lawyer reviews all UI copy (PRD §11.1 mandatory caveat); their notes + responses logged.
-- [ ] Any required copy changes captured as PRs labelled `compliance` and gated behind reviewer approval.
-- [ ] Mandatory tester-briefing flow hardened: explicit text on educational scope, signed checkbox, server-side timestamp + IP, optional PDF download of briefing.
-- [ ] In-app "About this analysis" page (`/about-this-analysis`) consolidates the SEBI framing into a single linkable artefact.
-- [ ] All Phase 3 public-launch stories (P3-S6, P3-S7) must reference this story's sign-off as a precondition.
+- [ ] `notes/sebi-legal-review-tracker.md` lists every screen + editorial promise with sign-off lines.
+- [ ] Lawyer review completed; notes logged.
+- [ ] `/about-this-analysis` consolidates SEBI framing.
+- [ ] Tester briefing hardened: IP + timestamp + optional PDF.
+- [ ] PRD2 intelligence UI (confidence breakdown, FoW banner) included in review scope.
 
 #### Relevant files
 
 | Path | Type | Purpose |
 |------|------|---------|
 | `notes/sebi-legal-review-tracker.md` | create | Tracker (gitignored) |
-| `frontend/app/about-this-analysis/page.tsx` | create | Public about page |
-| `frontend/app/(app)/tester-briefing/page.tsx` | modify | Add PDF download + IP+timestamp |
-| `backend/app/api/tester_briefing.py` | modify | Capture IP + timestamp; serve PDF |
-| `backend/tests/test_tester_briefing_capture.py` | create | Asserts IP + timestamp stored |
+| `frontend/app/about-this-analysis/page.tsx` | create | Public about |
+| `frontend/app/(app)/tester-briefing/page.tsx` | modify | PDF + capture |
+| `backend/app/api/tester_briefing.py` | modify | IP + timestamp |
+| `backend/tests/test_tester_briefing_capture.py` | create | Capture test |
 
 #### Tasks (checkboxes)
 
-- [ ] **4.0** SEBI compliance audit + mandatory legal-review tracker
-  - [ ] **4.1** Draft `notes/sebi-legal-review-tracker.md` listing every screen + editorial promise.
-  - [ ] **4.2** Schedule + complete review with SEBI-specialised lawyer.
-  - [ ] **4.3** Log lawyer notes and responses inline in the tracker.
-  - [ ] **4.4** Open `compliance`-labelled PRs for any required copy changes.
-  - [ ] **4.5** Build `/about-this-analysis` consolidating the SEBI framing.
-  - [ ] **4.6** Harden tester-briefing: IP + timestamp + PDF download.
-  - [ ] **4.7** Test: briefing capture; about page link present on every protected page footer.
+- [ ] **21.0** SEBI compliance audit + mandatory legal-review tracker
+  - [ ] **21.1** Draft tracker including PRD2 UI surfaces (confidence breakdown, FoW, checklist).
+  - [ ] **21.2** Complete lawyer review; log notes inline.
+  - [ ] **21.3** Open `compliance`-labelled PRs for required copy changes.
+  - [ ] **21.4** Build `/about-this-analysis`.
+  - [ ] **21.5** Harden tester-briefing: IP + timestamp + PDF download.
+  - [ ] **21.6** Tests: briefing capture; about link in app footer.
 
 ---
 
@@ -233,19 +966,19 @@ _Automate the slow Phase 1/2 review loops, harden the platform for higher load, 
 - **Assigned:** Riley
 - **Points:** 3
 - **Layers:** Strategy, Docs
-- **Depends on:** P3-S3
-- **Parallel with:** P3-S5
+- **Depends on:** P3-S3, P3-S5
+- **Parallel with:** _None_
+- **Gaps:** _(original P3-S4)_
 
 **User story**
 
-> As the Product Owner, I want a single dossier that captures the RA-registration research, the scalability review headline numbers, candidate pricing models, and a clear go/no-go decision on transitioning from research project to regulated product, so that Phase 3 ends with an explicit, evidence-backed direction.
+> As the Product Owner, I want a dossier with RA-registration research, pricing options, and go/wait/no-go recommendation, so Phase 3 ends with an evidence-backed direction (without assuming P3-S6/S7 ship).
 
 **Acceptance criteria**
 
-- [ ] `notes/productisation-assessment.md` (gitignored) contains: SEBI Research Analyst registration prerequisites, costs, timelines; FinnWise current-state gap analysis; recommended target user segment; pricing-model options (free / paid subscription / freemium / sponsored research); scalability headline (from P3-S5).
-- [ ] Three pricing models drafted with revenue scenarios.
-- [ ] A single go / wait / no-go recommendation with named conditions.
-- [ ] All claims source-linked (SEBI circulars, comparable products, market sizing references).
+- [ ] `notes/productisation-assessment.md`: RA prerequisites, costs, timelines, gap analysis, 3 pricing models, scalability headline from P3-S5.
+- [ ] Explicit note: P3-S6/S7 deferred per PRD2 G-14 unless gate green + RA path confirmed.
+- [ ] External practitioner dissent captured.
 
 #### Relevant files
 
@@ -255,13 +988,13 @@ _Automate the slow Phase 1/2 review loops, harden the platform for higher load, 
 
 #### Tasks (checkboxes)
 
-- [ ] **5.0** Productisation assessment + RA registration research dossier
-  - [ ] **5.1** Research SEBI RA-registration prerequisites + costs.
-  - [ ] **5.2** Map current FinnWise to RA-compliance gaps.
-  - [ ] **5.3** Draft three pricing models + revenue scenarios.
-  - [ ] **5.4** Incorporate scalability headline numbers from P3-S5.
-  - [ ] **5.5** Write the go / wait / no-go recommendation with explicit named conditions.
-  - [ ] **5.6** Review with at least one external practitioner (mentor, lawyer, or operator) and capture their dissent.
+- [ ] **22.0** Productisation assessment + RA registration research dossier
+  - [ ] **22.1** Research SEBI RA prerequisites + costs.
+  - [ ] **22.2** Map FinnWise gaps including PRD2 intelligence controls.
+  - [ ] **22.3** Draft three pricing models (for hypothetical post-registration future).
+  - [ ] **22.4** Incorporate P3-S5 scalability headline numbers.
+  - [ ] **22.5** Go/wait/no-go recommendation with named conditions.
+  - [ ] **22.6** External practitioner dissent captured.
 
 ---
 
@@ -270,147 +1003,43 @@ _Automate the slow Phase 1/2 review loops, harden the platform for higher load, 
 - **Assigned:** Jordan
 - **Points:** 5
 - **Layers:** Ops, Infra, Tests
-- **Depends on:** Phase 2 (P2-S13 baseline metrics endpoint)
-- **Parallel with:** P3-S1, P3-S3
+- **Depends on:** Phase 2 P2-S13
+- **Parallel with:** P3-S1a, P3-S3
+- **Gaps:** _(original P3-S5)_
 
 **User story**
 
-> As the platform owner, I want load-tested SLOs, structured logs and traces wired to a hosted observability provider, error budgets, and alerting, so that any public-launch decision (P3-S6/S7) rests on hard performance evidence rather than gut feel.
+> As the platform owner, I want load-tested SLOs and hosted observability, so that scaling decisions rest on evidence.
 
 **Acceptance criteria**
 
-- [ ] Load test simulates 200 concurrent users browsing Pulse + Thread + Lens; capture p95 latency, error rates, cost per hour.
-- [ ] SLOs defined in `docs/plans/phase3-slos.md`: Pulse p95 &lt; 800ms (same bar as P1.5/P2-S15); Thread p95 &lt; 1.2s; Lens p95 generation time &lt; 90s; error rate &lt;1%.
-- [ ] SLO doc references `docs/plans/cross-phase-performance-standards.md` and P2-S15 bench/Lighthouse evidence.
-- [ ] Sentry (or equivalent free-tier) wired to frontend + backend; release tags on every deploy.
-- [ ] Structured request logs (already from P2-S13) shipped to a hosted log store (free-tier-acceptable).
-- [ ] Alerting: error budget burn-rate alert + p95 SLO violation alert.
-- [ ] Performance baseline numbers fed into P3-S4 dossier.
+- [ ] k6 load tests: 200 concurrent users on Pulse, Thread, Lens.
+- [ ] `docs/plans/phase3-slos.md` documents SLOs aligned with cross-phase standards.
+- [ ] Sentry on frontend + backend; structured logs to free-tier provider.
+- [ ] Confidence breakdown API included in Pulse p95 budget.
+- [ ] Baseline numbers handed to P3-S4.
 
 #### Relevant files
 
 | Path | Type | Purpose |
 |------|------|---------|
-| `scripts/load_test_pulse.k6.js` | create | k6 scenarios |
-| `scripts/load_test_thread.k6.js` | create | k6 scenarios |
-| `scripts/load_test_lens.k6.js` | create | k6 scenarios |
+| `scripts/load_test_pulse.k6.js` | create | k6 |
+| `scripts/load_test_thread.k6.js` | create | k6 |
+| `scripts/load_test_lens.k6.js` | create | k6 |
 | `docs/plans/phase3-slos.md` | create | SLO doc |
-| `backend/app/core/logging.py` | modify | Ship logs to provider |
-| `frontend/instrumentation.ts` | create | Sentry init |
-| `backend/app/core/sentry.py` | create | Sentry init |
-| `.github/workflows/load-tests.yml` | create | Weekly load test in CI |
+| `backend/app/core/sentry.py` | create | Sentry |
+| `frontend/instrumentation.ts` | create | Sentry |
+| `.github/workflows/load-tests.yml` | create | Weekly |
 
 #### Tasks (checkboxes)
 
-- [ ] **6.0** Scalability + observability hardening
-  - [ ] **6.1** Author SLOs in `docs/plans/phase3-slos.md`.
-  - [ ] **6.2** Sentry projects + DSNs in `.env.local`; frontend + backend init.
-  - [ ] **6.3** Logger ships JSON logs to chosen provider.
-  - [ ] **6.4** k6 scripts for the three surfaces.
-  - [ ] **6.5** Weekly load-test workflow on GH Actions (or scheduled Render cron job).
-  - [ ] **6.6** Burn-rate alert + p95 SLO violation alert configured.
-  - [ ] **6.7** Capture baseline numbers; hand over to Riley for P3-S4 dossier.
-
----
-
-### Story P3-S6 — Public marketing site + waitlist + multi-tenant onboarding
-
-- **Assigned:** Sam
-- **Points:** 6
-- **Layers:** UI (public), API, DB
-- **Depends on:** P3-S3 sign-off (gated), P3-S8 go decision
-- **Parallel with:** P3-S7 (after S8 green), P3-S9
-
-> **Gate:** This story cannot start UI shipping until P3-S8 returns a "go" decision.
-
-**User story**
-
-> As a prospective user discovering FinnWise from outside the invited tester circle, I want a public marketing site that clearly explains what FinnWise is and is not (research / education, not advice), a waitlist for access, and a self-serve onboarding for approved users, so that growth beyond Phase 1/2 testers is possible while staying inside SEBI safe harbour.
-
-**Acceptance criteria**
-
-- [ ] Public site under `(marketing)` route group: home, manifesto, three-pillars page, transparency report (live bias log + track record summary), about-this-analysis, contact.
-- [ ] Waitlist form persists `email + optional referral` to `waitlist` table.
-- [ ] Approved users receive a magic-link invite that lands on `/tester-briefing` (reuse Phase 1) and only then routes into the app.
-- [ ] SEBI footer present on every marketing page.
-- [ ] All marketing copy passes the P3-S3 legal review.
-
-#### Relevant files
-
-| Path | Type | Purpose |
-|------|------|---------|
-| `frontend/app/(marketing)/page.tsx` | create | Home |
-| `frontend/app/(marketing)/manifesto/page.tsx` | create | Manifesto |
-| `frontend/app/(marketing)/pillars/page.tsx` | create | Three pillars |
-| `frontend/app/(marketing)/transparency/page.tsx` | create | Public bias + track record snapshot |
-| `frontend/app/(marketing)/waitlist/page.tsx` | create | Waitlist form |
-| `backend/app/api/waitlist.py` | create | `POST /api/waitlist` |
-| `backend/db/migrations/0019_waitlist.sql` | create | Waitlist + invites |
-| `backend/app/services/waitlist_invite.py` | create | Approval → magic-link invite |
-| `backend/tests/test_waitlist_invite_flow.py` | create | Approval flow test |
-| `frontend/app/(marketing)/transparency/page.test.tsx` | create | Asserts SEBI footer present |
-
-#### Tasks (checkboxes)
-
-- [ ] **7.0** Public marketing site + waitlist + multi-tenant onboarding
-  - [ ] **7.1** `(marketing)` route group with shared layout + SEBI footer.
-  - [ ] **7.2** Author home + manifesto + pillars copy; legal-review pass.
-  - [ ] **7.3** Public transparency page reading from `track_record` aggregates and `card_bias_flags` summary.
-  - [ ] **7.4** Migration: `waitlist` + `waitlist_invites`.
-  - [ ] **7.5** `POST /api/waitlist` + admin approval action.
-  - [ ] **7.6** Magic-link invite that routes through `/tester-briefing` then into the app.
-  - [ ] **7.7** Test: approval flow; SEBI footer on every marketing page; transparency page renders aggregates.
-
----
-
-### Story P3-S7 — Pricing + paywall infrastructure (gated)
-
-- **Assigned:** Sam (with Jordan on backend)
-- **Points:** 5
-- **Layers:** Billing, API, UI
-- **Depends on:** P3-S8 go decision + RA-registration condition from P3-S4 dossier
-- **Parallel with:** P3-S6 (post-gate)
-
-> **Gate:** This story cannot start until P3-S4 recommends "go" and P3-S8 returns green. If RA registration is not obtained, this story stays out of scope per PRD §14.
-
-**User story**
-
-> As the Product Owner — only if and when SEBI Research Analyst registration is in place — I want a paywall + subscription billing flow integrated with an India-friendly payment provider, so that FinnWise can transition from research project to a sustainable regulated product.
-
-**Acceptance criteria**
-
-- [ ] Payment provider integrated (research candidates: Razorpay, Stripe India, Cashfree) with subscription support.
-- [ ] Plans defined in DB; one free tier and one paid tier minimum (final shape from P3-S4 dossier).
-- [ ] Paywall middleware on `(app)` routes for non-free features (final list approved by legal review).
-- [ ] Webhooks signed + verified; subscription state mirrored to `user_subscriptions` table.
-- [ ] No paywall message uses recommendation framing; copy passes P3-S3 review.
-- [ ] All financial transactions logged immutably for audit.
-
-#### Relevant files
-
-| Path | Type | Purpose |
-|------|------|---------|
-| `backend/app/services/billing/provider.py` | create | Provider abstraction |
-| `backend/app/services/billing/razorpay.py` | create | Provider impl (example) |
-| `backend/app/api/billing.py` | create | Checkout + webhooks |
-| `backend/db/migrations/0020_plans_and_subscriptions.sql` | create | Plans + subs + ledger |
-| `frontend/app/(app)/settings/billing/page.tsx` | create | Billing UI |
-| `frontend/components/Paywall/Paywall.tsx` | create | Gating component |
-| `backend/tests/test_billing_webhook_verification.py` | create | Signed webhook test |
-| `backend/tests/test_subscription_state_mirroring.py` | create | DB mirror test |
-
-#### Tasks (checkboxes)
-
-- [ ] **8.0** Pricing + paywall infrastructure (gated)
-  - [ ] **8.1** Provider selection RFC in `notes/billing-provider-rfc.md` (gitignored).
-  - [ ] **8.2** Provider creds in `.env.local`.
-  - [ ] **8.3** Migration: plans + user_subscriptions + billing_ledger (append-only).
-  - [ ] **8.4** Checkout API + webhook handler with signature verification.
-  - [ ] **8.5** Sub-state mirror service; idempotent on duplicate webhooks.
-  - [ ] **8.6** Paywall middleware on configured route patterns.
-  - [ ] **8.7** Billing settings page + Paywall component.
-  - [ ] **8.8** Compliance-reviewed paywall copy.
-  - [ ] **8.9** Test: webhook signature verification; subscription mirror; paywall gating behaviour.
+- [ ] **23.0** Scalability + observability hardening
+  - [ ] **23.1** Author `phase3-slos.md` including confidence breakdown latency budget.
+  - [ ] **23.2** Sentry init frontend + backend; DSNs in `.env.local`.
+  - [ ] **23.3** k6 scripts for Pulse, Thread, Lens.
+  - [ ] **23.4** Weekly load-test workflow; capture p95 + error rate.
+  - [ ] **23.5** Alerts: error budget burn + p95 violation.
+  - [ ] **23.6** Hand baseline summary to Riley for P3-S4.
 
 ---
 
@@ -419,33 +1048,33 @@ _Automate the slow Phase 1/2 review loops, harden the platform for higher load, 
 - **Assigned:** Riley
 - **Points:** 2
 - **Layers:** Governance
-- **Depends on:** P3-S3, P3-S4, P3-S5
-- **Parallel with:** _None — final gate before P3-S6 and P3-S7 ship_
+- **Depends on:** P3-S3, P3-S4, P3-S5, P3-T4, P3-T5
+- **Parallel with:** _None_
+- **Gaps:** _(original P3-S8)_
 
 **User story**
 
-> As the Product Owner, I want an explicit `docs/plans/phase3-go-no-go.md` checklist that captures legal sign-off, SLOs met, productisation recommendation, and named-conditions for proceeding, so that no public-launch story ships without an auditable green light.
+> As the Product Owner, I want an explicit go/no-go checklist with evidence links, so that deferred stories (P3-S6/S7) only activate after a documented green light.
 
 **Acceptance criteria**
 
-- [ ] Checklist covers: legal sign-off captured (P3-S3); SLOs met under load (P3-S5); productisation recommendation logged (P3-S4); **cross-phase performance standards** (`cross-phase-performance-standards.md`) + P2-S15 evidence; tester satisfaction baseline; bias-audit health; track-record health (direction prediction accuracy ≥60% per PRD §13).
-- [ ] Each item has owner + status + evidence link.
-- [ ] Decision logged in the doc with timestamp and signatures.
-- [ ] P3-S6 and P3-S7 carry a `phase3-gate: green` precondition in their PR descriptions.
+- [ ] `docs/plans/phase3-go-no-go.md` covers: legal sign-off (P3-S3); SLOs (P3-S5); productisation (P3-S4); PRD2 intelligence gates (T1–T5 evidence); synthetic isolation; FP rate ≤10% or remediation plan.
+- [ ] P3-S6/S7 listed as **deferred** with activation conditions.
+- [ ] Decision logged with timestamp.
 
 #### Relevant files
 
 | Path | Type | Purpose |
 |------|------|---------|
-| `docs/plans/phase3-go-no-go.md` | create | Checklist (gitignored under existing rule) |
+| `docs/plans/phase3-go-no-go.md` | create | Checklist |
 
 #### Tasks (checkboxes)
 
-- [ ] **9.0** Phase 3 launch-readiness gate + go/no-go checklist
-  - [ ] **9.1** Draft the checklist with all items + owners + evidence-link slots.
-  - [ ] **9.2** Walk each item with its owner; capture status + link.
-  - [ ] **9.3** Hold the go/no-go review; log decision + signatures.
-  - [ ] **9.4** Update PR template to require `phase3-gate: green` for public-facing stories.
+- [ ] **24.0** Phase 3 launch-readiness gate + go/no-go checklist
+  - [ ] **24.1** Draft checklist with PRD2 test-gate evidence links.
+  - [ ] **24.2** Walk items with owners; capture status.
+  - [ ] **24.3** Hold review; log go/wait/no-go + conditions for P3-S6/S7.
+  - [ ] **24.4** Update PR template: `phase3-gate: green` for any future public-launch work.
 
 ---
 
@@ -454,76 +1083,92 @@ _Automate the slow Phase 1/2 review loops, harden the platform for higher load, 
 - **Assigned:** Sam
 - **Points:** 6
 - **Layers:** UI, API
-- **Depends on:** Phase 2 (P2-S11 Map modules), P3-S6 marketing-site shell
-- **Parallel with:** P3-S7 (post-gate)
+- **Depends on:** Phase 2 P2-S11
+- **Parallel with:** P3-S3, P3-S5 (no P3-S6 marketing dependency — G-14 deferral)
+- **Gaps:** _(original P3-S9, adjusted)_
 
 **User story**
 
-> As any visitor or signed-in user, I want a public-facing, polished version of The Map with sector deep-dives and interactive sensitivity visualisations, so that the educational layer of FinnWise stands as a product in its own right (and reinforces the editorial brand).
+> As a signed-in user (and future public visitor when marketing ships), I want polished Map sector deep-dives with interactive sensitivity matrices, reinforcing the educational research posture.
 
 **Acceptance criteria**
 
-- [ ] Map fully reachable from both `(marketing)` and `(app)` route groups (different shells, same data).
-- [ ] Each sector has a deep-dive page: factor sensitivity matrix (interactive hover), event-history strip drawing from `track_record`, links to relevant Map modules, "how this sector tends to react" educational module.
-- [ ] All interactive visualisations are accessible (keyboard navigation + screen-reader labels).
-- [ ] No recommendation framing — every sector page passes the P3-S3 language audit.
-- [ ] Map routes meet **mobile Lighthouse** budgets per `cross-phase-performance-standards.md` (extend `scripts/lighthouse.mjs` if not already covered in P2-S15).
+- [ ] Map reachable from `(app)` route group; structure allows future `(marketing)` shell without refactor.
+- [ ] Sector deep-dive: sensitivity matrix (keyboard + hover), event-history strip from `track_record` (synthetic excluded).
+- [ ] A11y: keyboard nav, screen-reader labels, contrast.
+- [ ] Language audit: no buy/sell/hold; passes P3-S3 vocabulary.
+- [ ] Lighthouse mobile budgets per cross-phase standards.
 
 #### Relevant files
 
 | Path | Type | Purpose |
 |------|------|---------|
-| `frontend/app/(marketing)/map/page.tsx` | create | Public index |
-| `frontend/app/(marketing)/map/[slug]/page.tsx` | create | Public sector deep-dive |
-| `frontend/app/(app)/map/[slug]/page.tsx` | modify | Use shared Map components |
-| `frontend/components/Map/SensitivityMatrix.tsx` | create | Shared interactive matrix |
-| `frontend/components/Map/EventHistoryStrip.tsx` | create | Pulls from `track_record` |
-| `frontend/components/Map/SensitivityMatrix.test.tsx` | create | Keyboard nav test |
-| `frontend/components/Map/EventHistoryStrip.test.tsx` | create | Data binding test |
+| `frontend/app/(app)/map/[slug]/page.tsx` | modify | Deep-dive |
+| `frontend/components/Map/SensitivityMatrix.tsx` | create | Shared matrix |
+| `frontend/components/Map/EventHistoryStrip.tsx` | create | Track record strip |
+| `frontend/components/Map/SensitivityMatrix.test.tsx` | create | a11y |
+| `frontend/components/Map/EventHistoryStrip.test.tsx` | create | Data binding |
 
 #### Tasks (checkboxes)
 
-- [ ] **10.0** The Map — final public version + sector deep-dive interactives
-  - [ ] **10.1** Extract Map components into `components/Map/` shared between marketing + app.
-  - [ ] **10.2** `SensitivityMatrix` interactive (hover + keyboard) with MMJ-coloured cells.
-  - [ ] **10.3** `EventHistoryStrip` drawing from `track_record` aggregates.
-  - [ ] **10.4** Public + app routes; identical content, different shells.
-  - [ ] **10.5** A11y pass: keyboard nav, screen-reader labels, contrast.
-  - [ ] **10.6** Language audit against PRD §11.1.
-  - [ ] **10.7** Test: keyboard nav across matrix; event-history binding.
+- [ ] **25.0** The Map — final version + sector deep-dive interactives
+  - [ ] **25.1** Extract `components/Map/*` shared components.
+  - [ ] **25.2** `SensitivityMatrix` interactive + MMJ-coloured cells.
+  - [ ] **25.3** `EventHistoryStrip` from `track_record` (synthetic filtered).
+  - [ ] **25.4** App routes wired; marketing shell stub commented for post-gate.
+  - [ ] **25.5** A11y pass + Lighthouse on representative sector page.
+  - [ ] **25.6** Tests: keyboard nav; event strip binding; synthetic exclusion.
+
+---
+
+### Deferred — P3-S6 / P3-S7 (G-14 appendix only)
+
+> **No active tasks.** Revisit only when P3-S8 returns **go** AND SEBI RA registration path is confirmed per P3-S4 dossier. Original story definitions remain in git history; do not create `(marketing)` routes or billing tables until then.
+
+| Story | Original scope | Points (reference) |
+|-------|----------------|-------------------|
+| P3-S6 | Public marketing + waitlist | 6 (deferred) |
+| P3-S7 | Pricing + paywall | 5 (deferred) |
 
 ---
 
 ## Risks
 
-- **NLP extractor hallucinates sensitivities** — P3-S1a `source_guard` rejects out-of-source numbers; P3-S1b keeps human-in-loop for every approve. Re-test after every prompt change.
-- **Interaction model triggers Fog of War too aggressively, killing trust** — P3-S2 backtest is mandatory; ship behind a feature flag and fall back to Phase 1 heuristic if false-positive rate >10%.
-- **SEBI review surfaces deep copy issues late** — P3-S3 happens before P3-S6/S7 by gate; budget for at least one full re-write pass.
-- **Productisation dossier becomes wishful thinking** — P3-S4 requires an external practitioner dissent capture; mitigates own-bias.
-- **Hosted observability provider costs unexpectedly** — P3-S5 should pick a free-tier-acceptable provider; review monthly bills.
-- **Paywall code ships before RA registration** — P3-S7 is double-gated by P3-S4 recommendation **and** P3-S8 green. Build with explicit feature flag default-off if PR review approves earlier wiring.
+- **Dedup false merge (G-03 all-category headline_hash)** — Sunday `dedup_review_queue` review; cap 10 items/week.
+- **Synthetic data leak** — P3-T1 triple-layer tests must stay green in CI.
+- **Confidence bootstrap arbitrariness** — Label `provisional`; Day 30/60 recalibration tied to P3-S1m FP rate.
+- **NLP on GH Actions secrets exposure** — Repository secrets only; never log filing content or API keys.
+- **FoW interaction model too aggressive (P3-S2)** — Feature flag + 30-day soak + backtest mandatory.
+- **Solo builder skips manual checklist tick** — 4/5 automated; only plain English remains manual.
+- **P3-S6/S7 scope creep** — Explicitly removed from active board per G-14.
 
 ## Recommendations
 
-- Start P3-S1a + P3-S2 + P3-S3 in parallel in Month 10 — they are independent and the long ones.
-- Treat P3-S4 dossier as the binding artefact of the phase; everything ladders up to a real go / wait / no-go decision.
-- Do not begin P3-S6/S7 until P3-S8 is green. The gate is the point.
-- P3-S9 (final Map) is the safest visible improvement to ship regardless of the productisation decision — it strengthens the research-project posture too.
+- **Week 1:** Jordan P3-S0 → Riley P3-T1 → Jordan P3-S1c; Sam P3-S1d; Riley P3-S1e in parallel.
+- **Week 2:** Sam P3-S1f → Jordan P3-T2 → Jordan P3-S1g → Sam P3-S1h → Riley P3-T3 → Riley P3-S1i.
+- **Week 3:** Riley P3-S1j ∥ Sam P3-S1k → Jordan P3-T4 → Jordan P3-S1l → Riley P3-S1m → Sam P3-T5 → Jordan P3-S1a.
+- **Week 4+:** Riley P3-S1b; parallel Riley P3-S3 + Jordan P3-S5; Sam P3-S9.
+- **Day 30 after P3-S0:** Begin P3-S2 interaction model only if synthetic history sufficient.
+- **Do not** create P3-S6/S7 tasks until P3-S8 green + RA path confirmed.
 
 ---
 
 ## How to execute Phase 3
 
-Suggested order (Months 10–18, 36 weeks):
+**PRD2 foundation (Weeks 1–4):**
 
-1. **Month 10:** Jordan P3-S1a + P3-S5 setup. Riley P3-S3 (legal review kickoff) + P3-S1b internal tooling spec. Sam waits for gate; meanwhile contributes a11y / polish backlog tail from Phase 2.
-2. **Month 11–12:** Jordan ships P3-S1a + P3-S2. Riley ships P3-S1b + continues P3-S3. Sam starts P3-S9 (Map deep-dive — independent of gate).
-3. **Month 13–14:** Jordan ships P3-S5 hardening. Riley closes P3-S3 + opens P3-S4 dossier + drafts P3-S8 checklist.
-4. **Month 15:** Hold P3-S8 go/no-go review. Decision documented.
-5. **Month 16–18 (if go):** Sam ships P3-S6 (public marketing + waitlist) and — only if RA-registration path is approved — P3-S7 (paywall). Soft-launch waitlist cohort.
-6. **Month 16–18 (if wait/no-go):** Defer P3-S6 + P3-S7; iterate the research-project posture; revisit gate quarterly.
+1. P3-S0 → P3-T1 → `{P3-S1c, P3-S1d, P3-S1e}` → P3-S1f → P3-T2  
+2. P3-S1g → P3-S1h → P3-T3 → P3-S1i → `{P3-S1j, P3-S1k}` → P3-T4  
+3. P3-S1l → P3-S1m → P3-T5 → P3-S1a → P3-S1b  
+4. P3-S0 + 30 days → P3-S2  
 
-Parallel-safe pairs at every month boundary: `{S1a, S2, S3}` in Month 10–11; `{S1b, S5, S9}` in Month 12–13; `{S6, S7, S9}` only after S8 green.
+**Strategic track (Months 10–18, parallel after Week 4):**
+
+5. `{P3-S3, P3-S5}` → P3-S4 → P3-S8  
+6. P3-S9 anytime after Week 2 (independent of gate)  
+7. P3-S6/S7 **only if** P3-S8 go + RA path  
+
+**Parallel pairs:** `{S1d, S1e}` · `{S1j, S1k}` · `{S1a, S3, S5}` · `{S9, S5}`
 
 ---
 
@@ -531,115 +1176,58 @@ Parallel-safe pairs at every month boundary: `{S1a, S2, S3}` in Month 10–11; `
 
 ### Notes
 
-- Same test placement and commands as earlier phases.
-- Add only the new keys to `.env.local`: `SENTRY_DSN_FRONTEND`, `SENTRY_DSN_BACKEND`, `LOG_PROVIDER_KEY`, `PAYMENT_PROVIDER_KEY` (if applicable).
-- All earlier phase invariants (SEBI footer, MMJ tags, append-only `track_record`, no buy/sell/hold) continue to apply. Compound Fog of War must **not** mutate the original confidence values in place.
+- Backend tests: `cd backend && pytest [path]`
+- Frontend tests: `cd frontend && pnpm test [path]`
+- New env keys: `NLP_EXTRACTION_MODEL`, `FOG_MODEL`, `SENTRY_DSN_*` (P3-S5)
+- PRD2 invariants: no buy/sell/hold; MMJ on every quantitative claim; `confidence_raw` never mutated by FoW dampener
 
 ### Relevant Files (rollup)
 
-- `backend/app/jobs/**` — nlp_filings_extract, recompute_active_card_confidence
-- `backend/app/services/nlp/**` — filings_loader, preprocess, extractor, source_guard
-- `backend/app/services/**` — interaction_detector, confidence_dampener, factor_db_proposals, waitlist_invite, billing/*
-- `backend/app/api/**` — factor_db_proposals, waitlist, billing, modified feed (banner reason)
-- `backend/app/core/**` — sentry, logging (modified)
-- `backend/db/migrations/**` — 0016 through 0020
-- `frontend/app/admin/factor-db/proposals/**` — Internal review tooling
-- `frontend/app/(marketing)/**` — Public site (S6, S9)
-- `frontend/app/(app)/settings/billing/**` — Billing UI (S7)
-- `frontend/components/Map/**` — Shared Map components (S9)
-- `frontend/components/Paywall/**` — Paywall gate (S7)
-- `notes/sebi-legal-review-tracker.md`
-- `notes/productisation-assessment.md`
-- `notes/fog-of-war-backtest.md`
-- `notes/billing-provider-rfc.md`
-- `docs/plans/phase3-slos.md`
-- `docs/plans/phase3-go-no-go.md`
-- `scripts/fog_of_war_backtest.py`, `scripts/load_test_*.k6.js`
+- `backend/app/core/confidence_config.py`, `feature_flags.py`
+- `backend/app/services/confidence_scorer.py`, `event_dedup.py`, `fog_of_war.py`, `card_regen.py`, `editorial_checklist.py`, `sebi_compliance_scan.py`, `nlp/**`
+- `backend/app/config/*.yaml` — entity_map, newsapi_keywords, critical_facts, sebi_compliance_patterns
+- `backend/scripts/seed_synthetic_events.py`, `seed_data/synthetic_events.json`
+- `backend/db/migrations/00XX_*.sql` — synthetic, dedup, watchlist, confidence, proposals, override log, job_runs
+- `.github/workflows/nlp_filings_extract.yml`, `render_keepalive.yml`, `signal_fp_monthly.yml`, `load-tests.yml`
+- `frontend/app/(app)/editor/**`, `thread/.../ConfidenceComposition.tsx`, `pulse/.../FogOfWarBanner.tsx`
+- `frontend/app/admin/factor-db/proposals/**`, `components/Map/**`
+- `docs/plans/phase3-calibration.md`, `phase3-slos.md`, `phase3-go-no-go.md`
+- `docs/notes/signal-override-log-*.md`
 
 ### Tasks by developer — Jordan
 
-- [ ] **1.0** NLP filings extraction service
-  - [ ] **1.1** `factor_sensitivity_proposals` migration
-  - [ ] **1.2** Filings loader + cache
-  - [ ] **1.3** spaCy preprocess
-  - [ ] **1.4** LLM extractor (JSON-strict)
-  - [ ] **1.5** `source_guard` hallucination check
-  - [ ] **1.6** Persist + dedupe
-  - [ ] **1.7** Nightly cron
-  - [ ] **1.8** Hallucination + idempotency + cache tests
-- [ ] **3.0** Compound-event Fog of War — interaction model
-  - [ ] **3.1** `card_confidence_history` migration
-  - [ ] **3.2** `interaction_detector.analyse()`
-  - [ ] **3.3** `confidence_dampener.apply()`
-  - [ ] **3.4** Recompute job on event activation
-  - [ ] **3.5** API + Banner reason update
-  - [ ] **3.6** 6-month backtest report
-  - [ ] **3.7** Detection + non-destruction + banner tests
-- [ ] **6.0** Scalability + observability hardening
-  - [ ] **6.1** SLO doc
-  - [ ] **6.2** Sentry projects + init
-  - [ ] **6.3** Log shipping
-  - [ ] **6.4** k6 scripts (Pulse / Thread / Lens)
-  - [ ] **6.5** Weekly load test in CI
-  - [ ] **6.6** Burn-rate + p95 alerts
-  - [ ] **6.7** Hand baseline to Riley for P3-S4
+- [ ] **1.0** Synthetic historical seed + triple-layer isolation
+- [ ] **3.0** Event de-duplication pipeline
+- [ ] **7.0** Data pipeline integration test gate
+- [ ] **8.0** Rule-based confidence scorer + gate swap
+- [ ] **14.0** Editorial integrity verification gate
+- [ ] **15.0** Fog of War `is_major` model + named banner
+- [ ] **18.0** NLP filings extraction service (GH Actions + Gemini Flash)
+- [ ] **20.0** Compound-event Fog of War — interaction model
+- [ ] **23.0** Scalability + observability hardening
 
 ### Tasks by developer — Sam
 
-- [ ] **7.0** Public marketing site + waitlist + multi-tenant onboarding
-  - [ ] **7.1** `(marketing)` shell + SEBI footer
-  - [ ] **7.2** Home + manifesto + pillars copy
-  - [ ] **7.3** Transparency page reading aggregates
-  - [ ] **7.4** Waitlist migration
-  - [ ] **7.5** Waitlist API + admin approval
-  - [ ] **7.6** Magic-link invite via tester-briefing
-  - [ ] **7.7** Approval + footer + transparency tests
-- [ ] **8.0** Pricing + paywall infrastructure (gated)
-  - [ ] **8.1** Billing provider RFC
-  - [ ] **8.2** Provider creds in `.env.local`
-  - [ ] **8.3** Plans + subs + ledger migration
-  - [ ] **8.4** Checkout API + webhook verification
-  - [ ] **8.5** Subscription state mirror
-  - [ ] **8.6** Paywall middleware
-  - [ ] **8.7** Billing settings UI + Paywall component
-  - [ ] **8.8** Compliance copy review
-  - [ ] **8.9** Webhook + mirror + gating tests
-- [ ] **10.0** The Map — final public version + sector deep-dive interactives
-  - [ ] **10.1** Extract shared `components/Map/*`
-  - [ ] **10.2** `SensitivityMatrix` interactive
-  - [ ] **10.3** `EventHistoryStrip` from track record
-  - [ ] **10.4** Public + app routes wired
-  - [ ] **10.5** A11y pass
-  - [ ] **10.6** Language audit
-  - [ ] **10.7** Keyboard nav + binding tests
+- [ ] **4.0** NewsAPI factor keyword scheduler
+- [ ] **6.0** Market facts freshness + fallback chain
+- [ ] **9.0** Confidence explainability UI
+- [ ] **13.0** Targeted section regen
+- [ ] **17.0** Fog of War + signal measurement test gate
+- [ ] **25.0** The Map — final version + sector deep-dive interactives
 
 ### Tasks by developer — Riley
 
-- [ ] **2.0** Human-in-loop review tooling for NLP proposals
-  - [ ] **2.1** Audit log migration
-  - [ ] **2.2** Proposal list + approve + reject APIs
-  - [ ] **2.3** Approve upsert + provenance preserve
-  - [ ] **2.4** Bulk-approve gating
-  - [ ] **2.5** Internal review UI
-  - [ ] **2.6** Admin allow-list gate
-  - [ ] **2.7** Approve + bulk-gate + audit tests
-- [ ] **4.0** SEBI compliance audit + mandatory legal-review tracker
-  - [ ] **4.1** Draft tracker
-  - [ ] **4.2** Lawyer review session(s)
-  - [ ] **4.3** Capture notes + responses
-  - [ ] **4.4** Compliance PRs for required changes
-  - [ ] **4.5** `/about-this-analysis` page
-  - [ ] **4.6** Tester briefing IP + timestamp + PDF
-  - [ ] **4.7** Briefing capture + about-link tests
-- [ ] **5.0** Productisation assessment + RA registration research dossier
-  - [ ] **5.1** SEBI RA prerequisite research
-  - [ ] **5.2** Compliance gap analysis
-  - [ ] **5.3** Three pricing models
-  - [ ] **5.4** Scalability headline from P3-S5
-  - [ ] **5.5** Go / wait / no-go recommendation
-  - [ ] **5.6** External-practitioner dissent capture
-- [ ] **9.0** Phase 3 launch-readiness gate + go/no-go checklist
-  - [ ] **9.1** Draft checklist with owners + evidence slots
-  - [ ] **9.2** Walk each item to closure
-  - [ ] **9.3** Run go/no-go review + log decision
-  - [ ] **9.4** PR template `phase3-gate: green` requirement
+- [ ] **2.0** Synthetic isolation verification gate
+- [ ] **5.0** Slow-burn watchlist
+- [ ] **10.0** Confidence scoring verification gate
+- [ ] **11.0** Number validator hard publish gate
+- [ ] **12.0** Editorial checklist — 4 automated + 1 manual
+- [ ] **16.0** Signal override log + FP measurement
+- [ ] **19.0** Human-in-loop review tooling for NLP proposals
+- [ ] **21.0** SEBI compliance audit + mandatory legal-review tracker
+- [ ] **22.0** Productisation assessment + RA registration research dossier
+- [ ] **24.0** Phase 3 launch-readiness gate + go/no-go checklist
+
+---
+
+_Plan version: PRD2 merged · PO decisions 25 May 2026 · Parent tasks 1.0–25.0 global numbering_

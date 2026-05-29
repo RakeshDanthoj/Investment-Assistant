@@ -21,6 +21,8 @@ MIGRATION_FILES = (
     "0018_map_modules.sql",
     "0019_saved_threads.sql",
     "0020_rate_limit_observability.sql",
+    "0021_synthetic_isolation.sql",
+    "0022_feed_card_perf.sql",
 )
 
 _SCHEMA_MIGRATIONS_DDL = """

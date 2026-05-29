@@ -5,6 +5,7 @@ from __future__ import annotations
 import time
 from collections.abc import Generator
 from contextlib import contextmanager
+import os
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 from psycopg import Connection
@@ -66,6 +67,18 @@ def _require_db_url(url: str) -> str:
         raise RuntimeError("SUPABASE_DB_URL is not configured")
     if not normalized.startswith(("postgresql://", "postgres://")):
         raise RuntimeError(_DB_URL_HINT)
+
+    parsed = urlparse(normalized)
+    host = (parsed.hostname or "").lower()
+    # On Render (IPv4 egress), direct db.<ref>.supabase.co often fails or is slow.
+    # Prefer the Supabase Session pooler URI (…pooler.supabase.com:5432/postgres).
+    if (
+        os.environ.get("RENDER") or os.environ.get("RENDER_SERVICE_ID")
+    ) and host.endswith(".supabase.co") and "pooler.supabase.com" not in host:
+        raise RuntimeError(
+            "SUPABASE_DB_URL must use the Supabase Session pooler URI on Render "
+            "(…pooler.supabase.com:5432/postgres)."
+        )
     return normalized
 
 

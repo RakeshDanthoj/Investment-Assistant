@@ -10,16 +10,19 @@ from uuid import UUID
 from psycopg.rows import dict_row
 
 from app.db.connection import connection
+from app.db.queries.base import SyntheticFilterMixin
 from app.models.enums import LifecycleState, SignalState
 
 
 def fetch_event_row(event_id: UUID) -> dict[str, Any] | None:
-    stmt = """
+    synth = SyntheticFilterMixin.events_not_synthetic("events")
+    stmt = f"""
     SELECT
       id, title, category, source_url, canonical_url, event_source,
       confidence_score, lifecycle_state, prompt_version, created_at
     FROM public.events
     WHERE id = %s
+      AND {synth}
     LIMIT 1
     """
     with connection() as conn, conn.cursor(row_factory=dict_row) as cur:
@@ -118,7 +121,7 @@ def insert_draft_card_bundle(
 
 
 def fetch_card_detail_for_review(card_id: UUID) -> dict[str, Any] | None:
-    stmt = """
+    stmt = f"""
     SELECT
       c.id AS card_id,
       c.event_id,
@@ -139,6 +142,7 @@ def fetch_card_detail_for_review(card_id: UUID) -> dict[str, Any] | None:
     FROM public.cards c
     INNER JOIN public.events e ON e.id = c.event_id
     WHERE c.id = %s
+      AND {SyntheticFilterMixin.events_not_synthetic("e")}
     LIMIT 1
     """
     with connection() as conn, conn.cursor(row_factory=dict_row) as cur:
@@ -181,10 +185,12 @@ def fetch_signals_for_card(card_id: UUID) -> list[dict[str, Any]]:
 
 def fetch_track_record_initial_publish(card_id: UUID) -> dict[str, Any] | None:
     """First immutable Day-1 snapshot written at publish (P1-S10 Original View)."""
-    stmt = """
+    synth = SyntheticFilterMixin.track_record_not_synthetic("track_record")
+    stmt = f"""
     SELECT payload
     FROM public.track_record
     WHERE card_id = %s AND payload->>'kind' = 'initial_publish'
+      AND {synth}
     ORDER BY logged_at ASC
     LIMIT 1
     """
@@ -219,8 +225,8 @@ class CardDetailBundle:
 
 
 def fetch_card_detail_bundle(card_id: UUID) -> CardDetailBundle | None:
-    """Fetch card detail, signals, instruments, and bias flags in one connection."""
-    detail_stmt = """
+    """Fetch card detail, signals, instruments, and bias flags in one query (P2.5-S2)."""
+    stmt = f"""
     SELECT
       c.id AS card_id,
       c.event_id,
@@ -237,46 +243,72 @@ def fetch_card_detail_bundle(card_id: UUID) -> CardDetailBundle | None:
       e.category::text AS event_category,
       e.confidence_score AS event_confidence_score,
       e.lifecycle_state::text AS event_lifecycle_state,
-      e.canonical_url AS event_canonical_url
+      e.canonical_url AS event_canonical_url,
+      COALESCE(
+        (
+          SELECT jsonb_agg(
+            jsonb_build_object(
+              'signal_text', s.signal_text,
+              'state', s.state::text
+            )
+            ORDER BY s.created_at ASC
+          )
+          FROM public.signals s
+          WHERE s.card_id = c.id
+        ),
+        '[]'::jsonb
+      ) AS signals,
+      COALESCE(
+        (
+          SELECT jsonb_agg(
+            jsonb_build_object(
+              'instrument_id', ia.instrument_id,
+              'signal_type', ia.signal_type,
+              'reasoning', ia.reasoning,
+              'entry_conditions', ia.entry_conditions,
+              'exit_conditions', ia.exit_conditions
+            )
+            ORDER BY ia.created_at ASC
+          )
+          FROM public.instrument_assessments ia
+          WHERE ia.card_id = c.id
+        ),
+        '[]'::jsonb
+      ) AS instruments,
+      COALESCE(
+        (
+          SELECT jsonb_agg(
+            jsonb_build_object(
+              'bias_type', bf.bias_type,
+              'severity', bf.severity,
+              'description', bf.description,
+              'detected_at', bf.detected_at
+            )
+            ORDER BY bf.bias_type
+          )
+          FROM public.card_bias_flags bf
+          WHERE bf.card_id = c.id
+        ),
+        '[]'::jsonb
+      ) AS bias_flags
     FROM public.cards c
     INNER JOIN public.events e ON e.id = c.event_id
     WHERE c.id = %s
+      AND {SyntheticFilterMixin.events_not_synthetic("e")}
     LIMIT 1
-    """
-    signals_stmt = """
-    SELECT signal_text, state::text AS state
-    FROM public.signals
-    WHERE card_id = %s
-    ORDER BY created_at ASC
-    """
-    instruments_stmt = """
-    SELECT instrument_id, signal_type, reasoning, entry_conditions, exit_conditions
-    FROM public.instrument_assessments
-    WHERE card_id = %s
-    ORDER BY created_at ASC
-    """
-    bias_stmt = """
-    SELECT bias_type, severity, description, detected_at
-    FROM public.card_bias_flags
-    WHERE card_id = %s
-    ORDER BY bias_type
     """
     card_key = str(card_id)
     with connection() as conn, conn.cursor(row_factory=dict_row) as cur:
-        cur.execute(detail_stmt, (card_key,))
-        detail_row = cur.fetchone()
-        if not detail_row:
-            return None
-        detail = dict(detail_row)
+        cur.execute(stmt, (card_key,))
+        row = cur.fetchone()
 
-        cur.execute(signals_stmt, (card_key,))
-        signals = [dict(r) for r in cur.fetchall()]
+    if not row:
+        return None
 
-        cur.execute(instruments_stmt, (card_key,))
-        instruments = [dict(r) for r in cur.fetchall()]
-
-        cur.execute(bias_stmt, (card_key,))
-        bias_flags = [dict(r) for r in cur.fetchall()]
+    detail = {k: row[k] for k in row.keys() if k not in {"signals", "instruments", "bias_flags"}}
+    signals = list(row.get("signals") or [])
+    instruments = list(row.get("instruments") or [])
+    bias_flags = list(row.get("bias_flags") or [])
 
     return CardDetailBundle(
         detail=detail,

@@ -77,7 +77,7 @@ Desktop samples (same week): Pulse 98, Mirror 94, Thread 92 — generally within
 
 ## Phase 2.5 exit criteria (Phase 3 prerequisite)
 
-- [ ] **Map**: `/map/{slug}` returns **200** when signed in; `GET /api/map/sectors` returns **401** without auth (not 404).
+- [ ] **Map**: `/map/{slug}` returns **200** when signed in; `GET /api/map/sectors` returns **401** without auth (not 404). _(Frontend slug **200**; API **404** until Render redeploy — P2.5-S1 post-impl.)_
 - [ ] **API**: Feed + card warm **p95 &lt;800 ms** on production path(s) **or** PO waiver documented with query-ms evidence.
 - [ ] **Lighthouse CI**: Mobile + desktop jobs **pass** for `pulse,thread,mirror,lens,map,map-sector` (2 attempts per URL on CI).
 - [ ] **Standards**: Phase 2 routes satisfy `cross-phase-performance-standards.md` checklist (audit in **P2.5-S5**).
@@ -105,20 +105,20 @@ Desktop samples (same week): Pulse 98, Mirror 94, Thread 92 — generally within
 
 **Acceptance criteria**
 
-- [ ] Latest frontend deployed to Vercel (includes `frontend/app/(app)/map/[slug]/page.tsx`).
+- [x] Latest frontend deployed to Vercel (includes `frontend/app/(app)/map/[slug]/page.tsx`).
 - [ ] Latest backend deployed to Render (`backend/app/api/map.py` registered).
-- [ ] Production migrations applied: `0018_map_modules.sql` + sector/map seeds.
+- [x] Production migrations applied: `0018_map_modules.sql` + sector/map seeds.
 - [ ] Unauthenticated API: **401** on `/api/map/sectors` (proves route exists).
 - [ ] Authenticated: sector list + `/map/it` (or `energy`) **200**.
-- [ ] CI: add `map-sector` to `LIGHTHOUSE_PAGES` in `.github/workflows/ci.yml`.
+- [x] CI: add `map-sector` to `LIGHTHOUSE_PAGES` in `.github/workflows/ci.yml`.
 
 #### Tasks
 
-- [ ] **1.1** Merge Phase 2 Map branch to `main`; trigger Vercel + Render deploys.
-- [ ] **1.2** Run `python scripts/apply_migrations.py` against production `SUPABASE_DB_URL`.
-- [ ] **1.3** Smoke: signed-in browser `/map` → tile → `/map/{slug}`.
-- [ ] **1.4** Smoke: `curl` map API with Bearer token vs without.
-- [ ] **1.5** Enable `map-sector` in Lighthouse CI env.
+- [ ] **1.1** Merge Phase 2 Map branch to `main`; trigger Vercel + Render deploys. _(Vercel sector route live; Render API redeploy pending — see post-impl doc.)_
+- [x] **1.2** Run `python scripts/apply_migrations.py` against production `SUPABASE_DB_URL`.
+- [ ] **1.3** Smoke: signed-in browser `/map` → tile → `/map/{slug}`. _(Frontend URLs 200; full signed-in flow after API deploy.)_
+- [ ] **1.4** Smoke: `curl` map API with Bearer token vs without. _(Script: `node scripts/map_production_smoke.mjs`; unauth **404** until Render redeploy.)_
+- [x] **1.5** Enable `map-sector` in Lighthouse CI env.
 
 ---
 
@@ -142,10 +142,17 @@ Desktop samples (same week): Pulse 98, Mirror 94, Thread 92 — generally within
 #### Tasks
 
 - [ ] **2.1** `EXPLAIN ANALYZE` on feed + card detail queries; document slow nodes.
-- [ ] **2.2** Indexes / N+1 removal / trim first-paint payload.
-- [ ] **2.3** Confirm Render `SUPABASE_DB_URL` uses **session pooler** URI.
+- [x] **2.2** Indexes / N+1 removal / trim first-paint payload.
+- [x] **2.3** Confirm Render `SUPABASE_DB_URL` uses **session pooler** URI.
 - [ ] **2.4** Verify `Cache-Control: private, max-age=60` on published feed + card (PC-3.4).
 - [ ] **2.5** Re-run bench; if still &gt;800 ms after one focused pass → PO waiver memo (query vs proxy).
+
+**Local bench snapshot (2026-05-29; production URLs, pre-deploy of new SQL indexes):**
+
+| Endpoint | Direct Render wall p95 | Vercel proxy wall p95 | Direct `db_query_ms` p95 | Target |
+|----------|------------------------|------------------------|--------------------------|--------|
+| `/api/feed` | 2430.7 ms | 1947.8 ms | 1645.9 ms | &lt;800 ms |
+| `/api/cards/{id}` | 2729.9 ms | 2146.4 ms | 2115.8 ms | &lt;800 ms |
 
 ---
 

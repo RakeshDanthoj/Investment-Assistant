@@ -13,6 +13,7 @@ from psycopg.rows import dict_row
 
 from app.core.settings import get_settings
 from app.db.connection import connection
+from app.db.queries.base import SyntheticFilterMixin
 from app.services.feed_ranker import rerank
 
 # Major events: editor/model confidence on the parent event row.
@@ -28,6 +29,11 @@ VISIBLE_CARD_STATES: tuple[str, ...] = (
 )
 
 FOG_LIFECYCLE: frozenset[str] = frozenset({"active", "signal_triggered"})
+
+# First-paint feed cap (was 100); aligns with Pulse UI and reduces row/payload cost.
+FEED_ROW_LIMIT = 60
+# SQL pre-truncates insight text; build_card_payload trims to 320 chars for API.
+FEED_INSIGHT_SQL_CHARS = 400
 
 _HORIZON_DAYS: dict[str, int | None] = {
     "under_1y": 365,
@@ -100,19 +106,33 @@ def fetch_session_profile(session_id: UUID | None) -> SessionProfileRow | None:
 
 
 def _fetch_fog_of_war_conn(conn: Connection) -> bool:
-    stmt = """
-    SELECT c.lifecycle_state::text AS lifecycle_state, e.category::text AS category
-    FROM public.cards c
-    INNER JOIN public.events e ON e.id = c.event_id
-    WHERE c.lifecycle_state::text = ANY(%s::text[])
-      AND e.confidence_score >= %s
+    """Aggregate in SQL instead of fetching every major active row (P2.5-S2)."""
+    synth = SyntheticFilterMixin.events_not_synthetic("e")
+    stmt = f"""
+    WITH relevant AS (
+      SELECT e.category::text AS category
+      FROM public.cards c
+      INNER JOIN public.events e ON e.id = c.event_id
+      WHERE c.lifecycle_state::text = ANY(%s::text[])
+        AND e.confidence_score >= %s
+        AND {synth}
+    )
+    SELECT
+      (SELECT COUNT(*)::int FROM relevant) >= 3
+      AND COALESCE(
+        (SELECT MAX(n) FROM (
+          SELECT COUNT(*)::int AS n FROM relevant GROUP BY category
+        ) counts),
+        0
+      ) >= 2 AS fog_of_war
     """
     states = list(FOG_LIFECYCLE)
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute(stmt, (states, MAJOR_EVENT_MIN_CONFIDENCE))
-        rows = cur.fetchall()
-    tuples = [(str(r["lifecycle_state"]), str(r["category"])) for r in rows]
-    return detect_fog_of_war(major_active_cards=tuples)
+        row = cur.fetchone()
+    if not row:
+        return False
+    return bool(row["fog_of_war"])
 
 
 def fetch_fog_of_war_flag() -> bool:
@@ -163,11 +183,15 @@ def _fetch_pulse_rows_conn(
     eff_horizon = horizon_override or (profile.horizon if profile else None)
     cutoff = horizon_cutoff(eff_horizon) if eff_horizon else None
 
-    base_sql = """
+    synth = SyntheticFilterMixin.events_not_synthetic("e")
+    base_sql = f"""
     SELECT
       c.id::text AS id,
       c.title AS headline,
-      c.insight_layer AS insight_layer,
+      LEFT(
+        regexp_replace(c.insight_layer, E'[\\n\\r]+', ' ', 'g'),
+        {FEED_INSIGHT_SQL_CHARS}
+      ) AS insight_layer,
       c.lifecycle_state::text AS lifecycle_state,
       c.created_at,
       c.updated_at,
@@ -178,6 +202,7 @@ def _fetch_pulse_rows_conn(
     FROM public.cards c
     INNER JOIN public.events e ON e.id = c.event_id
     WHERE c.lifecycle_state::text = ANY(%s::text[])
+      AND {synth}
     """
     params: list[Any] = [list(VISIBLE_CARD_STATES)]
 
@@ -189,7 +214,7 @@ def _fetch_pulse_rows_conn(
         base_sql += " AND e.category = ANY(%s::text[])"
         params.append(categories)
 
-    base_sql += " ORDER BY c.created_at DESC LIMIT 100"
+    base_sql += f" ORDER BY c.created_at DESC LIMIT {FEED_ROW_LIMIT}"
 
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute(base_sql, params)
