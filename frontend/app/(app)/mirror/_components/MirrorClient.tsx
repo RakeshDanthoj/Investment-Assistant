@@ -80,6 +80,7 @@ export default function MirrorClient({
   const [loadState, setLoadState] = useState<LoadState>(() =>
     hydratedFromServer ? "ready" : "loading",
   );
+  const [requiresSignIn, setRequiresSignIn] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [stats, setStats] = useState<MirrorStatsResponse | null>(
     () => initialPayload?.stats ?? null,
@@ -182,6 +183,7 @@ export default function MirrorClient({
   const loadData = useCallback(async () => {
     setLoadState("loading");
     setErrorMessage(null);
+    setRequiresSignIn(false);
 
     const supabase = createClient();
     const {
@@ -191,6 +193,7 @@ export default function MirrorClient({
     if (!session?.access_token) {
       accessTokenRef.current = null;
       setLoadState("error");
+      setRequiresSignIn(true);
       setErrorMessage("Sign in to view your prediction history.");
       return;
     }
@@ -201,40 +204,33 @@ export default function MirrorClient({
     const statusQuery = statusFilter ? `?status=${encodeURIComponent(statusFilter)}` : "";
 
     try {
-      const [statsRes, predictionsRes, streakRes, gapsRes] = await Promise.all([
-        fetch(`${base}/api/mirror/stats`, { headers, cache: "no-store" }),
-        fetch(`${base}/api/mirror/predictions${statusQuery}`, { headers, cache: "no-store" }),
-        fetch(`${base}/api/mirror/streak`, { headers, cache: "no-store" }),
-        fetch(`${base}/api/mirror/gaps`, { headers, cache: "no-store" }),
-        loadUnread(session.access_token),
-      ]);
-
-      if (!statsRes.ok || !predictionsRes.ok || !streakRes.ok || !gapsRes.ok) {
-        const failed = !statsRes.ok
-          ? statsRes
-          : !predictionsRes.ok
-            ? predictionsRes
-            : !streakRes.ok
-              ? streakRes
-              : gapsRes;
-        const text = await failed.text().catch(() => "");
-        throw new Error(text || `Request failed (${failed.status})`);
+      const dashboardRes = await fetch(`${base}/api/mirror/dashboard${statusQuery}`, {
+        headers,
+        cache: "no-store",
+      });
+      if (!dashboardRes.ok) {
+        const text = await dashboardRes.text().catch(() => "");
+        throw new Error(text || `Request failed (${dashboardRes.status})`);
       }
 
-      const statsJson = (await statsRes.json()) as MirrorStatsResponse;
-      const predictionsJson = (await predictionsRes.json()) as MirrorPredictionsResponse;
-      const streakJson = (await streakRes.json()) as MirrorStreakResponse;
-      const gapsJson = (await gapsRes.json()) as MirrorReasoningGapsResponse;
-      setStats(statsJson);
-      setPredictions(predictionsJson);
-      setStreak(streakJson);
-      setGaps(gapsJson);
+      const body = (await dashboardRes.json()) as {
+        stats: MirrorStatsResponse;
+        predictions: MirrorPredictionsResponse;
+        streak: MirrorStreakResponse;
+        gaps: MirrorReasoningGapsResponse;
+        unread_notifications: MirrorUnreadNotificationsResponse;
+      };
+      setStats(body.stats);
+      setPredictions(body.predictions);
+      setStreak(body.streak);
+      setGaps(body.gaps);
+      setUnreadNotifications(body.unread_notifications.items ?? []);
       setLoadState("ready");
     } catch (error) {
       setLoadState("error");
       setErrorMessage(describeFetchFailure(error, "load The Mirror"));
     }
-  }, [loadUnread, statusFilter]);
+  }, [statusFilter]);
 
   useEffect(() => {
     if (skipInitialLoadRef.current) {
@@ -249,11 +245,56 @@ export default function MirrorClient({
       })();
       return;
     }
-    if (!initialLoadDoneRef.current) {
+
+    const supabase = createClient();
+    let cancelled = false;
+
+    const finishWithoutSession = () => {
+      if (cancelled || initialLoadDoneRef.current) return;
+      initialLoadDoneRef.current = true;
+      setLoadState("error");
+      setRequiresSignIn(true);
+      setErrorMessage("Sign in to view your prediction history.");
+    };
+
+    const runLoad = () => {
+      if (cancelled || initialLoadDoneRef.current) return;
       void loadData().finally(() => {
         initialLoadDoneRef.current = true;
       });
-    }
+    };
+
+    void supabase.auth.getSession().then(({ data: { session } }) => {
+      if (cancelled) return;
+      if (session?.access_token) {
+        accessTokenRef.current = session.access_token;
+        runLoad();
+        return;
+      }
+
+      const {
+        data: { subscription },
+      } = supabase.auth.onAuthStateChange((event, nextSession) => {
+        if (cancelled || initialLoadDoneRef.current) return;
+        if (
+          nextSession?.access_token &&
+          (event === "INITIAL_SESSION" || event === "SIGNED_IN" || event === "TOKEN_REFRESHED")
+        ) {
+          accessTokenRef.current = nextSession.access_token;
+          subscription.unsubscribe();
+          runLoad();
+          return;
+        }
+        if (event === "INITIAL_SESSION" && !nextSession) {
+          subscription.unsubscribe();
+          finishWithoutSession();
+        }
+      });
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [loadData]);
 
   useEffect(() => {
@@ -356,9 +397,15 @@ export default function MirrorClient({
           {loadState === "error" ? (
             <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-6 text-center">
               <p className="text-sm text-destructive">{errorMessage}</p>
-              <Button type="button" variant="outline" className="mt-4" onClick={() => void loadData()}>
-                Try again
-              </Button>
+              {requiresSignIn ? (
+                <Button asChild className="mt-4">
+                  <Link href="/sign-in?next=/mirror">Sign in</Link>
+                </Button>
+              ) : (
+                <Button type="button" variant="outline" className="mt-4" onClick={() => void loadData()}>
+                  Try again
+                </Button>
+              )}
             </div>
           ) : null}
 

@@ -2,6 +2,7 @@ import { fetchMirrorInitialData } from "@/lib/api/mirrorServer";
 import { createClient } from "@/lib/supabase/server";
 
 import MirrorClient from "./_components/MirrorClient";
+import { MirrorSignInRequired } from "./_components/MirrorSignInRequired";
 
 type MirrorContentSectionProps = {
   statusFilter: string | null;
@@ -15,12 +16,14 @@ export async function MirrorContentSection({ statusFilter }: MirrorContentSectio
     data: { session },
   } = await supabase.auth.getSession();
 
-  if (session?.access_token) {
-    try {
-      initialPayload = await fetchMirrorInitialData(session.access_token, statusFilter);
-    } catch {
-      initialPayload = null;
-    }
+  if (!session?.access_token) {
+    return <MirrorSignInRequired statusFilter={statusFilter} />;
+  }
+
+  try {
+    initialPayload = await fetchMirrorInitialData(session.access_token, statusFilter);
+  } catch {
+    initialPayload = null;
   }
 
   return (

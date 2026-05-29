@@ -12,8 +12,8 @@ export default async function AppLayout({
     data: { user },
   } = await supabase.auth.getUser();
 
-  const userName = user ? displayNameFromUser(user) : "Developer";
-  const userEmail = user?.email ?? "dev@local";
+  const userName = user ? displayNameFromUser(user) : "Guest";
+  const userEmail = user?.email ?? "Not signed in";
 
   return (
     <AppShell userName={userName} userEmail={userEmail}>
