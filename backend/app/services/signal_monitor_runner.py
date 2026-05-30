@@ -248,9 +248,11 @@ def run_signal_monitor(
       s.card_id,
       s.signal_text,
       c.title AS card_title,
-      c.lifecycle_state::text AS lifecycle_state
+      c.lifecycle_state::text AS lifecycle_state,
+      COALESCE(e.confidence_effective, e.confidence_raw, 0.0) AS confidence_effective
     FROM public.signals s
     INNER JOIN public.cards c ON c.id = s.card_id
+    INNER JOIN public.events e ON e.id = c.event_id
     WHERE s.state = %s
       AND c.lifecycle_state = ANY(%s)
     """
@@ -283,7 +285,8 @@ def run_signal_monitor(
         if eval_result.status == "none":
             continue
 
-        decision = route(eval_result)
+        confidence_effective = float(row.get("confidence_effective") or 0.0)
+        decision = route(confidence_effective)
 
         try:
             with connection() as conn, conn.cursor(row_factory=dict_row) as cur:

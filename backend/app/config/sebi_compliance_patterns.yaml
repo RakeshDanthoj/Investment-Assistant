@@ -1,0 +1,37 @@
+# Blocked SEBI-risk phrases for editorial checklist (P3-S1j / G-15).
+# Allowlist entries suppress a blocked match when the matched span falls inside
+# the allowlisted macro/policy phrase (see sebi_compliance_scan.py).
+
+blocked_patterns:
+  - id: buy_recommendation
+    pattern: '\bbuy\b'
+    description: Direct buy recommendation language
+  - id: sell_recommendation
+    pattern: '\bsell\b'
+    description: Direct sell recommendation language
+  - id: hold_recommendation
+    pattern: '\bhold\b'
+    description: Direct hold recommendation language
+  - id: rupee_price_target
+    pattern: '₹\s*\d+'
+    description: Rupee-denominated price target
+  - id: return_expectation
+    pattern: '\b(expected\s+return|target\s+return|return\s+target)\b'
+    description: Explicit return expectation language
+
+allowlist_patterns:
+  - id: repo_rate_hold
+    pattern: 'repo\s+rate\s+hold'
+    description: RBI repo rate hold (macro policy, not instrument advice)
+  - id: rate_hold
+    pattern: 'rate\s+hold'
+    description: Policy rate hold phrasing
+  - id: hold_rate
+    pattern: 'hold\s+rates?'
+    description: MPC hold-rates phrasing
+  - id: rates_hold
+    pattern: 'rates?\s+hold'
+    description: Rates hold steady phrasing
+  - id: hold_steady
+    pattern: 'hold\s+(?:rates?\s+)?steady'
+    description: Hold steady macro phrasing

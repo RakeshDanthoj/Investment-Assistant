@@ -10,7 +10,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { MarketFactsBanner } from "@/components/market-facts/MarketFactsBanner";
 import { getApiBaseUrl } from "@/lib/api";
+import { useMarketFacts } from "@/lib/marketFacts/useMarketFacts";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 
 type QueueEventRow = {
@@ -80,6 +82,11 @@ function EditorialQueueInner() {
   const [rows, setRows] = useState<QueueEventRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const {
+    status: factsStatus,
+    data: factsData,
+    errorMessage: factsError,
+  } = useMarketFacts();
 
   const [category, setCategory] = useState<string>("__all_cat__");
   const [source, setSource] = useState<string>(SOURCES_ALL);
@@ -120,6 +127,12 @@ function EditorialQueueInner() {
           combine with the FastAPI catalogue view (Phase&nbsp;1: no reviewer auth gate).
         </p>
       </header>
+
+      <MarketFactsBanner
+        data={factsData}
+        loading={factsStatus === "loading" || factsStatus === "idle"}
+        errorMessage={factsError}
+      />
 
       <section aria-label="Categories">
         <ToggleGroup

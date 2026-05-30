@@ -3,7 +3,14 @@ from uuid import UUID
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field
 
+from app.api.admin_review import (
+    RegenerateFullBody,
+    RegenerateSectionBody,
+    post_regenerate_full,
+    post_regenerate_section,
+)
 from app.services.card_pipeline import (
+    CriticalFactsHoldError,
     DissentQualityError,
     FrameworkQualityError,
     draft_card_from_event,
@@ -41,6 +48,15 @@ def post_draft_from_event(body: DraftFromEventRequest) -> DraftFromEventResponse
             status_code=status.HTTP_404_NOT_FOUND,
             detail={"code": "event_not_found", "message": str(exc)},
         ) from exc
+    except CriticalFactsHoldError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_423_LOCKED,
+            detail={
+                "code": "critical_facts_held",
+                "message": str(exc),
+                "unavailable_critical_facts": list(exc.unavailable_fact_ids),
+            },
+        ) from exc
     except (DissentQualityError, FrameworkQualityError, ValueError, RuntimeError) as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -48,3 +64,13 @@ def post_draft_from_event(body: DraftFromEventRequest) -> DraftFromEventResponse
         ) from exc
 
     return DraftFromEventResponse(card_id=card_id)
+
+
+@router.post("/{card_id}/regenerate-section")
+def post_card_regenerate_section(card_id: UUID, body: RegenerateSectionBody) -> dict:
+    return post_regenerate_section(card_id, body)
+
+
+@router.post("/{card_id}/regenerate-full")
+def post_card_regenerate_full(card_id: UUID, body: RegenerateFullBody) -> dict:
+    return post_regenerate_full(card_id, body)

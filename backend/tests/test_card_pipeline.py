@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import patch
 from uuid import uuid4
@@ -79,11 +80,28 @@ class _SeqLlm:
 @patch("app.services.card_pipeline.insert_draft_card_bundle", return_value=CARD_ID)
 @patch("app.services.card_pipeline.consume_slot_or_raise")
 @patch("app.services.card_pipeline.check_monthly_budget_or_raise")
+@patch("app.services.card_pipeline.assert_critical_facts_available")
 @patch("app.services.card_pipeline.fetch_matrix_rows")
 @patch("app.services.card_pipeline.fetch_event_row")
 def test_draft_card_pipeline_mocked_llm(
-    mock_event, mock_matrix, mock_budget, mock_consume, mock_insert
+    mock_event, mock_matrix, mock_gate, mock_budget, mock_consume, mock_insert
 ):
+    from app.services.market_facts_adapters import CriticalFactsGateResult, MarketQuoteFact
+
+    mock_gate.return_value = CriticalFactsGateResult(
+        facts=(
+            MarketQuoteFact(
+                fact_id="inr_usd",
+                label="INR/USD",
+                display_value="84.00",
+                observed_at=datetime.now(tz=UTC),
+                source="yfinance",
+                freshness_status="fresh",
+            ),
+        ),
+        unavailable_critical=(),
+        has_stale_critical=False,
+    )
     mock_event.return_value = {
         "id": str(EVENT_ID),
         "title": "RBI guidance tweak",

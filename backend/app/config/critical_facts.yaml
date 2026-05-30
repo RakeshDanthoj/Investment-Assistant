@@ -1,0 +1,36 @@
+# Critical market facts for card pipeline gate (G-06 / P3-S1f).
+# Staleness thresholds apply per fact row after the fallback chain resolves.
+staleness:
+  fresh_max_hours: 24
+  stale_max_hours: 72
+
+facts:
+  inr_usd:
+    label: "INR/USD"
+    critical: true
+    chain: [yfinance, open_exchange_rates, rbi_ref]
+    yfinance_symbol: "USDINR=X"
+
+  repo_rate:
+    label: "Repo rate"
+    critical: true
+    chain: [rbi_events, config_fallback]
+    config_fallback_value: "6.50%"
+    config_fallback_observed_hours_ago: 720
+
+  nifty_50:
+    label: "Nifty 50"
+    critical: true
+    chain: [yfinance, nse_index]
+    yfinance_symbol: "^NSEI"
+
+  india_vix:
+    label: "India VIX"
+    critical: true
+    chain: [yfinance, nse_index]
+    yfinance_symbol: "^INDIAVIX"
+
+  fii_net:
+    label: "FII net"
+    critical: true
+    chain: [nse_fii_csv, cdsl_portal]

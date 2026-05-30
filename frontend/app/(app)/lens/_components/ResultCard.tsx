@@ -262,6 +262,7 @@ export function ResultCard({
               modelled={data.confidence_composition.modelled}
               judged={data.confidence_composition.judged}
               footnote={LENS_CONFIDENCE_NOTE}
+              eventId={data.event_id}
             />
             <BiasFlags audit={data.bias_audit} />
             <LensLimitations />

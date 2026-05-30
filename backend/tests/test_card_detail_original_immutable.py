@@ -6,7 +6,10 @@ import pytest
 
 from app.db.migrate import apply_migrations
 from app.services.card_detail import build_card_detail
+from app.services.editorial_checklist import DISSENT_MIN_CHARS
 from app.services.publish_card import publish_draft_card
+
+_LONG_DISSENT = "x" * (DISSENT_MIN_CHARS + 1)
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -42,16 +45,16 @@ def test_original_view_keeps_day_one_copy_while_current_mutates(db_connection):
                   %s, %s, 'Day one title', 'Insight [MEASURED] v1',
                   '1. Step one [MEASURED]',
                   '{"markdown":"MD [MODELLED]","sources":[]}'::jsonb,
-                  'Dissent body [JUDGED]',
+                  %s,
                   'Framework text',
                   'pytest', 'draft'
                 )
                 """,
-                (str(card_id), str(event_id)),
+                (str(card_id), str(event_id), _LONG_DISSENT),
             )
         db_connection.commit()
 
-        publish_draft_card(card_id)
+        publish_draft_card(card_id, plain_english_confirmed=True)
 
         current_before = build_card_detail(card_id, view="current")
         original_before = build_card_detail(card_id, view="original")

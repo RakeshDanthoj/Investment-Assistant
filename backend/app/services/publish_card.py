@@ -16,6 +16,8 @@ from app.services.card_repository import (
     fetch_instrument_assessments_for_card,
     fetch_signals_for_card,
 )
+from app.services.editorial_checklist import assert_automated_pass
+from app.services.number_validator import NumberValidationFailedError, check_card
 
 
 class PublishCardError(ValueError):
@@ -26,12 +28,22 @@ def publish_draft_card(
     card_id: UUID,
     *,
     editor_review_seconds: int | None = None,
+    plain_english_confirmed: bool = False,
 ) -> dict[str, Any]:
     detail = fetch_card_detail_for_review(card_id)
     if detail is None:
         raise LookupError(f"card not found: {card_id}")
     if str(detail["lifecycle_state"]) != LifecycleState.DRAFT.value:
         raise PublishCardError("only draft cards can be published")
+
+    validation = check_card(detail)
+    if validation.status != "PASS":
+        raise NumberValidationFailedError(validation)
+
+    assert_automated_pass(detail)
+
+    if not plain_english_confirmed:
+        raise PublishCardError("plain English checklist confirmation required")
 
     seconds = editor_review_seconds
     if seconds is not None and seconds < 0:

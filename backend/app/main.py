@@ -14,12 +14,14 @@ from app.api.cards import router as cards_router
 from app.api.cards_detail import router as cards_detail_router
 from app.api.editor_watchlist import router as editor_watchlist_router
 from app.api.email_preferences import router as email_preferences_router
+from app.api.events import router as events_router
 from app.api.factor_db import router as factor_db_router
 from app.api.feed import router as feed_router
 from app.api.instruments import router as instruments_router
 from app.api.lens import router as lens_router
 from app.api.lens_stream import router as lens_stream_router
 from app.api.map import router as map_router
+from app.api.market_facts import router as market_facts_router
 from app.api.mirror import router as mirror_router
 from app.api.mirror_gaps import router as mirror_gaps_router
 from app.api.mirror_streak import router as mirror_streak_router
@@ -99,7 +101,9 @@ app.include_router(admin_metrics_router, prefix="/api/admin")
 app.include_router(editor_watchlist_router, prefix="/api")
 app.include_router(factor_db_router, prefix="/api", tags=["factor-db"])
 app.include_router(feed_router, prefix="/api", tags=["feed"])
+app.include_router(market_facts_router, prefix="/api")
 app.include_router(instruments_router, prefix="/api", tags=["instruments"])
+app.include_router(events_router, prefix="/api", tags=["events"])
 app.include_router(cards_router, prefix="/api/cards", tags=["cards"])
 app.include_router(notifications_router, prefix="/api", tags=["notifications"])
 app.include_router(cards_detail_router, prefix="/api/cards", tags=["cards"])

@@ -133,6 +133,9 @@ def fetch_card_detail_for_review(card_id: UUID) -> dict[str, Any] | None:
       c.framework_behind_this,
       c.prompt_version,
       c.lifecycle_state,
+      c.regen_history,
+      c.full_regen_count,
+      c.po_regen_flag_cleared,
       c.created_at AS card_created_at,
       e.title AS event_title,
       e.category::text AS event_category,
@@ -149,6 +152,165 @@ def fetch_card_detail_for_review(card_id: UUID) -> dict[str, Any] | None:
         cur.execute(stmt, (str(card_id),))
         row = cur.fetchone()
     return dict(row) if row else None
+
+
+_SECTION_COLUMN: dict[str, str] = {
+    "insight": "insight_layer",
+    "context": "context_layer",
+    "dissent": "dissenting_view",
+    "framework": "framework_behind_this",
+}
+
+
+def update_card_after_section_regen(
+    card_id: UUID,
+    *,
+    section: str,
+    content: str | dict[str, Any],
+    regen_history_entry: dict[str, Any],
+    llm_input_tokens: int,
+    llm_output_tokens: int,
+    llm_cost_usd: float,
+) -> None:
+    if section == "evidence":
+        serialized = json.dumps(content) if isinstance(content, dict) else str(content)
+        column_sql = "evidence_layer = %s::jsonb"
+        value = serialized
+    else:
+        column = _SECTION_COLUMN.get(section)
+        if column is None:
+            raise ValueError(f"unsupported regen section: {section}")
+        column_sql = f"{column} = %s"
+        value = str(content)
+
+    stmt = f"""
+    UPDATE public.cards
+    SET
+      {column_sql},
+      regen_history = COALESCE(regen_history, '[]'::jsonb) || %s::jsonb,
+      llm_input_tokens = llm_input_tokens + %s,
+      llm_output_tokens = llm_output_tokens + %s,
+      llm_cost_usd = llm_cost_usd + %s,
+      updated_at = now()
+    WHERE id = %s AND lifecycle_state = %s
+    """
+    with connection() as conn, conn.cursor() as cur:
+        cur.execute(
+            stmt,
+            (
+                value,
+                json.dumps([regen_history_entry]),
+                llm_input_tokens,
+                llm_output_tokens,
+                llm_cost_usd,
+                str(card_id),
+                LifecycleState.DRAFT.value,
+            ),
+        )
+        if cur.rowcount != 1:
+            raise RuntimeError(f"section regen update expected one draft row, got {cur.rowcount}")
+
+
+def update_card_after_full_regen(
+    card_id: UUID,
+    *,
+    title: str,
+    insight_layer: str,
+    context_layer: str,
+    evidence_layer: dict[str, Any],
+    dissenting_view: str,
+    framework_behind_this: str,
+    prompt_version: str,
+    signals: list[dict[str, str]],
+    instrument_assessments: list[dict[str, Any]],
+    regen_history_entry: dict[str, Any],
+    llm_input_tokens: int,
+    llm_output_tokens: int,
+    llm_cost_usd: float,
+) -> int:
+    card_key = str(card_id)
+    with connection() as conn, conn.cursor(row_factory=dict_row) as cur:
+        with conn.transaction():
+            cur.execute(
+                """
+                UPDATE public.cards
+                SET
+                  title = %s,
+                  insight_layer = %s,
+                  context_layer = %s,
+                  evidence_layer = %s::jsonb,
+                  dissenting_view = %s,
+                  framework_behind_this = %s,
+                  prompt_version = %s,
+                  regen_history = COALESCE(regen_history, '[]'::jsonb) || %s::jsonb,
+                  full_regen_count = full_regen_count + 1,
+                  llm_input_tokens = llm_input_tokens + %s,
+                  llm_output_tokens = llm_output_tokens + %s,
+                  llm_cost_usd = llm_cost_usd + %s,
+                  updated_at = now()
+                WHERE id = %s AND lifecycle_state = %s
+                RETURNING full_regen_count
+                """,
+                (
+                    title[:7800],
+                    insight_layer,
+                    context_layer,
+                    json.dumps(evidence_layer),
+                    dissenting_view,
+                    framework_behind_this,
+                    prompt_version[:500],
+                    json.dumps([regen_history_entry]),
+                    llm_input_tokens,
+                    llm_output_tokens,
+                    llm_cost_usd,
+                    card_key,
+                    LifecycleState.DRAFT.value,
+                ),
+            )
+            row = cur.fetchone()
+            if not row:
+                raise RuntimeError("full regen update returned no row")
+
+            cur.execute("DELETE FROM public.signals WHERE card_id = %s", (card_key,))
+            for sig in signals:
+                st = (sig.get("signal_text") or "").strip()
+                if not st:
+                    continue
+                cur.execute(
+                    """
+                    INSERT INTO public.signals (card_id, signal_text, state)
+                    VALUES (%s, %s, %s)
+                    """,
+                    (card_key, st[:7800], SignalState.PENDING.value),
+                )
+
+            cur.execute(
+                "DELETE FROM public.instrument_assessments WHERE card_id = %s",
+                (card_key,),
+            )
+            for asm in instrument_assessments:
+                ticker = (asm.get("instrument_id") or "").strip().upper()
+                if not ticker:
+                    continue
+                cur.execute(
+                    """
+                    INSERT INTO public.instrument_assessments (
+                      card_id, version, instrument_id, signal_type, reasoning,
+                      entry_conditions, exit_conditions
+                    )
+                    VALUES (%s, 1, %s, %s, %s, %s, %s)
+                    """,
+                    (
+                        card_key,
+                        ticker[:32],
+                        (asm.get("signal_type") or "watch").strip().lower()[:32],
+                        (asm.get("reasoning") or "").strip() or None,
+                        list(asm.get("entry_conditions") or []),
+                        list(asm.get("exit_conditions") or []),
+                    ),
+                )
+
+    return int(row["full_regen_count"])
 
 
 def archive_card(card_id: UUID) -> None:

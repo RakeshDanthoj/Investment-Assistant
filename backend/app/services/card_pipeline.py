@@ -9,6 +9,7 @@ from typing import Any, Protocol
 from uuid import UUID
 
 from app.services.card_repository import fetch_event_row, insert_draft_card_bundle
+from app.services.confidence_scorer import apply_confidence_to_event
 from app.services.cost_guard import (
     check_monthly_budget_or_raise,
     consume_slot_or_raise,
@@ -25,6 +26,11 @@ from app.services.lens_pipeline_steps import (
     STEP_VALIDATE,
 )
 from app.services.llm_client import LlmClient, load_prompt_markdown, render_prompt
+from app.services.market_facts_adapters import (
+    CriticalFactsHoldError,
+    assert_critical_facts_available,
+    quote_facts_to_macro_lines,
+)
 from app.services.mmj_validator import validate_mmj_tags
 from app.services.number_validator import validate_numbers_in_evidence
 from app.services.pipeline_telemetry import record_pipeline_run
@@ -92,6 +98,7 @@ def _build_evidence_layer(
     event_row: dict[str, Any],
     *,
     on_milestone: MilestoneCallback | None = None,
+    macro_fact_lines: str | None = None,
 ) -> dict[str, Any]:
     matrix = fetch_matrix_rows(sector_slug="banking")
     _emit_milestone(on_milestone, STEP_FACTOR_DB)
@@ -111,6 +118,8 @@ def _build_evidence_layer(
         "INR/USD, VIX, index prints, or policy rates unless they appear explicitly in "
         "the event title/metadata or Factor DB lines above."
     )
+    if macro_fact_lines:
+        macro_stub = f"{macro_stub}\n\n{macro_fact_lines}"
     _emit_milestone(on_milestone, STEP_MACRO_SIGNALS)
     event_snapshot = {
         "title": event_row.get("title"),
@@ -210,11 +219,18 @@ def draft_card_from_event(
     if row is None:
         raise LookupError(f"event not found: {event_id}")
 
+    apply_confidence_to_event(event_id)
+
     started = time.perf_counter()
     usage_acc: dict[str, int] = {"input_tokens": 0, "output_tokens": 0}
     try:
         check_monthly_budget_or_raise()
-        evidence_layer = _build_evidence_layer(row, on_milestone=on_milestone)
+        facts_gate = assert_critical_facts_available()
+        evidence_layer = _build_evidence_layer(
+            row,
+            on_milestone=on_milestone,
+            macro_fact_lines=quote_facts_to_macro_lines(facts_gate.facts),
+        )
         model = llm or LlmClient()
 
         consume_slot_or_raise()
@@ -330,15 +346,23 @@ def draft_card_from_event(
         )
     except BaseException as exc:
         duration_ms = int((time.perf_counter() - started) * 1000)
+        held = isinstance(exc, CriticalFactsHoldError)
         record_pipeline_run(
             pipeline="card_draft",
             prompt_version=COMBINED_PROMPT_VERSION,
             input_tokens=int(usage_acc["input_tokens"]),
             output_tokens=int(usage_acc["output_tokens"]),
             duration_ms=duration_ms,
-            status="error",
+            status="held" if held else "error",
             error_message=str(exc),
-            context={"event_id": str(event_id)},
+            context={
+                "event_id": str(event_id),
+                **(
+                    {"unavailable_critical_facts": list(exc.unavailable_fact_ids)}
+                    if held
+                    else {}
+                ),
+            },
         )
         raise
 
@@ -357,6 +381,7 @@ def draft_card_from_event(
 
 __all__ = [
     "COMBINED_PROMPT_VERSION",
+    "CriticalFactsHoldError",
     "DissentQualityError",
     "FrameworkQualityError",
     "MilestoneCallback",

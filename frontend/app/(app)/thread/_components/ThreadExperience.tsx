@@ -49,6 +49,14 @@ const BiasFlags = dynamic(
   { loading: () => <AsideBlockSkeleton />, ssr: false },
 );
 
+const MarketFactsStrip = dynamic(
+  () =>
+    import("@/components/market-facts/MarketFactsStrip").then((m) => ({
+      default: m.MarketFactsStrip,
+    })),
+  { ssr: false },
+);
+
 function IceLayerSkeleton() {
   return (
     <div className="space-y-3" aria-hidden>
@@ -176,6 +184,7 @@ export default function ThreadExperience({
           </div>
           <CurrentOriginalToggle view={view} onChange={setView} />
         </div>
+        <MarketFactsStrip className="mt-2 border-0 bg-transparent px-0 py-0" compact />
       </header>
 
       <div className="grid w-full min-w-0 flex-1 grid-cols-1 gap-0 lg:grid-cols-[minmax(0,1fr)_340px]">
@@ -263,6 +272,7 @@ export default function ThreadExperience({
               measured={data.confidence_composition.measured}
               modelled={data.confidence_composition.modelled}
               judged={data.confidence_composition.judged}
+              eventId={data.event_id}
             />
             <BiasFlags audit={data.bias_audit} />
           </div>

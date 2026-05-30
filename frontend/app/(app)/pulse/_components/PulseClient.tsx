@@ -23,6 +23,14 @@ const InsightPanel = dynamic(
   { ssr: false },
 );
 
+const MarketFactsStrip = dynamic(
+  () =>
+    import("@/components/market-facts/MarketFactsStrip").then((m) => ({
+      default: m.MarketFactsStrip,
+    })),
+  { ssr: false },
+);
+
 function FeedSkeletonRow() {
   return (
     <div
@@ -104,6 +112,7 @@ export default function PulseClient({
         selectedCategories={selectedCategories}
         onCategoriesChange={onCategoriesChange}
       />
+      <MarketFactsStrip />
       {data?.fog_of_war ? <FogOfWarBanner /> : null}
 
       {status === "loading" && !data ? <FeedSkeleton /> : null}

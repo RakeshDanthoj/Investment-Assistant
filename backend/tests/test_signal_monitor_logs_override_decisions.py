@@ -55,12 +55,18 @@ def test_signal_monitor_routes_and_logs_gate(
                 """
                 INSERT INTO public.events (
                   id, title, category, confidence_score, lifecycle_state,
-                  canonical_url, event_source
+                  canonical_url, event_source, confidence_raw, confidence_effective
                 )
                 VALUES (%s, %s, 'macro'::event_category, 60, 'published',
-                  %s, 'pytest')
+                  %s, 'pytest', %s, %s)
                 """,
-                (str(event_id), "Signal monitor parent event", canon),
+                (
+                    str(event_id),
+                    "Signal monitor parent event",
+                    canon,
+                    {"high": 0.80, "medium": 0.60, "low": 0.40}[expect_tier],
+                    {"high": 0.80, "medium": 0.60, "low": 0.40}[expect_tier],
+                ),
             )
             cur.execute(
                 """

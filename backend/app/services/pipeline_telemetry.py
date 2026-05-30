@@ -63,6 +63,7 @@ def record_pipeline_run(
                     json.dumps(ctx),
                 ),
             )
+            conn.commit()
     except Exception as exc:  # noqa: BLE001 — telemetry must not break pipelines
         _LOG.warning(
             "pipeline_telemetry.persist_failed",

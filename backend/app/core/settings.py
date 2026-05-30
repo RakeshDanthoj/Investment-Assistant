@@ -84,6 +84,10 @@ class Settings(BaseSettings):
         default=300,
         validation_alias="SIGNAL_FACTS_MAX_TOTAL",
     )
+    open_exchange_rates_app_id: str = Field(
+        default="",
+        validation_alias="OPEN_EXCHANGE_RATES_APP_ID",
+    )
 
 
 @lru_cache

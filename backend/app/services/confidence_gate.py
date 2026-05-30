@@ -1,11 +1,11 @@
-"""High / Medium / Low confidence routing for signal hits (PRD §6.4, P1-S11)."""
+"""High / Medium / Low routing from rule-based confidence scores (P3-S1g / G-02)."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Literal
 
-from app.services.signal_check import SignalEvalResult
+from app.core.confidence_config import THRESHOLDS
 
 GateTier = Literal["high", "medium", "low"]
 
@@ -16,39 +16,17 @@ class GateDecision:
     reason: str
 
 
-def route(result: SignalEvalResult) -> GateDecision:
+def route(confidence_effective: float) -> GateDecision:
     """
-    * **high** — 3+ independent direct corroborations (within the evaluator's recency window).
-    * **medium** — 1–2 direct hits, or 1–2 partial-only hits.
-    * **low** — additional corroboration that does not meet editorial auto-queue bar.
+    Route editorial/signal actions from ``confidence_effective`` (0–1).
 
-    Call only when :func:`app.services.signal_check.evaluate` returned a non-``none`` status.
+    * **high** — effective ≥ 0.75
+    * **medium** — 0.55–0.74 (narrow band per PO G-02)
+    * **low** — < 0.55
     """
-    d = len(result.direct_source_ids)
-    p = len(result.partial_source_ids)
-
-    if d == 0 and p == 0:
-        raise ValueError("route() called with empty evaluation — check status != 'none' first")
-
-    if d >= 3:
-        return GateDecision(
-            "high",
-            f"three_plus_direct_sources:{d}",
-        )
-
-    if 1 <= d <= 2:
-        return GateDecision(
-            "medium",
-            f"one_to_two_direct_sources:{d}",
-        )
-
-    if d == 0 and 1 <= p <= 2:
-        return GateDecision(
-            "medium",
-            f"partial_match_only_sources:{p}",
-        )
-
-    return GateDecision(
-        "low",
-        f"weak_or_diffuse_corroboration_direct_{d}_partial_{p}",
-    )
+    score = float(confidence_effective)
+    if score >= THRESHOLDS["high"]:
+        return GateDecision("high", "score_gte_075")
+    if score >= THRESHOLDS["medium_low"]:
+        return GateDecision("medium", "score_055_074")
+    return GateDecision("low", "score_lt_055")

@@ -303,10 +303,10 @@ _Automate slow review loops, close PRD2 intelligence gaps, harden the platform, 
 
 **Acceptance criteria**
 
-- [ ] Freshness tristate: `fresh` | `stale` | `unavailable` per fact row.
-- [ ] Revised fallback chains (no investing.com scrape): yfinance → Open Exchange Rates → RBI ref (INR/USD); NSE CSV → CDSL → stale flag.
-- [ ] `critical_facts.yaml` (≤5 facts): if `unavailable`, card generation held in queue.
-- [ ] Pulse/Thread chips show freshness dot (existing pattern extended).
+- [x] Freshness tristate: `fresh` | `stale` | `unavailable` per fact row.
+- [x] Revised fallback chains (no investing.com scrape): yfinance → Open Exchange Rates → RBI ref (INR/USD); NSE CSV → CDSL → stale flag.
+- [x] `critical_facts.yaml` (≤5 facts): if `unavailable`, card generation held in queue.
+- [x] Pulse/Thread chips show freshness dot (existing pattern extended).
 
 #### Relevant files
 
@@ -320,13 +320,13 @@ _Automate slow review loops, close PRD2 intelligence gaps, harden the platform, 
 
 #### Tasks (checkboxes)
 
-- [ ] **6.0** Market facts freshness + fallback chain
-  - [ ] **6.1** `critical_facts.yaml` + adapter fallback order per PRD2 (no investing.com).
-  - [ ] **6.2** Tristate freshness on merged fact stream; staleness thresholds documented.
-  - [ ] **6.3** Card pipeline: hold queue when any critical fact is `unavailable`.
-  - [ ] **6.4** `FreshnessDot` on Pulse/Thread market fact chips.
-  - [ ] **6.5** Loading/error states when facts degraded (editorial queue banner).
-  - [ ] **6.6** Tests: unavailable critical fact blocks publish path; stale allows with flag.
+- [x] **6.0** Market facts freshness + fallback chain
+  - [x] **6.1** `critical_facts.yaml` + adapter fallback order per PRD2 (no investing.com).
+  - [x] **6.2** Tristate freshness on merged fact stream; staleness thresholds documented.
+  - [x] **6.3** Card pipeline: hold queue when any critical fact is `unavailable`.
+  - [x] **6.4** `FreshnessDot` on Pulse/Thread market fact chips.
+  - [x] **6.5** Loading/error states when facts degraded (editorial queue banner).
+  - [x] **6.6** Tests: unavailable critical fact blocks publish path; stale allows with flag.
 
 ---
 
@@ -345,10 +345,10 @@ _Automate slow review loops, close PRD2 intelligence gaps, harden the platform, 
 
 **Acceptance criteria**
 
-- [ ] End-to-end fixture: 3 duplicate ingests → 1 event row, `source_count = 3`.
-- [ ] NewsAPI mock: 8-factor rotation completes without exceeding daily cap.
-- [ ] Watchlist escalate → event visible in editorial queue.
-- [ ] Critical fact `unavailable` → card remains `held` in pipeline.
+- [x] End-to-end fixture: 3 duplicate ingests → 1 event row, `source_count = 3`.
+- [x] NewsAPI mock: 8-factor rotation completes without exceeding daily cap.
+- [x] Watchlist escalate → event visible in editorial queue.
+- [x] Critical fact `unavailable` → card remains `held` in pipeline.
 
 #### Relevant files
 
@@ -358,12 +358,12 @@ _Automate slow review loops, close PRD2 intelligence gaps, harden the platform, 
 
 #### Tasks (checkboxes)
 
-- [ ] **7.0** Data pipeline integration test gate
-  - [ ] **7.1** Fixture ingests for dedup merge assertion.
-  - [ ] **7.2** Mock NewsAPI rotation + cap test in integration module.
-  - [ ] **7.3** Watchlist escalate → editorial queue visibility assertion.
-  - [ ] **7.4** Critical-fact hold assertion on card pipeline.
-  - [ ] **7.5** CI green required before P3-S1g branch merges.
+- [x] **7.0** Data pipeline integration test gate
+  - [x] **7.1** Fixture ingests for dedup merge assertion.
+  - [x] **7.2** Mock NewsAPI rotation + cap test in integration module.
+  - [x] **7.3** Watchlist escalate → editorial queue visibility assertion.
+  - [x] **7.4** Critical-fact hold assertion on card pipeline.
+  - [x] **7.5** CI green required before P3-S1g branch merges.
 
 ---
 
@@ -382,12 +382,12 @@ _Automate slow review loops, close PRD2 intelligence gaps, harden the platform, 
 
 **Acceptance criteria**
 
-- [ ] `confidence_scorer.py`: weights — source_count 30%, source_quality 30%, factor_db_match 25%, recency 5%, **unique_publisher 10%** (post-dedup counts).
-- [ ] `confidence_raw` and `confidence_effective` stored; FoW applies `FOG_DAMPENER = 0.6` to effective only.
-- [ ] Thresholds: HIGH ≥ 0.75 · MEDIUM 0.55–0.74 · LOW &lt; 0.55 (`confidence_config.py`, `calibration_status: provisional`).
-- [ ] `confidence_score_audit` row per computation (inputs JSON, `scorer_version`).
-- [ ] `is_major` auto-set when raw ≥ 0.75 AND factor_match ≥ 2 AND category in qualifying set.
-- [ ] `confidence_gate.route()` replaced — old direct/partial source-count logic removed.
+- [x] `confidence_scorer.py`: weights — source_count 30%, source_quality 30%, factor_db_match 25%, recency 5%, **unique_publisher 10%** (post-dedup counts).
+- [x] `confidence_raw` and `confidence_effective` stored; FoW applies `FOG_DAMPENER = 0.6` to effective only.
+- [x] Thresholds: HIGH ≥ 0.75 · MEDIUM 0.55–0.74 · LOW &lt; 0.55 (`confidence_config.py`, `calibration_status: provisional`).
+- [x] `confidence_score_audit` row per computation (inputs JSON, `scorer_version`).
+- [x] `is_major` auto-set when raw ≥ 0.75 AND factor_match ≥ 2 AND category in qualifying set.
+- [x] `confidence_gate.route()` replaced — old direct/partial source-count logic removed.
 
 #### Relevant files
 
@@ -403,13 +403,13 @@ _Automate slow review loops, close PRD2 intelligence gaps, harden the platform, 
 
 #### Tasks (checkboxes)
 
-- [ ] **8.0** Rule-based confidence scorer + gate swap
-  - [ ] **8.1** `confidence_config.py` with PO weights/thresholds; `calibration_status: provisional`.
-  - [ ] **8.2** `confidence_scorer.py` including `unique_publisher_count` (post-dedup, domain-level).
-  - [ ] **8.3** Migration `confidence_score_audit`; write audit on every upsert.
-  - [ ] **8.4** Replace `confidence_gate.route()`; wire into signal monitoring + card pipeline.
-  - [ ] **8.5** `GET /api/events/{id}/confidence-breakdown` JSON (inputs + sources).
-  - [ ] **8.6** Tests: 20 synthetic events ≥80% tier match hand-grade; narrow MEDIUM band boundaries.
+- [x] **8.0** Rule-based confidence scorer + gate swap
+  - [x] **8.1** `confidence_config.py` with PO weights/thresholds; `calibration_status: provisional`.
+  - [x] **8.2** `confidence_scorer.py` including `unique_publisher_count` (post-dedup, domain-level).
+  - [x] **8.3** Migration `confidence_score_audit`; write audit on every upsert.
+  - [x] **8.4** Replace `confidence_gate.route()`; wire into signal monitoring + card pipeline.
+  - [x] **8.5** `GET /api/events/{id}/confidence-breakdown` JSON (inputs + sources).
+  - [x] **8.6** Tests: 20 synthetic events ≥80% tier match hand-grade; narrow MEDIUM band boundaries.
 
 ---
 
@@ -428,10 +428,10 @@ _Automate slow review loops, close PRD2 intelligence gaps, harden the platform, 
 
 **Acceptance criteria**
 
-- [ ] Thread aside **ConfidenceComposition** loads breakdown API; shows 5 input bars + source list with `retrieved_at`.
-- [ ] Displays `confidence_raw`, `confidence_effective`, tier label, FoW dampener when active.
-- [ ] Loading and error states; no layout shift on Pulse/Thread (perf: breakdown fetched on expand only).
-- [ ] `source_count > 5` shows editorial escalation badge.
+- [x] Thread aside **ConfidenceComposition** loads breakdown API; shows 5 input bars + source list with `retrieved_at`.
+- [x] Displays `confidence_raw`, `confidence_effective`, tier label, FoW dampener when active.
+- [x] Loading and error states; no layout shift on Pulse/Thread (perf: breakdown fetched on expand only).
+- [x] `source_count > 5` shows editorial escalation badge.
 
 #### Relevant files
 
@@ -443,13 +443,13 @@ _Automate slow review loops, close PRD2 intelligence gaps, harden the platform, 
 
 #### Tasks (checkboxes)
 
-- [ ] **9.0** Confidence explainability UI
-  - [ ] **9.1** API client for `confidence-breakdown` endpoint.
-  - [ ] **9.2** Expandable panel: five weighted inputs + tier explanation copy.
-  - [ ] **9.3** Source list with timestamps; FoW dampener callout when effective &lt; raw.
-  - [ ] **9.4** Fetch on expand only (lazy); skeleton loading state.
-  - [ ] **9.5** Escalation badge when `force_editorial_review`.
-  - [ ] **9.6** Component test: renders breakdown fixture; error state on 404.
+- [x] **9.0** Confidence explainability UI
+  - [x] **9.1** API client for `confidence-breakdown` endpoint.
+  - [x] **9.2** Expandable panel: five weighted inputs + tier explanation copy.
+  - [x] **9.3** Source list with timestamps; FoW dampener callout when effective &lt; raw.
+  - [x] **9.4** Fetch on expand only (lazy); skeleton loading state.
+  - [x] **9.5** Escalation badge when `force_editorial_review`.
+  - [x] **9.6** Component test: renders breakdown fixture; error state on 404.
 
 ---
 
@@ -468,26 +468,28 @@ _Automate slow review loops, close PRD2 intelligence gaps, harden the platform, 
 
 **Acceptance criteria**
 
-- [ ] API test: breakdown sums match stored `confidence_raw` within epsilon.
-- [ ] FoW active: effective score = raw × 0.6; tier derived from effective.
-- [ ] UI test (RTL): expanded panel shows all five inputs from fixture.
-- [ ] Regression: signal monitor uses new gate tiers (no Phase 1 count heuristic).
+- [x] API test: breakdown sums match stored `confidence_raw` within epsilon.
+- [x] FoW active: effective score = raw × 0.6; tier derived from effective.
+- [x] UI test (RTL): expanded panel shows all five inputs from fixture.
+- [x] Regression: signal monitor uses new gate tiers (no Phase 1 count heuristic).
 
 #### Relevant files
 
 | Path | Type | Purpose |
 |------|------|---------|
 | `backend/tests/test_confidence_breakdown_api.py` | create | API contract |
+| `backend/tests/test_confidence_scoring_gate.py` | create | P3-T3 verification gate |
 | `frontend/app/(app)/thread/_components/aside/ConfidenceComposition.test.tsx` | create | UI fixture |
+| `docs/plans/phase3-calibration.md` | create | Day 30/60 ritual |
 
 #### Tasks (checkboxes)
 
-- [ ] **10.0** Confidence scoring verification gate
-  - [ ] **10.1** API test: breakdown vs stored scores + FoW dampener.
-  - [ ] **10.2** Signal monitor integration test with tier fixtures.
-  - [ ] **10.3** RTL test: ConfidenceComposition expand/collapse + five inputs.
-  - [ ] **10.4** Document Day 30/60 recalibration ritual in `docs/plans/phase3-calibration.md`.
-  - [ ] **10.5** CI required green before P3-S1i starts.
+- [x] **10.0** Confidence scoring verification gate
+  - [x] **10.1** API test: breakdown vs stored scores + FoW dampener.
+  - [x] **10.2** Signal monitor integration test with tier fixtures.
+  - [x] **10.3** RTL test: ConfidenceComposition expand/collapse + five inputs.
+  - [x] **10.4** Document Day 30/60 recalibration ritual in `docs/plans/phase3-calibration.md`.
+  - [x] **10.5** CI required green before P3-S1i starts.
 
 ---
 
@@ -506,10 +508,10 @@ _Automate slow review loops, close PRD2 intelligence gaps, harden the platform, 
 
 **Acceptance criteria**
 
-- [ ] `number_validator.check()` returns structured `FAIL` with ungrounded numbers by sentence.
-- [ ] `POST /api/cards/{id}/publish` returns **422** on FAIL (no override endpoint).
-- [ ] Publish button disabled on card load when validator ≠ PASS.
-- [ ] Comparative quantifiers ("doubled", "record high") logged as soft warnings only.
+- [x] `number_validator.check()` returns structured `FAIL` with ungrounded numbers by sentence.
+- [x] `POST /api/cards/{id}/publish` returns **422** on FAIL (no override endpoint).
+- [x] Publish button disabled on card load when validator ≠ PASS.
+- [x] Comparative quantifiers ("doubled", "record high") logged as soft warnings only.
 
 #### Relevant files
 
@@ -523,13 +525,13 @@ _Automate slow review loops, close PRD2 intelligence gaps, harden the platform, 
 
 #### Tasks (checkboxes)
 
-- [ ] **11.0** Number validator hard publish gate
-  - [ ] **11.1** Extend validator: structured `ungrounded[]` + `missing_provenance[]`.
-  - [ ] **11.2** Publish route returns 422 with diff payload on FAIL.
-  - [ ] **11.3** `PublishGate.tsx`: disable Publish; render sentence-level diff list.
-  - [ ] **11.4** Soft-warning log for comparative quantifiers (non-blocking).
-  - [ ] **11.5** Loading/error on card load when validator service unavailable.
-  - [ ] **11.6** Tests: publish blocked with ungrounded number; passes when Evidence added.
+- [x] **11.0** Number validator hard publish gate
+  - [x] **11.1** Extend validator: structured `ungrounded[]` + `missing_provenance[]`.
+  - [x] **11.2** Publish route returns 422 with diff payload on FAIL.
+  - [x] **11.3** `PublishGate.tsx`: disable Publish; render sentence-level diff list.
+  - [x] **11.4** Soft-warning log for comparative quantifiers (non-blocking).
+  - [x] **11.5** Loading/error on card load when validator service unavailable.
+  - [x] **11.6** Tests: publish blocked with ungrounded number; passes when Evidence added.
 
 ---
 
@@ -548,9 +550,9 @@ _Automate slow review loops, close PRD2 intelligence gaps, harden the platform, 
 
 **Acceptance criteria**
 
-- [ ] Auto: (1) number validator PASS, (2) dissent len &gt; 100, (3) max Evidence age ≤ 18 months, (4) SEBI keyword scan PASS with allowlist (`repo rate hold` allowed).
-- [ ] Manual: (5) plain English — editor tick required.
-- [ ] All five PASS → Publish enabled (still requires number validator PASS).
+- [x] Auto: (1) number validator PASS, (2) dissent len &gt; 100, (3) max Evidence age ≤ 18 months, (4) SEBI keyword scan PASS with allowlist (`repo rate hold` allowed).
+- [x] Manual: (5) plain English — editor tick required.
+- [x] All five PASS → Publish enabled (still requires number validator PASS).
 
 #### Relevant files
 
@@ -559,18 +561,18 @@ _Automate slow review loops, close PRD2 intelligence gaps, harden the platform, 
 | `backend/app/services/editorial_checklist.py` | create | Orchestrator |
 | `backend/app/services/sebi_compliance_scan.py` | create | Pattern scan |
 | `backend/app/config/sebi_compliance_patterns.yaml` | create | Blocked terms + allowlist |
-| `frontend/app/(app)/editor/cards/[id]/ChecklistPanel.tsx` | modify | 4 auto + 1 manual |
+| `frontend/app/admin/review/_components/ChecklistPanel.tsx` | modify | 4 auto + 1 manual |
 | `backend/tests/test_editorial_checklist.py` | create | All five gates |
 
 #### Tasks (checkboxes)
 
-- [ ] **12.0** Editorial checklist — 4 automated + 1 manual
-  - [ ] **12.1** `editorial_checklist.py` runs four automated checks on card load.
-  - [ ] **12.2** `sebi_compliance_scan.py` + YAML allowlist patterns.
-  - [ ] **12.3** Evidence freshness auto-check (18-month max age).
-  - [ ] **12.4** `ChecklistPanel.tsx`: PASS/FAIL per item; manual tick for plain English.
-  - [ ] **12.5** PublishGate integrates checklist — all PASS required.
-  - [ ] **12.6** Tests: SEBI false positive on "hold rate"; block on "buy"; dissent length.
+- [x] **12.0** Editorial checklist — 4 automated + 1 manual
+  - [x] **12.1** `editorial_checklist.py` runs four automated checks on card load.
+  - [x] **12.2** `sebi_compliance_scan.py` + YAML allowlist patterns.
+  - [x] **12.3** Evidence freshness auto-check (18-month max age).
+  - [x] **12.4** `ChecklistPanel.tsx`: PASS/FAIL per item; manual tick for plain English.
+  - [x] **12.5** PublishGate integrates checklist — all PASS required.
+  - [x] **12.6** Tests: SEBI false positive on "hold rate"; block on "buy"; dissent length.
 
 ---
 
@@ -589,10 +591,10 @@ _Automate slow review loops, close PRD2 intelligence gaps, harden the platform, 
 
 **Acceptance criteria**
 
-- [ ] `POST /api/cards/{id}/regenerate-section` with `section` + `editor_note` (max 500 chars).
-- [ ] Full regen available but confirm if `full_regen_count >= 1`; blocked at ≥2 without PO flag clear.
-- [ ] `regen_history` JSONB on card records each regen.
-- [ ] Post-regen: number_validator + consistency check (entity names vs approved sections).
+- [x] `POST /api/cards/{id}/regenerate-section` with `section` + `editor_note` (max 500 chars).
+- [x] Full regen available but confirm if `full_regen_count >= 1`; blocked at ≥2 without PO flag clear.
+- [x] `regen_history` JSONB on card records each regen.
+- [x] Post-regen: number_validator + consistency check (entity names vs approved sections).
 
 #### Relevant files
 
@@ -606,13 +608,13 @@ _Automate slow review loops, close PRD2 intelligence gaps, harden the platform, 
 
 #### Tasks (checkboxes)
 
-- [ ] **13.0** Targeted section regen
-  - [ ] **13.1** `card_regen.py`: single-section LLM call with approved sections as read-only context.
-  - [ ] **13.2** `regen_history` JSONB migration + write on each regen.
-  - [ ] **13.3** Full regen tiered confirm + `full_regen_count` guard.
-  - [ ] **13.4** `RegenSection.tsx`: section select, note field, submit + loading/error.
-  - [ ] **13.5** Post-regen validator + consistency check hook.
-  - [ ] **13.6** Tests: only target section hash changes; full regen count enforced.
+- [x] **13.0** Targeted section regen
+  - [x] **13.1** `card_regen.py`: single-section LLM call with approved sections as read-only context.
+  - [x] **13.2** `regen_history` JSONB migration + write on each regen.
+  - [x] **13.3** Full regen tiered confirm + `full_regen_count` guard.
+  - [x] **13.4** `RegenSection.tsx`: section select, note field, submit + loading/error.
+  - [x] **13.5** Post-regen validator + consistency check hook.
+  - [x] **13.6** Tests: only target section hash changes; full regen count enforced.
 
 ---
 
@@ -631,9 +633,9 @@ _Automate slow review loops, close PRD2 intelligence gaps, harden the platform, 
 
 **Acceptance criteria**
 
-- [ ] E2E: card with ungrounded number → Publish 422 + button disabled.
-- [ ] E2E: fix Evidence → validator PASS → checklist auto items PASS → manual tick → publish 200.
-- [ ] Section regen does not bypass validator.
+- [x] E2E: card with ungrounded number → Publish 422 + button disabled.
+- [x] E2E: fix Evidence → validator PASS → checklist auto items PASS → manual tick → publish 200.
+- [x] Section regen does not bypass validator.
 
 #### Relevant files
 
@@ -643,12 +645,12 @@ _Automate slow review loops, close PRD2 intelligence gaps, harden the platform, 
 
 #### Tasks (checkboxes)
 
-- [ ] **14.0** Editorial integrity verification gate
-  - [ ] **14.1** E2E fixture card: fail publish without Evidence.
-  - [ ] **14.2** E2E: full happy path through checklist + publish.
-  - [ ] **14.3** Regen section then fail validator → publish still blocked.
-  - [ ] **14.4** CI gate before P3-S1l branch merges.
-  - [ ] **14.5** Link test evidence in Phase 3 go/no-go checklist template (P3-S8 prep).
+- [x] **14.0** Editorial integrity verification gate
+  - [x] **14.1** E2E fixture card: fail publish without Evidence.
+  - [x] **14.2** E2E: full happy path through checklist + publish.
+  - [x] **14.3** Regen section then fail validator → publish still blocked.
+  - [x] **14.4** CI gate before P3-S1l branch merges.
+  - [x] **14.5** Link test evidence in Phase 3 go/no-go checklist template (P3-S8 prep).
 
 ---
 
@@ -1198,8 +1200,8 @@ _Automate slow review loops, close PRD2 intelligence gaps, harden the platform, 
 
 - [ ] **1.0** Synthetic historical seed + triple-layer isolation
 - [ ] **3.0** Event de-duplication pipeline
-- [ ] **7.0** Data pipeline integration test gate
-- [ ] **8.0** Rule-based confidence scorer + gate swap
+- [x] **7.0** Data pipeline integration test gate
+- [x] **8.0** Rule-based confidence scorer + gate swap
 - [ ] **14.0** Editorial integrity verification gate
 - [ ] **15.0** Fog of War `is_major` model + named banner
 - [ ] **18.0** NLP filings extraction service (GH Actions + Gemini Flash)
@@ -1210,8 +1212,8 @@ _Automate slow review loops, close PRD2 intelligence gaps, harden the platform, 
 
 - [x] **4.0** NewsAPI factor keyword scheduler
 - [ ] **6.0** Market facts freshness + fallback chain
-- [ ] **9.0** Confidence explainability UI
-- [ ] **13.0** Targeted section regen
+- [x] **9.0** Confidence explainability UI
+- [x] **13.0** Targeted section regen
 - [ ] **17.0** Fog of War + signal measurement test gate
 - [ ] **25.0** The Map — final version + sector deep-dive interactives
 
@@ -1219,7 +1221,7 @@ _Automate slow review loops, close PRD2 intelligence gaps, harden the platform, 
 
 - [ ] **2.0** Synthetic isolation verification gate
 - [ ] **5.0** Slow-burn watchlist
-- [ ] **10.0** Confidence scoring verification gate
+- [x] **10.0** Confidence scoring verification gate
 - [ ] **11.0** Number validator hard publish gate
 - [ ] **12.0** Editorial checklist — 4 automated + 1 manual
 - [ ] **16.0** Signal override log + FP measurement

@@ -18,6 +18,7 @@ from psycopg.rows import dict_row
 from app.core.settings import get_settings
 from app.db.connection import connection
 from app.models.enums import EventCategory, LifecycleState
+from app.services.confidence_scorer import apply_confidence_to_event_row
 from app.sources.base import AdapterSource, RawEvent, utc_now
 
 _LOG = logging.getLogger(__name__)
@@ -52,21 +53,9 @@ ON CONFLICT (dedup_key) WHERE dedup_key IS NOT NULL
 DO UPDATE SET
   source_count = public.events.source_count + 1,
   sources = public.events.sources || EXCLUDED.sources,
-  confidence_raw = LEAST(
-    1.0,
-    ROUND(
-      (
-        0.35 * LEAST((public.events.source_count + 1) / 3.0, 1.0)
-        + 0.65 * (
-          GREATEST(public.events.confidence_score, EXCLUDED.confidence_score) / 100.0
-        )
-      )::numeric,
-      3
-    )
-  ),
-  confidence_score = GREATEST(public.events.confidence_score, EXCLUDED.confidence_score),
-  force_editorial_review = (public.events.source_count + 1) > %s
-RETURNING id, (xmax = 0) AS inserted, source_count
+  confidence_score = GREATEST(public.events.confidence_score, EXCLUDED.confidence_score)
+RETURNING id, (xmax = 0) AS inserted, source_count, title, category::text AS category,
+  event_source, canonical_url, sources, created_at
 """
 
 
@@ -157,13 +146,13 @@ def compute_collision_fingerprint(
 
 def recompute_confidence_raw(*, source_count: int, confidence_score: int) -> float:
     """
-    Interim raw confidence until P3-S1g full scorer lands.
+    Deprecated interim helper — prefer :func:`confidence_scorer.compute_confidence`.
 
-    Blends lexical/source-tier score with post-dedup source accumulation (PRD2 §3).
+    Kept for unit tests that assert monotonicity with source_count before full scorer inputs.
     """
     score_norm = min(max(confidence_score, 0), 100) / 100.0
     source_factor = min(source_count / 3.0, 1.0)
-    raw = 0.35 * source_factor + 0.65 * score_norm
+    raw = 0.30 * source_factor + 0.70 * score_norm
     return round(min(raw, 1.0), 3)
 
 
@@ -279,7 +268,6 @@ def persist_deduped_event(
         )]
     )
     initial_raw = recompute_confidence_raw(source_count=1, confidence_score=confidence_score)
-    force_review = 1 > _FORCE_REVIEW_SOURCE_THRESHOLD
 
     row: dict[str, Any] | None = None
     try:
@@ -299,12 +287,28 @@ def persist_deduped_event(
                         dedup_key,
                         collision_fp,
                         source_blob,
-                        force_review,
+                        False,
                         retrieved,
-                        _FORCE_REVIEW_SOURCE_THRESHOLD,
                     ),
                 )
                 row = cur.fetchone()
+                if row:
+                    sources_json = row["sources"]
+                    if isinstance(sources_json, str):
+                        sources_json = json.loads(sources_json)
+                    apply_confidence_to_event_row(
+                        cur,
+                        event_id=row["id"],
+                        title=str(row["title"]),
+                        category=str(row["category"]),
+                        event_source=str(row["event_source"] or src),
+                        canonical_url=row.get("canonical_url"),
+                        source_count=int(row["source_count"] or 1),
+                        sources=list(sources_json or []),
+                        first_seen_at=row["created_at"],
+                        body=body,
+                        reference=retrieved,
+                    )
             if row and row["inserted"]:
                 _queue_cross_category_review(
                     conn,

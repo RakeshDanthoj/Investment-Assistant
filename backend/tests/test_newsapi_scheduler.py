@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -106,12 +106,13 @@ def test_classify_empty_vs_ok_vs_error() -> None:
     # direct status via mocked HTTP
     ok_resp = MagicMock()
     ok_resp.status_code = 200
+    recent = datetime.now(tz=UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     ok_resp.json.return_value = {
         "articles": [
             {
                 "title": "RBI holds repo",
                 "url": "https://news.example.com/rbi",
-                "publishedAt": "2026-05-30T12:00:00Z",
+                "publishedAt": recent,
                 "description": "x",
             }
         ]
@@ -155,12 +156,13 @@ def test_classify_empty_vs_ok_vs_error() -> None:
 
 
 def test_adapter_fetch_logs_poll_and_respects_budget() -> None:
+    recent = datetime.now(tz=UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     fixture = {
         "articles": [
             {
                 "title": "India markets",
                 "url": "https://news.example.com/a",
-                "publishedAt": "2026-05-30T12:00:00Z",
+                "publishedAt": recent,
                 "description": "d",
             }
         ]

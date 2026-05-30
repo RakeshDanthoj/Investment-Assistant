@@ -5,7 +5,10 @@ from uuid import uuid4
 import pytest
 
 from app.db.migrate import apply_migrations
+from app.services.editorial_checklist import DISSENT_MIN_CHARS
 from app.services.publish_card import PublishCardError, publish_draft_card
+
+_LONG_DISSENT = "x" * (DISSENT_MIN_CHARS + 1)
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -39,14 +42,18 @@ def test_publish_writes_track_record_and_sets_lifecycle(db_connection):
                 )
                 VALUES (
                   %s, %s, 'Pytest card', 'Body [MEASURED]', 'Ctx [MEASURED]',
-                  '{}'::jsonb, 'Dissent [MEASURED]', 'Fw [MEASURED]', 'pytest', 'draft'
+                  '{}'::jsonb, %s, 'Fw [MEASURED]', 'pytest', 'draft'
                 )
                 """,
-                (str(card_id), str(event_id)),
+                (str(card_id), str(event_id), _LONG_DISSENT),
             )
         db_connection.commit()
 
-        summary = publish_draft_card(card_id, editor_review_seconds=123)
+        summary = publish_draft_card(
+            card_id,
+            editor_review_seconds=123,
+            plain_english_confirmed=True,
+        )
         assert summary["lifecycle_state"] == "published"
 
         with db_connection.cursor() as cur:

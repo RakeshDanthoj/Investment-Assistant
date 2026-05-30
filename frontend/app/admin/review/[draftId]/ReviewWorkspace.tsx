@@ -11,6 +11,10 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 import ChecklistPanel from "../_components/ChecklistPanel";
+import type {
+  EditorialChecklistPayload,
+  NumberValidationPayload,
+} from "../_components/PublishGate";
 
 type CardPayload = {
   card_id: string;
@@ -25,6 +29,10 @@ type CardPayload = {
   event_category: string;
   event_confidence_score: number;
   instrument_assessments: InstrumentAssessmentRow[];
+  number_validation?: NumberValidationPayload;
+  editorial_checklist?: EditorialChecklistPayload;
+  full_regen_count?: number;
+  po_regen_flag_cleared?: boolean;
 };
 
 export default function ReviewWorkspace({ draftId }: { draftId: string }) {
@@ -35,6 +43,7 @@ export default function ReviewWorkspace({ draftId }: { draftId: string }) {
   const [loading, setLoading] = useState(true);
   const [publishing, setPublishing] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
+  const [numberValidationError, setNumberValidationError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -47,6 +56,11 @@ export default function ReviewWorkspace({ draftId }: { draftId: string }) {
         throw new Error(text || `${res.status} ${res.statusText}`);
       }
       const data = (await res.json()) as CardPayload;
+      if (!data.number_validation || !data.editorial_checklist) {
+        setNumberValidationError("Editorial checklist payload missing from card response.");
+      } else {
+        setNumberValidationError(null);
+      }
       setCard(data);
     } catch (e: unknown) {
       setCard(null);
@@ -69,11 +83,27 @@ export default function ReviewWorkspace({ draftId }: { draftId: string }) {
         const res = await fetch(`${base}/api/admin/cards/${draftId}/publish`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ editor_review_seconds: editorReviewSeconds }),
+          body: JSON.stringify({
+            editor_review_seconds: editorReviewSeconds,
+            plain_english_confirmed: true,
+          }),
         });
         if (!res.ok) {
           const text = await res.text().catch(() => "");
-          throw new Error(text || `${res.status} ${res.statusText}`);
+          let message = text || `${res.status} ${res.statusText}`;
+          try {
+            const parsed = JSON.parse(text) as {
+              detail?: { message?: string; ungrounded?: unknown[]; code?: string };
+            };
+            if (parsed.detail?.code === "number_validator_failed") {
+              message = "Number validator failed — fix ungrounded numbers before publishing.";
+            } else if (parsed.detail?.message) {
+              message = parsed.detail.message;
+            }
+          } catch {
+            // keep raw message
+          }
+          throw new Error(message);
         }
         await load();
       } catch (e: unknown) {
@@ -156,11 +186,19 @@ export default function ReviewWorkspace({ draftId }: { draftId: string }) {
           </div>
         ) : (
           <ChecklistPanel
+            draftId={draftId}
             openedAtMs={openedAtMs}
             onPublish={handlePublish}
             onRegenerate={handleRegenerate}
+            onReload={load}
             publishing={publishing}
             regenerating={regenerating}
+            numberValidation={card.number_validation ?? null}
+            editorialChecklist={card.editorial_checklist ?? null}
+            numberValidationLoading={loading}
+            numberValidationError={numberValidationError}
+            fullRegenCount={card.full_regen_count ?? 0}
+            poRegenFlagCleared={card.po_regen_flag_cleared ?? false}
           />
         )
       }

@@ -26,6 +26,9 @@ MIGRATION_FILES = (
     "0023_dedup_key_review_queue.sql",
     "0024_factor_poll_log.sql",
     "0025_watchlist_items.sql",
+    "0026_pipeline_runs_held_status.sql",
+    "0027_confidence_audit.sql",
+    "0028_card_regen_history.sql",
 )
 
 _SCHEMA_MIGRATIONS_DDL = """
