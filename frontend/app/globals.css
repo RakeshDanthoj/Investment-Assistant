@@ -78,6 +78,7 @@ body {
     --sidebar-accent-foreground: #1a4fcc;
     --sidebar-border: #e2e8f0;
     --sidebar-ring: #1a4fcc;
+    --pulse-sticky-header-height: 3.5rem;
   }
   .dark {
     --background: oklch(0.145 0 0);

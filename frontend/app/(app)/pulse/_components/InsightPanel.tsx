@@ -50,7 +50,13 @@ export function InsightPanel({ card }: InsightPanelProps) {
   const badgeVariant = categoryBadgeVariant(card.category);
 
   return (
-    <aside className="sticky top-14 hidden h-[calc(100vh-3.5rem)] overflow-y-auto border-l border-border bg-background p-6 min-[860px]:block">
+    <aside
+      className="sticky hidden overflow-y-auto border-l border-border bg-background p-6 min-[860px]:block"
+      style={{
+        top: "var(--pulse-sticky-header-height, 3.5rem)",
+        height: "calc(100vh - var(--pulse-sticky-header-height, 3.5rem))",
+      }}
+    >
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <Badge
           variant={badgeVariant}

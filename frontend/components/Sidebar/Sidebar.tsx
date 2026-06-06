@@ -4,12 +4,12 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { PhaseBadge } from "@/components/Topbar/PhaseBadge";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import type { EditorialNavAccess } from "@/lib/admin-nav";
 import { cn } from "@/lib/utils";
 
+import { EditorialNav } from "./EditorialNav";
 import { SavedThreadsNav } from "./SavedThreadsNav";
 import UserChipContainer from "./UserChipContainer";
 
@@ -38,9 +38,10 @@ export const SIDEBAR_NAV_ITEMS: readonly SidebarNavItem[] = [
 type SidebarProps = {
   userName: string;
   userEmail: string;
+  editorialAccess: EditorialNavAccess;
 };
 
-export default function Sidebar({ userName, userEmail }: SidebarProps) {
+export default function Sidebar({ userName, userEmail, editorialAccess }: SidebarProps) {
   const pathname = usePathname();
   const showSignalNotificationBadge = !pathname.startsWith("/mirror");
 
@@ -56,14 +57,11 @@ export default function Sidebar({ userName, userEmail }: SidebarProps) {
               Event intelligence
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <PhaseBadge />
-            {showSignalNotificationBadge ? <NotificationBadge /> : null}
-          </div>
+          {showSignalNotificationBadge ? <NotificationBadge /> : null}
         </div>
       </div>
       <Separator />
-      <nav className="flex-1 px-2.5 py-4">
+      <nav className="flex-1 overflow-y-auto px-2.5 py-4">
         <p className="px-2 font-mono text-[9px] font-medium uppercase tracking-[0.06em] text-muted-foreground">
           Surfaces
         </p>
@@ -84,11 +82,6 @@ export default function Sidebar({ userName, userEmail }: SidebarProps) {
                 >
                   <Link href={item.href}>
                     <span className="min-w-0 flex-1">{item.label}</span>
-                    {item.phase2 ? (
-                      <Badge variant="phase2" className="ml-auto shrink-0 px-1.5 py-0.5 text-[9px]">
-                        Phase 2
-                      </Badge>
-                    ) : null}
                   </Link>
                 </Button>
               </li>
@@ -96,6 +89,7 @@ export default function Sidebar({ userName, userEmail }: SidebarProps) {
           })}
         </ul>
         <SavedThreadsNav pathname={pathname} />
+        <EditorialNav pathname={pathname} access={editorialAccess} />
       </nav>
       <UserChipContainer userName={userName} userEmail={userEmail} />
     </aside>

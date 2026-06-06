@@ -46,10 +46,9 @@ export function EventCardSurface({ card, selected = false, className }: EventCar
   return (
     <Card
       className={cn(
-        "w-full gap-0 rounded-lg border border-border bg-background py-0 text-left shadow-none ring-0 [content-visibility:auto] [contain-intrinsic-size:152px]",
-        selected
-          ? "border-l-[3px] border-l-finnwise-blue bg-finnwise-blue-tint/50 shadow-sm"
-          : "border-l-[3px] border-l-transparent",
+        "w-full gap-0 rounded-lg border border-border bg-background py-0 text-left ring-0 [content-visibility:auto] [contain-intrinsic-size:152px]",
+        selected && "bg-finnwise-blue-tint/50 [box-shadow:inset_3px_0_0_0_#1A4FCC]",
+        !selected && "shadow-none",
         className,
       )}
     >

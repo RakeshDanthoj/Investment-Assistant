@@ -53,4 +53,19 @@ describe("EventCard", () => {
     fireEvent.click(screen.getByRole("button"));
     expect(clicked).toBe(true);
   });
+
+  it("applies inset selection accent when selected", () => {
+    render(
+      <EventCard
+        card={baseCard}
+        selected
+        onSelect={() => {
+          /* noop */
+        }}
+      />,
+    );
+    const card = screen.getByRole("button");
+    expect(card.firstElementChild?.className).toMatch(/bg-finnwise-blue-tint/);
+    expect(card.firstElementChild?.className).toMatch(/box-shadow:inset_3px/);
+  });
 });

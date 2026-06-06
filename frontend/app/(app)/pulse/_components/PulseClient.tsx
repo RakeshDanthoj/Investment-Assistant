@@ -11,6 +11,7 @@ import type { PulseFeedResponse } from "@/lib/cards/pulseTypes";
 import { usePulseFeed } from "@/lib/cards/usePulseFeed";
 
 import { EventCard } from "./EventCard";
+import { PulseStickyHeader } from "./PulseStickyHeader";
 import { Topbar } from "./Topbar";
 
 const FogOfWarBanner = dynamic(
@@ -105,14 +106,16 @@ export default function PulseClient({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <Topbar
-        counts={data?.counts ?? 0}
-        lastUpdated={data?.last_updated ?? null}
-        categoryOptions={PULSE_CATEGORY_OPTIONS}
-        selectedCategories={selectedCategories}
-        onCategoriesChange={onCategoriesChange}
-      />
-      <MarketFactsStrip />
+      <PulseStickyHeader>
+        <Topbar
+          counts={data?.counts ?? 0}
+          lastUpdated={data?.last_updated ?? null}
+          categoryOptions={PULSE_CATEGORY_OPTIONS}
+          selectedCategories={selectedCategories}
+          onCategoriesChange={onCategoriesChange}
+        />
+        <MarketFactsStrip className="border-b-0 py-1.5 min-[860px]:py-2" compact />
+      </PulseStickyHeader>
       {data?.fog_of_war ? <FogOfWarBanner /> : null}
 
       {status === "loading" && !data ? <FeedSkeleton /> : null}
