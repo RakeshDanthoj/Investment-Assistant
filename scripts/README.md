@@ -37,6 +37,24 @@ Configure the Supabase project dashboard once per environment:
 
 **Returning testers (password sign-in):** After the first magic-link verification, open **Account** in the sidebar (or `/account`) and save a password. On later visits use the **Password** tab on `/sign-in` — no OTP email is sent. Password sign-in must be enabled under **Authentication → Providers → Email** (see step 1 above).
 
+### Localhost admin password (development)
+
+For local testing without setting a Supabase account password first, add to repo-root `.env.local`:
+
+| Variable | Example | Purpose |
+|----------|---------|---------|
+| `ADMIN_EMAILS` | `you@example.com` | Admin email allow-list (must match sign-in email) |
+| `LOCAL_DEV_PASSWORD` | `localdev123` | Shared dev password (min 6 characters) |
+
+Also required on the **backend** (same `.env.local` file): `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, and `SUPABASE_URL`.
+
+When `LOCAL_DEV_PASSWORD` is set, signing in on `http://localhost:3000` with an allow-listed email and that password will:
+
+1. Create or update the Supabase Auth user with that password (via service role).
+2. Return a normal Supabase session to the browser.
+
+**Never set `LOCAL_DEV_PASSWORD` in production.** The endpoint is hidden (404) unless the request `Origin`/`Referer` is localhost and the env var is configured.
+
 ## Signal-fired email (P2-S10)
 
 Add to repo-root `.env.local` (backend reads these; do not commit secrets):

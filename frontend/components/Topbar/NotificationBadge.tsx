@@ -6,13 +6,28 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { fetchSignalFiredCardId } from "@/lib/api/notificationAlert";
 import { getApiBaseUrl } from "@/lib/api";
+import { PULSE_FEED_READY_EVENT } from "@/lib/pulse/feedReady";
 import { createClient } from "@/lib/supabase/client";
 
-export function NotificationBadge() {
+type NotificationBadgeProps = {
+  /** On Pulse, wait for feed paint before fetching (PC-1.2 / PI-S4). */
+  deferUntilFeedReady?: boolean;
+};
+
+export function NotificationBadge({ deferUntilFeedReady = false }: NotificationBadgeProps) {
   const router = useRouter();
   const [targetCardId, setTargetCardId] = useState<string | null>(null);
+  const [mayFetch, setMayFetch] = useState(!deferUntilFeedReady);
 
   useEffect(() => {
+    if (!deferUntilFeedReady) return;
+    const onReady = () => setMayFetch(true);
+    window.addEventListener(PULSE_FEED_READY_EVENT, onReady, { once: true });
+    return () => window.removeEventListener(PULSE_FEED_READY_EVENT, onReady);
+  }, [deferUntilFeedReady]);
+
+  useEffect(() => {
+    if (!mayFetch) return;
     let cancelled = false;
     void (async () => {
       const supabase = createClient();
@@ -31,7 +46,7 @@ export function NotificationBadge() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [mayFetch]);
 
   if (!targetCardId) return null;
 

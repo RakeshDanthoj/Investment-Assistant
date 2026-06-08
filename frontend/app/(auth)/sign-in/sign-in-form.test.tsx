@@ -9,6 +9,7 @@ const mockPush = jest.fn();
 const mockRefresh = jest.fn();
 const mockSignInWithOtp = jest.fn();
 const mockSignInWithPassword = jest.fn();
+const mockSetSession = jest.fn();
 
 jest.mock("next/navigation", () => ({
   useRouter: () => ({
@@ -26,8 +27,16 @@ jest.mock("../../../lib/supabase/client", () => ({
     auth: {
       signInWithOtp: mockSignInWithOtp,
       signInWithPassword: mockSignInWithPassword,
+      setSession: mockSetSession,
     },
   }),
+}));
+
+const mockTryLocalDevLogin = jest.fn();
+
+jest.mock("../../../lib/auth/local-dev-login", () => ({
+  isLocalDevHost: () => true,
+  tryLocalDevLogin: (...args: unknown[]) => mockTryLocalDevLogin(...args),
 }));
 
 describe("SignInForm", () => {
@@ -35,6 +44,8 @@ describe("SignInForm", () => {
     jest.clearAllMocks();
     mockSignInWithOtp.mockResolvedValue({ error: null });
     mockSignInWithPassword.mockResolvedValue({ error: null });
+    mockSetSession.mockResolvedValue({ error: null });
+    mockTryLocalDevLogin.mockResolvedValue(null);
   });
 
   it("signs in with password and redirects", async () => {
@@ -56,6 +67,35 @@ describe("SignInForm", () => {
     });
     expect(mockPush).toHaveBeenCalledWith("/mirror");
     expect(mockRefresh).toHaveBeenCalled();
+  });
+
+  it("falls back to local dev login on localhost when Supabase password fails", async () => {
+    mockSignInWithPassword.mockResolvedValue({
+      error: { message: "Invalid login credentials" },
+    });
+    mockTryLocalDevLogin.mockResolvedValue({
+      access_token: "access-token",
+      refresh_token: "refresh-token",
+    });
+
+    render(<SignInForm nextPath="/mirror" />);
+
+    fireEvent.change(document.getElementById("password-email")!, {
+      target: { value: "owner@example.com" },
+    });
+    fireEvent.change(document.getElementById("password")!, {
+      target: { value: "localdev123" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /sign in with password/i }));
+
+    await waitFor(() => {
+      expect(mockTryLocalDevLogin).toHaveBeenCalledWith("owner@example.com", "localdev123");
+    });
+    expect(mockSetSession).toHaveBeenCalledWith({
+      access_token: "access-token",
+      refresh_token: "refresh-token",
+    });
+    expect(mockPush).toHaveBeenCalledWith("/mirror");
   });
 
   it("sends a magic link from the magic link tab", async () => {

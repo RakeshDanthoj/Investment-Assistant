@@ -1,5 +1,18 @@
 /** @jest-environment jsdom */
 
+const mockPrefetch = jest.fn();
+
+jest.mock("next/navigation", () => ({
+  useRouter: () => ({ prefetch: mockPrefetch, push: jest.fn() }),
+}));
+
+jest.mock("../../../../lib/perf/useIntentPrefetch", () => ({
+  useIntentPrefetch: () => ({
+    onPointerEnter: jest.fn(),
+    onPointerLeave: jest.fn(),
+  }),
+}));
+
 import { fireEvent, render, screen } from "@testing-library/react";
 
 import type { PulseCard } from "@/lib/cards/pulseTypes";

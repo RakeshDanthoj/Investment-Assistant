@@ -2,6 +2,7 @@ import { Suspense } from "react";
 
 import { Skeleton } from "@/components/ui/skeleton";
 import { fetchPulseFeed } from "@/lib/api/server";
+import { getServerSessionCookies } from "@/lib/sessionCookies.server";
 
 import PulseClient from "./_components/PulseClient";
 import { PulseFeedList } from "./_components/PulseFeedList";
@@ -36,12 +37,15 @@ export default async function PulsePage({
   searchParams?: { category?: string };
 }) {
   const categoryQuery = categoryQueryFromSearchParams(searchParams?.category);
+  const { sessionId, personalisationToken } = await getServerSessionCookies();
 
   let initialData = null;
   try {
-    initialData = await fetchPulseFeed(
-      categoryQuery ? { category: categoryQuery } : undefined,
-    );
+    initialData = await fetchPulseFeed({
+      ...(categoryQuery ? { category: categoryQuery } : {}),
+      ...(sessionId ? { sessionId } : {}),
+      ...(personalisationToken ? { personalisationToken } : {}),
+    });
   } catch {
     initialData = null;
   }
@@ -52,6 +56,8 @@ export default async function PulsePage({
         key={categoryQuery}
         initialData={initialData}
         initialCategoryQuery={categoryQuery}
+        initialSessionId={sessionId}
+        initialPersonalisationToken={personalisationToken}
       >
         {initialData?.cards?.length ? <PulseFeedList cards={initialData.cards} /> : null}
       </PulseClient>

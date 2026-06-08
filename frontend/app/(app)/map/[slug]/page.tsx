@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 
 import { Skeleton } from "@/components/ui/skeleton";
-import { fetchMapSectorDetail } from "@/lib/api/mapServer";
+import { fetchMapSectorSummary } from "@/lib/api/mapServer";
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 
@@ -36,16 +36,16 @@ export default async function MapSectorPage({
     );
   }
 
-  let detail;
+  let summary;
   try {
-    detail = await fetchMapSectorDetail(session.access_token, params.slug);
+    summary = await fetchMapSectorSummary(session.access_token, params.slug);
   } catch {
     notFound();
   }
 
   return (
     <Suspense fallback={<SectorFallback />}>
-      <MapSectorClient detail={detail} />
+      <MapSectorClient summary={summary} />
     </Suspense>
   );
 }

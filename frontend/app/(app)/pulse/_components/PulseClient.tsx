@@ -2,15 +2,17 @@
 
 import dynamic from "next/dynamic";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { useMemo, type ReactNode } from "react";
+import { useEffect, useMemo, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PULSE_CATEGORY_OPTIONS } from "@/lib/cards/categories";
 import type { PulseFeedResponse } from "@/lib/cards/pulseTypes";
 import { usePulseFeed } from "@/lib/cards/usePulseFeed";
+import { dispatchPulseFeedReady } from "@/lib/pulse/feedReady";
 
 import { EventCard } from "./EventCard";
+import { PulseStaleBanner } from "./PulseStaleBanner";
 import { PulseStickyHeader } from "./PulseStickyHeader";
 import { Topbar } from "./Topbar";
 
@@ -65,12 +67,16 @@ function FeedSkeleton() {
 type PulseClientProps = {
   initialData?: PulseFeedResponse | null;
   initialCategoryQuery?: string;
+  initialSessionId?: string | null;
+  initialPersonalisationToken?: string | null;
   children?: ReactNode;
 };
 
 export default function PulseClient({
   initialData = null,
   initialCategoryQuery = "",
+  initialSessionId = null,
+  initialPersonalisationToken = null,
   children = null,
 }: PulseClientProps) {
   const router = useRouter();
@@ -82,8 +88,28 @@ export default function PulseClient({
     return raw ? raw.split(",").filter(Boolean) : [];
   }, [searchParams]);
 
-  const { status, data, errorMessage, selectedId, setSelectedId, selectedCard, refetch } =
-    usePulseFeed(selectedCategories, { initialData, initialCategoryQuery });
+  const {
+    status,
+    data,
+    errorMessage,
+    selectedId,
+    setSelectedId,
+    selectedCard,
+    refetch,
+    showStaleBanner,
+    isFetching,
+  } = usePulseFeed(selectedCategories, {
+    initialData,
+    initialCategoryQuery,
+    initialSessionId,
+    initialPersonalisationToken,
+  });
+
+  const feedReady = status === "success" && Boolean(data);
+
+  useEffect(() => {
+    if (feedReady) dispatchPulseFeedReady();
+  }, [feedReady]);
 
   function onCategoriesChange(next: string[]) {
     const p = new URLSearchParams(searchParams.toString());
@@ -114,8 +140,13 @@ export default function PulseClient({
           selectedCategories={selectedCategories}
           onCategoriesChange={onCategoriesChange}
         />
-        <MarketFactsStrip className="border-b-0 py-1.5 min-[860px]:py-2" compact />
+        {feedReady ? (
+          <MarketFactsStrip className="border-b-0 py-1.5 min-[860px]:py-2" compact enabled />
+        ) : null}
       </PulseStickyHeader>
+      {showStaleBanner ? (
+        <PulseStaleBanner onRefresh={() => void refetch()} isRefreshing={isFetching} />
+      ) : null}
       {data?.fog_of_war ? <FogOfWarBanner /> : null}
 
       {status === "loading" && !data ? <FeedSkeleton /> : null}

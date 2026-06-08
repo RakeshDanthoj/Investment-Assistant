@@ -39,12 +39,20 @@ export type MapModule = {
   sort_order: number;
 };
 
-export type MapSectorDetailResponse = {
+export type MapSectorSummaryDetail = {
+  sector: { slug: string; name: string };
+  instrument_count: number;
+  modules: MapModule[];
+  cover_accent: string;
+};
+
+export type MapSectorMatrixResponse = {
   sector: { slug: string; name: string };
   factors: MapFactor[];
   instruments: MapInstrument[];
   instrument_count: number;
   sensitivities: Record<string, Record<string, MapSensitivityCell>>;
-  modules: MapModule[];
-  cover_accent: string;
 };
+
+/** @deprecated Use MapSectorSummaryDetail + MapSectorMatrixResponse */
+export type MapSectorDetailResponse = MapSectorSummaryDetail & MapSectorMatrixResponse;

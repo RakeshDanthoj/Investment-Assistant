@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import Any
-from uuid import UUID
 
 from psycopg.rows import dict_row
 
 from app.db.connection import connection
-from app.services import factor_db as factor_db_svc
+from app.services.factor_db import freshness_for_retrieved_at
 from app.services.reasoning_gap_map import resolve_modules_for_gap_types
 
 SECTOR_COVER_ACCENTS: dict[str, str] = {
@@ -28,16 +28,6 @@ MATRIX_PREVIEW_INSTRUMENT_LIMIT = 12
 
 
 @dataclass(frozen=True)
-class MapModuleRow:
-    id: UUID
-    sector_slug: str | None
-    title: str
-    body: str
-    linked_gap_types: list[str]
-    sort_order: int
-
-
-@dataclass(frozen=True)
 class SectorSummary:
     slug: str
     name: str
@@ -47,11 +37,9 @@ class SectorSummary:
 
 def list_sectors() -> list[SectorSummary]:
     stmt = """
-    SELECT s.slug, s.name, count(i.id)::int AS instrument_count
-    FROM public.sectors AS s
-    LEFT JOIN public.instruments AS i ON i.sector_id = s.id
-    GROUP BY s.slug, s.name
-    ORDER BY s.name
+    SELECT slug, name, instrument_count
+    FROM public.map_sector_list_v
+    ORDER BY name
     """
     with connection() as conn, conn.cursor(row_factory=dict_row) as cur:
         cur.execute(stmt)
@@ -68,71 +56,124 @@ def list_sectors() -> list[SectorSummary]:
     ]
 
 
-def _fetch_modules(*, sector_slug: str | None = None) -> list[MapModuleRow]:
-    if sector_slug is not None:
-        stmt = """
-        SELECT id, sector_slug, title, body, linked_gap_types, sort_order
-        FROM public.map_modules
-        WHERE sector_slug = %s
-        ORDER BY sort_order, title
-        """
-        params: tuple[str, ...] = (sector_slug,)
-    else:
-        stmt = """
-        SELECT id, sector_slug, title, body, linked_gap_types, sort_order
-        FROM public.map_modules
-        ORDER BY sort_order, title
-        """
-        params = ()
-
-    with connection() as conn, conn.cursor(row_factory=dict_row) as cur:
-        cur.execute(stmt, params)
-        rows = cur.fetchall()
-
+def _normalize_modules(raw_modules: Any) -> list[dict[str, Any]]:
+    modules = raw_modules or []
+    if not isinstance(modules, list):
+        return []
     return [
-        MapModuleRow(
-            id=r["id"],
-            sector_slug=r.get("sector_slug"),
-            title=str(r["title"]),
-            body=str(r["body"]),
-            linked_gap_types=list(r.get("linked_gap_types") or []),
-            sort_order=int(r["sort_order"]),
-        )
-        for r in rows
+        {
+            "id": str(m["id"]),
+            "sector_slug": m.get("sector_slug"),
+            "title": str(m["title"]),
+            "body": str(m["body"]),
+            "linked_gap_types": list(m.get("linked_gap_types") or []),
+            "sort_order": int(m["sort_order"]),
+        }
+        for m in modules
     ]
 
 
-def fetch_sector_detail(*, sector_slug: str) -> dict[str, Any]:
+def fetch_sector_summary(*, sector_slug: str) -> dict[str, Any]:
     slug = sector_slug.strip().lower()
     if not slug:
         raise ValueError("sector_slug is required")
 
-    matrix = factor_db_svc.fetch_matrix_rows(sector_slug=slug)
-    instruments = matrix["instruments"][:MATRIX_PREVIEW_INSTRUMENT_LIMIT]
-    tickers = {str(i["ticker"]) for i in instruments}
-    sensitivities = {
-        t: matrix["sensitivities"].get(t, {}) for t in tickers if t in matrix["sensitivities"]
+    stmt = """
+    SELECT slug, name, instrument_count, modules
+    FROM public.map_sector_summary_v
+    WHERE slug = %s
+    LIMIT 1
+    """
+    with connection() as conn, conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(stmt, (slug,))
+        row = cur.fetchone()
+
+    if not row:
+        raise LookupError(f"sector not found: {slug}")
+
+    return {
+        "sector": {"slug": str(row["slug"]), "name": str(row["name"])},
+        "instrument_count": int(row["instrument_count"]),
+        "modules": _normalize_modules(row.get("modules")),
+        "cover_accent": SECTOR_COVER_ACCENTS.get(slug, "slate"),
     }
 
-    modules = _fetch_modules(sector_slug=slug)
+
+def _reshape_sensitivity_rows(
+    rows: Any,
+    *,
+    reference: datetime | None = None,
+) -> dict[str, dict[str, dict[str, Any]]]:
+    ref = reference if reference is not None else datetime.now(UTC)
+    if not isinstance(rows, list):
+        return {}
+
+    sensitivities: dict[str, dict[str, dict[str, Any]]] = {}
+    for row in rows:
+        tick = str(row["ticker"])
+        factor_slug = str(row["factor_slug"])
+        retrieved_at = row["retrieved_at"]
+        if isinstance(retrieved_at, str):
+            retrieved_at = datetime.fromisoformat(retrieved_at.replace("Z", "+00:00"))
+        sensitivities.setdefault(tick, {})[factor_slug] = {
+            "sensitivity": int(row["sensitivity"]),
+            "mmj_tag": str(row["mmj_tag"]),
+            "source_url": str(row["source_url"]),
+            "retrieved_at": retrieved_at.isoformat(),
+            "freshness": freshness_for_retrieved_at(retrieved_at, reference=ref),
+        }
+    return sensitivities
+
+
+def fetch_sector_matrix(*, sector_slug: str) -> dict[str, Any]:
+    slug = sector_slug.strip().lower()
+    if not slug:
+        raise ValueError("sector_slug is required")
+
+    stmt = """
+    SELECT sector, factors, instruments, sensitivity_rows
+    FROM public.map_sector_matrix_v
+    WHERE sector_slug = %s
+    LIMIT 1
+    """
+    with connection() as conn, conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(stmt, (slug,))
+        row = cur.fetchone()
+
+    if not row:
+        raise LookupError(f"sector not found: {slug}")
+
+    instruments_raw = row.get("instruments") or []
+    if not isinstance(instruments_raw, list):
+        instruments_raw = []
+
+    all_instruments = [
+        {
+            "id": str(inst["id"]),
+            "ticker": str(inst["ticker"]),
+            "display_name": str(inst["display_name"]),
+        }
+        for inst in instruments_raw
+    ]
+    preview_instruments = all_instruments[:MATRIX_PREVIEW_INSTRUMENT_LIMIT]
+    tickers = {inst["ticker"] for inst in preview_instruments}
+
+    all_sensitivities = _reshape_sensitivity_rows(row.get("sensitivity_rows"))
+    sensitivities = {t: all_sensitivities.get(t, {}) for t in tickers if t in all_sensitivities}
+
+    factors_raw = row.get("factors") or []
+    factors = factors_raw if isinstance(factors_raw, list) else []
+
+    sector_raw = row.get("sector") or {}
     return {
-        "sector": matrix["sector"],
-        "factors": matrix["factors"],
-        "instruments": instruments,
-        "instrument_count": len(matrix["instruments"]),
+        "sector": {
+            "slug": str(sector_raw.get("slug", slug)),
+            "name": str(sector_raw.get("name", slug)),
+        },
+        "factors": factors,
+        "instruments": preview_instruments,
+        "instrument_count": len(all_instruments),
         "sensitivities": sensitivities,
-        "modules": [
-            {
-                "id": str(m.id),
-                "sector_slug": m.sector_slug,
-                "title": m.title,
-                "body": m.body,
-                "linked_gap_types": m.linked_gap_types,
-                "sort_order": m.sort_order,
-            }
-            for m in modules
-        ],
-        "cover_accent": SECTOR_COVER_ACCENTS.get(slug, "slate"),
     }
 
 

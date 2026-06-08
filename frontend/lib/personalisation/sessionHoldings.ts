@@ -4,6 +4,7 @@
  */
 
 import { buildPersonalisationToken, hmacSha256Hex } from "@/lib/personalisation/crypto";
+import { syncSessionCookies } from "@/lib/sessionCookies.shared";
 import { getStoredSessionId } from "@/lib/sessionProfile";
 
 export const HOLDINGS_STORAGE_KEY = "finnwise_session_holdings_v1";
@@ -65,6 +66,8 @@ export async function saveSessionHoldings(holdings: SessionHolding[]): Promise<v
   const sealed = await sealHoldings(holdings, sessionKey);
   window.sessionStorage.setItem(HOLDINGS_STORAGE_KEY, sealed);
   emitHoldingsChanged();
+  const token = await buildPersonalisationToken(holdings.map((h) => h.instrumentId));
+  void syncSessionCookies({ personalisationToken: token });
 }
 
 export async function getSessionHoldings(): Promise<SessionHolding[]> {
@@ -81,6 +84,7 @@ export async function clearSessionHoldings(): Promise<void> {
   if (typeof window === "undefined") return;
   window.sessionStorage.removeItem(HOLDINGS_STORAGE_KEY);
   emitHoldingsChanged();
+  void syncSessionCookies({ personalisationToken: null });
 }
 
 export async function getPersonalisationToken(): Promise<string | null> {

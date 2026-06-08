@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 
 from fastapi.testclient import TestClient
 
-from app.http.cache_control import NO_STORE_CACHE, PUBLISHED_READ_CACHE
+from app.http.cache_control import NO_STORE_CACHE, PUBLIC_FEED_CACHE, PUBLISHED_READ_CACHE
 from app.main import app
 
 _ORIGIN = "https://investment-assistant-frontend.vercel.app"
@@ -27,11 +27,43 @@ def _sample_card_payload(*, lifecycle_state: str = "published") -> dict[str, str
 
 
 @patch("app.api.feed.build_feed_response")
-def test_feed_sets_published_read_cache_control(mock_build_feed: MagicMock) -> None:
+def test_feed_sets_public_cache_control_when_anonymous(mock_build_feed: MagicMock) -> None:
     mock_build_feed.return_value = _sample_feed_payload()
 
     client = TestClient(app)
     response = client.get("/api/feed", headers={"Origin": _ORIGIN})
+
+    assert response.status_code == 200
+    assert response.headers["Cache-Control"] == PUBLIC_FEED_CACHE
+
+
+@patch("app.api.feed.build_feed_response")
+def test_feed_sets_private_cache_control_with_personalisation_token(
+    mock_build_feed: MagicMock,
+) -> None:
+    mock_build_feed.return_value = _sample_feed_payload()
+
+    client = TestClient(app)
+    response = client.get(
+        "/api/feed",
+        params={"personalisation_token": "opaque-token"},
+        headers={"Origin": _ORIGIN},
+    )
+
+    assert response.status_code == 200
+    assert response.headers["Cache-Control"] == PUBLISHED_READ_CACHE
+
+
+@patch("app.api.feed.build_feed_response")
+def test_feed_sets_private_cache_control_with_session_id(mock_build_feed: MagicMock) -> None:
+    mock_build_feed.return_value = _sample_feed_payload()
+
+    client = TestClient(app)
+    response = client.get(
+        "/api/feed",
+        params={"session_id": "00000000-0000-4000-8000-000000000099"},
+        headers={"Origin": _ORIGIN},
+    )
 
     assert response.status_code == 200
     assert response.headers["Cache-Control"] == PUBLISHED_READ_CACHE
@@ -117,6 +149,6 @@ def test_feed_cache_header_is_stable_on_repeat_requests(mock_build_feed: MagicMo
     first = client.get("/api/feed", headers={"Origin": _ORIGIN})
     second = client.get("/api/feed", headers={"Origin": _ORIGIN})
 
-    assert first.headers["Cache-Control"] == PUBLISHED_READ_CACHE
-    assert second.headers["Cache-Control"] == PUBLISHED_READ_CACHE
+    assert first.headers["Cache-Control"] == PUBLIC_FEED_CACHE
+    assert second.headers["Cache-Control"] == PUBLIC_FEED_CACHE
     assert mock_build_feed.call_count == 2

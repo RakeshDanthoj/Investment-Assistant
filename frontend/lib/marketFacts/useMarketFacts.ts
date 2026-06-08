@@ -3,12 +3,18 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { describeFetchFailure, describeHttpFailure, getApiBaseUrl } from "@/lib/api";
+import { deferAfterPaint } from "@/lib/deferAfterPaint";
 
 import type { MarketFactsResponse } from "./types";
 
 export type MarketFactsStatus = "idle" | "loading" | "success" | "error";
 
-export function useMarketFacts() {
+type UseMarketFactsOptions = {
+  enabled?: boolean;
+};
+
+export function useMarketFacts(options?: UseMarketFactsOptions) {
+  const enabled = options?.enabled ?? true;
   const [status, setStatus] = useState<MarketFactsStatus>("idle");
   const [data, setData] = useState<MarketFactsResponse | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -34,8 +40,9 @@ export function useMarketFacts() {
   }, []);
 
   useEffect(() => {
-    void refetch();
-  }, [refetch]);
+    if (!enabled) return;
+    void deferAfterPaint(() => refetch());
+  }, [enabled, refetch]);
 
   return { status, data, errorMessage, refetch };
 }

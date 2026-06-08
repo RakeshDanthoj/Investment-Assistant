@@ -1,5 +1,8 @@
-"""Mirror API route shapes (P2-S1)."""
+"""Mirror API route shapes (P2-S1 / PI-S2)."""
 
+from contextlib import contextmanager
+from datetime import UTC, datetime
+from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
@@ -8,8 +11,11 @@ from fastapi.testclient import TestClient
 
 from app.api.mirror import router as mirror_router
 from app.core.auth import User, get_current_user
+from app.diagnostics.timing import DbRequestTimer, record_db_connect, record_db_query
+from app.services.mirror_dashboard import MirrorDashboardBundle, build_mirror_dashboard
 from app.services.mirror_predictions import MirrorPredictionRow
 from app.services.mirror_stats import MirrorStatsResult
+from app.services.mirror_streak import MirrorStreakResult, StreakCell
 
 app = FastAPI()
 app.include_router(mirror_router, prefix="/api")
@@ -86,11 +92,7 @@ def test_mirror_stats_returns_strip(monkeypatch):
     assert payload["market_tone"] == "developing"
 
 
-def test_mirror_dashboard_returns_combined_payload(monkeypatch):
-    from datetime import UTC, datetime
-
-    from app.services.mirror_streak import MirrorStreakResult, StreakCell
-
+def _sample_dashboard_bundle() -> MirrorDashboardBundle:
     stats = MirrorStatsResult(
         total_predictions=1,
         mechanism_accuracy_pct=100.0,
@@ -122,19 +124,23 @@ def test_mirror_dashboard_returns_combined_payload(monkeypatch):
         market_accuracy_pct=None,
         summary="No graded predictions yet.",
     )
-
-    monkeypatch.setattr("app.api.mirror.stats_for_user", lambda _uid: stats)
-    monkeypatch.setattr("app.api.mirror.list_predictions", lambda *_a, **_k: [row])
-    monkeypatch.setattr("app.api.mirror.streak_for_user", lambda _uid: streak)
-    monkeypatch.setattr(
-        "app.api.mirror.analyse_with_meta",
-        lambda _uid: ([], True),
+    return MirrorDashboardBundle(
+        stats=stats,
+        predictions=[row],
+        limit=50,
+        offset=0,
+        streak=streak,
+        gaps=[],
+        insufficient_gaps_history=True,
+        unread_notification_rows=[],
     )
-    from app.api.mirror_notifications import MirrorUnreadNotificationsResponse
 
+
+def test_mirror_dashboard_returns_combined_payload(monkeypatch):
+    bundle = _sample_dashboard_bundle()
     monkeypatch.setattr(
-        "app.api.mirror._unread_notifications_for_user",
-        lambda _uid: MirrorUnreadNotificationsResponse(count=0, items=[]),
+        "app.api.mirror.build_mirror_dashboard",
+        lambda *_a, **_k: bundle,
     )
 
     res = client.get("/api/mirror/dashboard")
@@ -142,6 +148,36 @@ def test_mirror_dashboard_returns_combined_payload(monkeypatch):
     payload = res.json()
     assert payload["stats"]["total_predictions"] == 1
     assert len(payload["predictions"]["items"]) == 1
-    assert payload["streak"]["summary"] == streak.summary
+    assert payload["streak"]["summary"] == bundle.streak.summary
     assert payload["gaps"]["insufficient_history"] is True
     assert payload["unread_notifications"]["count"] == 0
+
+
+@patch("app.services.mirror_dashboard.list_unread_card_graded", return_value=[])
+@patch("app.services.mirror_dashboard.connection")
+def test_build_mirror_dashboard_uses_single_connection(
+    mock_connection: MagicMock,
+    mock_unread: MagicMock,
+) -> None:
+    mock_conn = MagicMock()
+    mock_cur = MagicMock()
+    mock_cur.fetchall.side_effect = [[], []]
+    mock_conn.cursor.return_value.__enter__.return_value = mock_cur
+    mock_conn.cursor.return_value.__exit__.return_value = None
+
+    @contextmanager
+    def conn_with_cursor():
+        record_db_connect(0.1)
+        try:
+            yield mock_conn
+        finally:
+            record_db_query(0.5)
+
+    mock_connection.side_effect = conn_with_cursor
+
+    with DbRequestTimer() as timer:
+        build_mirror_dashboard(uuid4())
+
+    assert timer.snapshot()["connection_count"] == 1
+    assert mock_cur.execute.call_count == 2
+    mock_unread.assert_called_once()

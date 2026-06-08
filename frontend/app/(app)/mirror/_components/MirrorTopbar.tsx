@@ -2,12 +2,14 @@ import { FilterPills } from "./FilterPills";
 
 type MirrorTopbarProps = {
   status: string | null;
-  onStatusChange: (next: string | null) => void;
+  showFilters?: boolean;
+  onStatusChange?: (next: string | null) => void;
   notificationSlot?: React.ReactNode;
 };
 
 export function MirrorTopbar({
   status,
+  showFilters = true,
   onStatusChange,
   notificationSlot,
 }: MirrorTopbarProps) {
@@ -28,7 +30,9 @@ export function MirrorTopbar({
               </div>
             ) : null}
           </div>
-          <FilterPills status={status} onStatusChange={onStatusChange} />
+          {showFilters && onStatusChange ? (
+            <FilterPills status={status} onStatusChange={onStatusChange} />
+          ) : null}
         </div>
       </div>
     </header>

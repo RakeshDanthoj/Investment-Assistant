@@ -7,7 +7,6 @@ from typing import Literal
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, status
-from psycopg.rows import dict_row
 from pydantic import BaseModel
 
 from app.api.mirror_gaps import MirrorGapsResponse, ReasoningGapItem
@@ -23,16 +22,15 @@ from app.api.mirror_notifications import (
 )
 from app.api.mirror_streak import MirrorStreakResponse, StreakCellResponse
 from app.core.auth import CurrentUser
-from app.db.connection import connection
+from app.services.mirror_dashboard import build_mirror_dashboard
 from app.services.mirror_predictions import (
     MirrorPredictionRow,
     list_predictions,
     stats_for_user,
 )
 from app.services.mirror_stats import MirrorStatsResult
-from app.services.mirror_streak import StreakCell, streak_for_user
-from app.services.notify_on_grade import list_unread_card_graded
-from app.services.reasoning_gap_detector import ReasoningGap, analyse_with_meta
+from app.services.mirror_streak import StreakCell
+from app.services.reasoning_gap_detector import ReasoningGap
 
 router = APIRouter(prefix="/mirror", tags=["mirror"])
 router.include_router(mirror_notifications_router)
@@ -126,9 +124,9 @@ def _gap_to_item(gap: ReasoningGap) -> ReasoningGapItem:
     )
 
 
-def _unread_notifications_for_user(user_id: UUID) -> MirrorUnreadNotificationsResponse:
-    with connection() as conn, conn.cursor(row_factory=dict_row) as cur:
-        rows = list_unread_card_graded(cur, str(user_id))
+def _unread_notifications_from_rows(
+    rows: list[dict[str, object]],
+) -> MirrorUnreadNotificationsResponse:
     items: list[MirrorNotificationItem] = []
     for row in rows:
         item = mirror_notification_row_to_item(row)
@@ -185,38 +183,34 @@ def get_mirror_dashboard(
     limit: int = Query(default=50, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
 ) -> MirrorDashboardResponse:
-    """Single round-trip payload for Mirror SSR (P2.5-S3 / PC-3.3)."""
+    """Single round-trip payload for Mirror SSR (P2.5-S3 / PI-S2)."""
     user_id = UUID(current_user.id)
     try:
-        stats = stats_for_user(user_id)
-        rows = list_predictions(
+        bundle = build_mirror_dashboard(
             user_id,
             status=status_filter,
             limit=limit,
             offset=offset,
         )
-        streak = streak_for_user(user_id)
-        gaps, insufficient = analyse_with_meta(user_id)
-        unread = _unread_notifications_for_user(user_id)
     except RuntimeError as exc:
         _db_unavailable(exc)
 
     return MirrorDashboardResponse(
-        stats=_stats_to_response(stats),
+        stats=_stats_to_response(bundle.stats),
         predictions=MirrorPredictionsResponse(
-            items=[_row_to_item(row) for row in rows],
-            limit=limit,
-            offset=offset,
+            items=[_row_to_item(row) for row in bundle.predictions],
+            limit=bundle.limit,
+            offset=bundle.offset,
         ),
         streak=MirrorStreakResponse(
-            cells=[_streak_cell_to_response(c) for c in streak.cells],
-            mechanism_accuracy_pct=streak.mechanism_accuracy_pct,
-            market_accuracy_pct=streak.market_accuracy_pct,
-            summary=streak.summary,
+            cells=[_streak_cell_to_response(c) for c in bundle.streak.cells],
+            mechanism_accuracy_pct=bundle.streak.mechanism_accuracy_pct,
+            market_accuracy_pct=bundle.streak.market_accuracy_pct,
+            summary=bundle.streak.summary,
         ),
         gaps=MirrorGapsResponse(
-            items=[_gap_to_item(g) for g in gaps],
-            insufficient_history=insufficient,
+            items=[_gap_to_item(g) for g in bundle.gaps],
+            insufficient_history=bundle.insufficient_gaps_history,
         ),
-        unread_notifications=unread,
+        unread_notifications=_unread_notifications_from_rows(bundle.unread_notification_rows),
     )

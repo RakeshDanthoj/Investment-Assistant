@@ -52,6 +52,7 @@ class Settings(BaseSettings):
     newsapi_key: str = ""
     factor_db_admin_emails: str = ""
     admin_emails: str = Field(default="", validation_alias="ADMIN_EMAILS")
+    local_dev_password: str = Field(default="", validation_alias="LOCAL_DEV_PASSWORD")
     llm_monthly_budget_inr: float = Field(
         default=20_000.0,
         validation_alias="LLM_MONTHLY_BUDGET_INR",

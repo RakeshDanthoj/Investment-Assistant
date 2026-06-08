@@ -1,7 +1,17 @@
+"use client";
+
 import Link from "next/link";
+import { useQueryClient } from "@tanstack/react-query";
+import { useCallback, useMemo } from "react";
 
 import type { MapSectorSummary } from "@/lib/map/types";
-
+import {
+  fetchMapSectorSummaryClient,
+  mapQueryKeys,
+  MAP_STALE_TIME_MS,
+} from "@/lib/map/mapQueries";
+import { useIntentPrefetch } from "@/lib/perf/useIntentPrefetch";
+import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
 const ACCENT_STYLES: Record<string, string> = {
@@ -23,6 +33,25 @@ type SectorTileProps = {
 export function SectorTile({ sector }: SectorTileProps) {
   const accent = ACCENT_STYLES[sector.cover_accent] ?? ACCENT_STYLES.slate;
   const initial = sector.name.trim().charAt(0).toUpperCase();
+  const queryClient = useQueryClient();
+  const supabase = useMemo(() => createClient(), []);
+  const { onPointerEnter, onPointerLeave } = useIntentPrefetch();
+
+  const prefetchSummary = useCallback(
+    async (signal: AbortSignal) => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session?.access_token) return;
+
+      await queryClient.prefetchQuery({
+        queryKey: mapQueryKeys.sectorSummary(sector.slug),
+        queryFn: () => fetchMapSectorSummaryClient(session.access_token, sector.slug, signal),
+        staleTime: MAP_STALE_TIME_MS,
+      });
+    },
+    [queryClient, sector.slug, supabase],
+  );
 
   return (
     <Link
@@ -32,6 +61,8 @@ export function SectorTile({ sector }: SectorTileProps) {
         accent,
       )}
       data-testid={`sector-tile-${sector.slug}`}
+      onPointerEnter={() => onPointerEnter(sector.slug, prefetchSummary)}
+      onPointerLeave={onPointerLeave}
     >
       <div className="flex items-start justify-between gap-3">
         <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/80 font-display text-lg font-bold text-slate-800 shadow-sm">

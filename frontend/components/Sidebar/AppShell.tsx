@@ -33,6 +33,7 @@ export default function AppShell({
 }: AppShellProps) {
   const pathname = usePathname();
   const showSignalNotificationBadge = !pathname.startsWith("/mirror");
+  const deferNotificationUntilFeed = pathname.startsWith("/pulse");
 
   return (
     <div className="flex h-svh flex-col overflow-hidden bg-background">
@@ -46,7 +47,9 @@ export default function AppShell({
 
       <header className="z-20 flex shrink-0 items-center justify-between gap-2 border-b border-border bg-card px-3 py-2 min-[860px]:hidden">
         <p className="font-display text-base font-bold text-foreground">FinnWise</p>
-        {showSignalNotificationBadge ? <NotificationBadge /> : null}
+        {showSignalNotificationBadge ? (
+          <NotificationBadge deferUntilFeedReady={deferNotificationUntilFeed} />
+        ) : null}
       </header>
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden min-[860px]:pl-[220px]">

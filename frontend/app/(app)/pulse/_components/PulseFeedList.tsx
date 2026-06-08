@@ -19,7 +19,7 @@ export function PulseFeedList({ cards }: PulseFeedListProps) {
         <Link
           key={card.id}
           href={`/thread/${card.id}`}
-          prefetch={false}
+          prefetch
           className="block rounded-lg transition-colors hover:border-border/80"
         >
           <EventCardSurface card={card} />

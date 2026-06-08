@@ -7,10 +7,16 @@ import { cn } from "@/lib/utils";
 type MarketFactsStripProps = {
   className?: string;
   compact?: boolean;
+  /** When false, skips fetch until enabled (Pulse defers until feed paint). */
+  enabled?: boolean;
 };
 
-export function MarketFactsStrip({ className, compact = false }: MarketFactsStripProps) {
-  const { status, data, errorMessage } = useMarketFacts();
+export function MarketFactsStrip({
+  className,
+  compact = false,
+  enabled = true,
+}: MarketFactsStripProps) {
+  const { status, data, errorMessage } = useMarketFacts({ enabled });
   const loading = status === "loading" || status === "idle";
 
   return (

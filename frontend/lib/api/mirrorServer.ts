@@ -16,6 +16,8 @@ export type MirrorInitialPayload = {
   streak: MirrorStreakResponse;
   gaps: MirrorReasoningGapsResponse;
   unreadNotifications: MirrorUnreadNotification[];
+  /** Epoch ms when SSR payload was fetched (PI-S2 stale banner). */
+  fetchedAt?: number;
 };
 
 type MirrorDashboardResponse = MirrorInitialPayload & {
@@ -45,5 +47,6 @@ export async function fetchMirrorInitialData(
     streak: body.streak,
     gaps: body.gaps,
     unreadNotifications: body.unread_notifications.items ?? [],
+    fetchedAt: Date.now(),
   };
 }

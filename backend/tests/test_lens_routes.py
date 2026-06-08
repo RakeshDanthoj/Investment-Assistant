@@ -1,6 +1,8 @@
-"""Lens API route shapes (P2-S6)."""
+"""Lens API route shapes (P2-S6) and read-view consolidation (PI-S3)."""
 
+from contextlib import contextmanager
 from datetime import UTC, datetime
+from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
@@ -9,7 +11,8 @@ from fastapi.testclient import TestClient
 
 from app.api.lens import router as lens_router
 from app.core.auth import User, get_current_user
-from app.services.lens_queries import LensQueryRow
+from app.diagnostics.timing import DbRequestTimer, record_db_connect, record_db_query
+from app.services.lens_queries import LensQueryRow, list_recent_for_user
 
 app = FastAPI()
 app.include_router(lens_router, prefix="/api")
@@ -90,3 +93,30 @@ def test_lens_queries_me_returns_items(monkeypatch):
     payload = res.json()
     assert payload["items"][0]["query"] == row.query
     assert payload["items"][0]["status"] == "done"
+
+
+def test_list_recent_for_user_uses_single_connection() -> None:
+    user_id = uuid4()
+    mock_conn = MagicMock()
+    mock_cur = MagicMock()
+    mock_cur.fetchall.return_value = []
+    mock_conn.cursor.return_value.__enter__.return_value = mock_cur
+    mock_conn.cursor.return_value.__exit__.return_value = None
+
+    @contextmanager
+    def conn_with_cursor():
+        record_db_connect(0.1)
+        try:
+            yield mock_conn
+        finally:
+            record_db_query(0.5)
+
+    with patch("app.services.lens_queries.connection", conn_with_cursor):
+        with DbRequestTimer() as timer:
+            rows = list_recent_for_user(user_id)
+
+    assert rows == []
+    assert timer.snapshot()["connection_count"] == 1
+    sql = mock_cur.execute.call_args[0][0]
+    assert "lens_user_queries_v" in sql
+    assert mock_cur.execute.call_args[0][1] == (str(user_id), 20)

@@ -29,6 +29,7 @@ MIGRATION_FILES = (
     "0026_pipeline_runs_held_status.sql",
     "0027_confidence_audit.sql",
     "0028_card_regen_history.sql",
+    "0029_performance_read_views.sql",
 )
 
 _SCHEMA_MIGRATIONS_DDL = """

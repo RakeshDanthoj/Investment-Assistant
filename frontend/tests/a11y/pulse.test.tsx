@@ -3,6 +3,17 @@
 import { render } from "@testing-library/react";
 import { axe } from "jest-axe";
 
+jest.mock("next/navigation", () => ({
+  useRouter: () => ({ prefetch: jest.fn(), push: jest.fn() }),
+}));
+
+jest.mock("../../lib/perf/useIntentPrefetch", () => ({
+  useIntentPrefetch: () => ({
+    onPointerEnter: jest.fn(),
+    onPointerLeave: jest.fn(),
+  }),
+}));
+
 import type { PulseCard } from "@/lib/cards/pulseTypes";
 import { EventCard } from "@/app/(app)/pulse/_components/EventCard";
 import { InsightPanel } from "@/app/(app)/pulse/_components/InsightPanel";

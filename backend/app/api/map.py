@@ -6,9 +6,12 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from app.core.auth import User, get_current_user
+from app.diagnostics.timing import DbRequestTimer, json_response_with_timing
+from app.http.cache_control import cache_control_for_map_read
 from app.services import map_content as map_svc
 from app.services.reasoning_gap_map import ALL_GAP_TYPES, GAP_TYPE_LABELS
 
@@ -35,14 +38,19 @@ class MapModuleItem(BaseModel):
     sort_order: int
 
 
-class SectorDetailResponse(BaseModel):
+class SectorSummaryDetailResponse(BaseModel):
+    sector: dict[str, Any]
+    instrument_count: int
+    modules: list[MapModuleItem]
+    cover_accent: str
+
+
+class SectorMatrixResponse(BaseModel):
     sector: dict[str, Any]
     factors: list[dict[str, Any]]
     instruments: list[dict[str, Any]]
     instrument_count: int
     sensitivities: dict[str, dict[str, dict[str, Any]]]
-    modules: list[MapModuleItem]
-    cover_accent: str
 
 
 class GapModuleLinkItem(BaseModel):
@@ -78,21 +86,58 @@ def list_map_sectors(_: User = Depends(get_current_user)) -> SectorListResponse:
     )
 
 
-@router.get("/sectors/{slug}", response_model=SectorDetailResponse)
-def get_map_sector(slug: str, _: User = Depends(get_current_user)) -> SectorDetailResponse:
-    try:
-        data = map_svc.fetch_sector_detail(sector_slug=slug)
-    except RuntimeError:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Database is not configured",
-        ) from None
-    except LookupError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
-    except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+@router.get("/sectors/{slug}", response_model=SectorSummaryDetailResponse)
+def get_map_sector_summary(
+    slug: str,
+    _: User = Depends(get_current_user),
+) -> JSONResponse:
+    with DbRequestTimer() as timer:
+        try:
+            data = map_svc.fetch_sector_summary(sector_slug=slug)
+        except RuntimeError:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Database is not configured",
+            ) from None
+        except LookupError as exc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
-    return SectorDetailResponse(**data)
+        payload = SectorSummaryDetailResponse(**data)
+
+    return json_response_with_timing(
+        payload,
+        timer,
+        cache_control=cache_control_for_map_read(),
+    )
+
+
+@router.get("/sectors/{slug}/matrix", response_model=SectorMatrixResponse)
+def get_map_sector_matrix(
+    slug: str,
+    _: User = Depends(get_current_user),
+) -> JSONResponse:
+    with DbRequestTimer() as timer:
+        try:
+            data = map_svc.fetch_sector_matrix(sector_slug=slug)
+        except RuntimeError:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Database is not configured",
+            ) from None
+        except LookupError as exc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+        payload = SectorMatrixResponse(**data)
+
+    return json_response_with_timing(
+        payload,
+        timer,
+        cache_control=cache_control_for_map_read(),
+    )
 
 
 @router.get("/modules/by-gap-type", response_model=GapModulesResponse)

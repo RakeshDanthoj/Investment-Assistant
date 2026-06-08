@@ -1,5 +1,6 @@
 import AppShell from "@/components/Sidebar/AppShell";
 import { resolveEditorialNavAccess } from "@/lib/admin-nav";
+import { QueryProvider } from "@/lib/perf/QueryProvider";
 import { createClient } from "@/lib/supabase/server";
 import { displayNameFromUser } from "@/lib/user-display";
 
@@ -22,12 +23,14 @@ export default async function AppLayout({
   );
 
   return (
-    <AppShell
-      userName={userName}
-      userEmail={userEmail}
-      editorialAccess={editorialAccess}
-    >
-      {children}
-    </AppShell>
+    <QueryProvider>
+      <AppShell
+        userName={userName}
+        userEmail={userEmail}
+        editorialAccess={editorialAccess}
+      >
+        {children}
+      </AppShell>
+    </QueryProvider>
   );
 }

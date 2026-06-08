@@ -1,12 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useReducer, useState } from "react";
+import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { getApiBaseUrl, describeFetchFailure } from "@/lib/api";
 import { deferAfterPaint } from "@/lib/deferAfterPaint";
 import type { Horizon } from "@/lib/onboarding/state";
-import type { LensQueriesResponse, LensQueryCreateResponse } from "@/lib/lens/types";
+import type {
+  LensQueryItem,
+  LensQueriesResponse,
+  LensQueryCreateResponse,
+} from "@/lib/lens/types";
 import {
   initialLensState,
   lensHashForState,
@@ -22,13 +26,24 @@ import { ResultCard } from "./ResultCard";
 
 type LensClientProps = {
   signedIn?: boolean;
+  initialHistory?: LensQueryItem[] | null;
 };
 
-export default function LensClient({ signedIn = true }: LensClientProps) {
+export default function LensClient({
+  signedIn = true,
+  initialHistory = null,
+}: LensClientProps) {
+  const hydratedFromServer = signedIn && initialHistory !== null;
+
   const [state, dispatch] = useReducer(lensReducer, undefined, initialLensState);
-  const [history, setHistory] = useState<LensQueriesResponse["items"]>([]);
-  const [historyLoading, setHistoryLoading] = useState(true);
+  const [history, setHistory] = useState<LensQueriesResponse["items"]>(
+    () => initialHistory ?? [],
+  );
+  const [historyLoading, setHistoryLoading] = useState(
+    () => signedIn && !hydratedFromServer,
+  );
   const [historyError, setHistoryError] = useState<string | null>(null);
+  const skipInitialHistoryRef = useRef(hydratedFromServer);
 
   const loadHistory = useCallback(async () => {
     setHistoryLoading(true);
@@ -68,6 +83,10 @@ export default function LensClient({ signedIn = true }: LensClientProps) {
     if (!signedIn) {
       setHistoryLoading(false);
       setHistoryError("Sign in to use The Lens.");
+      return;
+    }
+    if (skipInitialHistoryRef.current) {
+      skipInitialHistoryRef.current = false;
       return;
     }
     let cancelled = false;

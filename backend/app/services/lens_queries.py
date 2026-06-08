@@ -87,11 +87,11 @@ def create_query(
 def list_recent_for_user(user_id: UUID, *, limit: int = _RECENT_LIMIT) -> list[LensQueryRow]:
     capped = max(1, min(limit, _RECENT_LIMIT))
     stmt = """
-    SELECT id, query, sector::text, horizon, status::text, card_id, created_at
-    FROM public.lens_queries
+    SELECT id, query, sector, horizon, status, card_id, created_at
+    FROM public.lens_user_queries_v
     WHERE user_id = %s::uuid
-    ORDER BY created_at DESC
-    LIMIT %s
+      AND recent_rank <= %s
+    ORDER BY recent_rank
     """
     with connection() as conn, conn.cursor(row_factory=dict_row) as cur:
         cur.execute(stmt, (str(user_id), capped))

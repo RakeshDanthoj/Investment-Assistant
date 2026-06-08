@@ -23,12 +23,16 @@ export class CardDetailFetchError extends Error {
 export type PulseFeedFetchOptions = {
   category?: string;
   sessionId?: string;
+  personalisationToken?: string;
 };
 
 export async function fetchPulseFeed(options?: PulseFeedFetchOptions): Promise<PulseFeedResponse> {
   const params = new URLSearchParams();
   if (options?.category) params.set("category", options.category);
   if (options?.sessionId) params.set("session_id", options.sessionId);
+  if (options?.personalisationToken) {
+    params.set("personalisation_token", options.personalisationToken);
+  }
   const qs = params.toString();
   const endpoint = `${getServerApiBaseUrl()}/api/feed${qs ? `?${qs}` : ""}`;
 

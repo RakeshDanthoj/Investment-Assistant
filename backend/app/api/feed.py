@@ -62,5 +62,8 @@ def get_feed(
     return json_response_with_timing(
         payload,
         timer,
-        cache_control=cache_control_for_feed(),
+        cache_control=cache_control_for_feed(
+            session_id=session_id,
+            personalisation_token=personalisation_token,
+        ),
     )

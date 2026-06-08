@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import type { SessionApiResult } from "@/lib/onboarding/state";
+import { syncSessionCookies } from "@/lib/sessionCookies.shared";
 import { setStoredSessionId } from "@/lib/sessionProfile";
 import { cn } from "@/lib/utils";
 
@@ -56,7 +57,9 @@ export function Step4ModeResult({ result }: Step4ModeResultProps) {
   const router = useRouter();
 
   useEffect(() => {
-    if (result.session_id) setStoredSessionId(result.session_id);
+    if (!result.session_id) return;
+    setStoredSessionId(result.session_id);
+    void syncSessionCookies({ sessionId: result.session_id });
   }, [result.session_id]);
 
   const targetPath = result.starting_surface === "map" ? "/map" : "/pulse";

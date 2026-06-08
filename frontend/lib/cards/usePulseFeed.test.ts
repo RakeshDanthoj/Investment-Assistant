@@ -1,4 +1,15 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderHook, waitFor } from "@testing-library/react";
+import { createElement, type ReactNode } from "react";
+
+jest.mock("../personalisation/sessionHoldings", () => ({
+  getPersonalisationToken: jest.fn().mockResolvedValue(null),
+  HOLDINGS_CHANGED_EVENT: "finnwise-holdings-changed",
+}));
+
+jest.mock("../sessionProfile", () => ({
+  getStoredSessionId: jest.fn().mockReturnValue(null),
+}));
 
 import type { PulseFeedResponse } from "@/lib/cards/pulseTypes";
 import { usePulseFeed } from "@/lib/cards/usePulseFeed";
@@ -22,9 +33,20 @@ const sampleFeed: PulseFeedResponse = {
   ],
   fog_of_war: false,
   profile: null,
-  last_updated: "2026-05-01T00:00:00Z",
+  last_updated: new Date().toISOString(),
   counts: 1,
 };
+
+function createWrapper() {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false, gcTime: 0 },
+    },
+  });
+  return function Wrapper({ children }: { children: ReactNode }) {
+    return createElement(QueryClientProvider, { client: queryClient }, children);
+  };
+}
 
 describe("usePulseFeed", () => {
   const fetchMock = jest.fn();
@@ -36,8 +58,15 @@ describe("usePulseFeed", () => {
   });
 
   it("skips the initial client fetch when hydrated from SSR data", async () => {
-    const { result } = renderHook(() =>
-      usePulseFeed([], { initialData: sampleFeed, initialCategoryQuery: "" }),
+    const { result } = renderHook(
+      () =>
+        usePulseFeed([], {
+          initialData: sampleFeed,
+          initialCategoryQuery: "",
+          initialSessionId: null,
+          initialPersonalisationToken: null,
+        }),
+      { wrapper: createWrapper() },
     );
 
     await waitFor(() => {
@@ -56,8 +85,16 @@ describe("usePulseFeed", () => {
 
     const { result, rerender } = renderHook(
       ({ categories }: { categories: string[] }) =>
-        usePulseFeed(categories, { initialData: sampleFeed, initialCategoryQuery: "" }),
-      { initialProps: { categories: [] as string[] } },
+        usePulseFeed(categories, {
+          initialData: sampleFeed,
+          initialCategoryQuery: "",
+          initialSessionId: null,
+          initialPersonalisationToken: null,
+        }),
+      {
+        initialProps: { categories: [] as string[] },
+        wrapper: createWrapper(),
+      },
     );
 
     await waitFor(() => {
@@ -81,7 +118,7 @@ describe("usePulseFeed", () => {
       json: async () => sampleFeed,
     });
 
-    renderHook(() => usePulseFeed([]));
+    renderHook(() => usePulseFeed([]), { wrapper: createWrapper() });
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -95,7 +132,7 @@ describe("usePulseFeed", () => {
       text: async () => "<!DOCTYPE html><html><title>404: This page could not be found.</title></html>",
     });
 
-    const { result } = renderHook(() => usePulseFeed([]));
+    const { result } = renderHook(() => usePulseFeed([]), { wrapper: createWrapper() });
 
     await waitFor(() => {
       expect(result.current.status).toBe("error");

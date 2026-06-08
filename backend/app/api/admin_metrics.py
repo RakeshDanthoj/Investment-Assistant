@@ -5,6 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 
+from app.core.admin_emails import normalized_admin_emails
 from app.core.auth import User, get_current_user
 from app.core.settings import get_settings
 from app.services.admin_metrics import fetch_admin_metrics
@@ -12,16 +13,8 @@ from app.services.admin_metrics import fetch_admin_metrics
 router = APIRouter(tags=["admin-metrics"])
 
 
-def _normalized_admin_emails() -> set[str]:
-    settings = get_settings()
-    raw = settings.admin_emails.strip() or settings.factor_db_admin_emails.strip()
-    if not raw:
-        return set()
-    return {part.strip().lower() for part in raw.split(",") if part.strip()}
-
-
 def require_admin(current: User = Depends(get_current_user)) -> User:
-    allow = _normalized_admin_emails()
+    allow = normalized_admin_emails(get_settings())
     email = (current.email or "").strip().lower()
     if not allow or email not in allow:
         raise HTTPException(

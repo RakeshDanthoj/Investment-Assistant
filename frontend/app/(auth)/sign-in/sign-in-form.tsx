@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { isLocalDevHost, tryLocalDevLogin } from "@/lib/auth/local-dev-login";
 import { buildAuthCallbackUrl } from "@/lib/auth-redirect";
 import { createClient } from "@/lib/supabase/client";
 
@@ -25,6 +26,11 @@ export default function SignInForm({ nextPath }: SignInFormProps) {
   const [passwordState, setPasswordState] = useState<FormState>("idle");
   const [magicLinkError, setMagicLinkError] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [showLocalDevHint, setShowLocalDevHint] = useState(false);
+
+  useEffect(() => {
+    setShowLocalDevHint(isLocalDevHost());
+  }, []);
 
   async function handleMagicLinkSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -59,10 +65,27 @@ export default function SignInForm({ nextPath }: SignInFormProps) {
     setPasswordError(null);
 
     const supabase = createClient();
+    const trimmedEmail = email.trim();
     const { error } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
+      email: trimmedEmail,
       password,
     });
+
+    if (error && isLocalDevHost()) {
+      const localSession = await tryLocalDevLogin(trimmedEmail, password);
+      if (localSession) {
+        const { error: sessionError } = await supabase.auth.setSession({
+          access_token: localSession.access_token,
+          refresh_token: localSession.refresh_token,
+        });
+        if (!sessionError) {
+          setPasswordState("idle");
+          router.push(nextPath);
+          router.refresh();
+          return;
+        }
+      }
+    }
 
     if (error) {
       setPasswordState("error");
@@ -131,6 +154,14 @@ export default function SignInForm({ nextPath }: SignInFormProps) {
           <p className="text-xs text-muted-foreground">
             First time here? Use the magic link tab to verify your email, then set
             a password from <strong>Account</strong> in the sidebar.
+            {showLocalDevHint ? (
+              <>
+                {" "}
+                On localhost, an email in <code>ADMIN_EMAILS</code> with{" "}
+                <code>LOCAL_DEV_PASSWORD</code> from <code>.env.local</code> also
+                works when no account password exists yet.
+              </>
+            ) : null}
           </p>
           <Button
             type="submit"

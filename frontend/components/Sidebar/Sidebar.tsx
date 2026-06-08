@@ -44,6 +44,7 @@ type SidebarProps = {
 export default function Sidebar({ userName, userEmail, editorialAccess }: SidebarProps) {
   const pathname = usePathname();
   const showSignalNotificationBadge = !pathname.startsWith("/mirror");
+  const deferNotificationUntilFeed = pathname.startsWith("/pulse");
 
   return (
     <aside className="flex h-svh w-[220px] shrink-0 flex-col border-r border-border bg-sidebar">
@@ -57,7 +58,9 @@ export default function Sidebar({ userName, userEmail, editorialAccess }: Sideba
               Event intelligence
             </p>
           </div>
-          {showSignalNotificationBadge ? <NotificationBadge /> : null}
+          {showSignalNotificationBadge ? (
+            <NotificationBadge deferUntilFeedReady={deferNotificationUntilFeed} />
+          ) : null}
         </div>
       </div>
       <Separator />

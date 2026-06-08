@@ -20,6 +20,7 @@ from app.api.feed import router as feed_router
 from app.api.instruments import router as instruments_router
 from app.api.lens import router as lens_router
 from app.api.lens_stream import router as lens_stream_router
+from app.api.local_dev_auth import router as local_dev_auth_router
 from app.api.map import router as map_router
 from app.api.market_facts import router as market_facts_router
 from app.api.mirror import router as mirror_router
@@ -93,6 +94,7 @@ app.add_middleware(
 )
 
 
+app.include_router(local_dev_auth_router, prefix="/api/auth")
 app.include_router(onboarding_router, prefix="/onboarding", tags=["onboarding"])
 app.include_router(admin_router, prefix="/admin")
 app.include_router(admin_review_router, prefix="/api/admin")
