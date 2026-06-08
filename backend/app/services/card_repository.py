@@ -14,6 +14,33 @@ from app.db.queries.base import SyntheticFilterMixin
 from app.models.enums import LifecycleState, SignalState
 
 
+def fetch_latest_draft_card_ids_by_event_ids(event_ids: list[UUID]) -> dict[UUID, UUID]:
+    """Latest draft card per event (newest first when multiple drafts exist)."""
+    if not event_ids:
+        return {}
+
+    stmt = """
+    SELECT DISTINCT ON (event_id)
+      event_id,
+      id AS card_id
+    FROM public.cards
+    WHERE event_id = ANY(%s::uuid[])
+      AND lifecycle_state = %s
+    ORDER BY event_id, created_at DESC
+    """
+    with connection() as conn, conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(
+            stmt,
+            ([str(event_id) for event_id in event_ids], LifecycleState.DRAFT.value),
+        )
+        rows = cur.fetchall()
+
+    return {
+        UUID(str(row["event_id"])): UUID(str(row["card_id"]))
+        for row in rows
+    }
+
+
 def fetch_event_row(event_id: UUID) -> dict[str, Any] | None:
     synth = SyntheticFilterMixin.events_not_synthetic("events")
     stmt = f"""

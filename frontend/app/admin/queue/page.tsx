@@ -1,31 +1,16 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { MarketFactsBanner } from "@/components/market-facts/MarketFactsBanner";
 import { getApiBaseUrl } from "@/lib/api";
+import { requestDraftFromEvent } from "@/lib/editorial/draftFromEvent";
 import { useMarketFacts } from "@/lib/marketFacts/useMarketFacts";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 
-type QueueEventRow = {
-  id: string;
-  title: string;
-  category: string;
-  event_source: string;
-  confidence_score: number;
-  lifecycle_state: string;
-  canonical_url: string;
-  source_url?: string | null;
-  created_at: string;
-};
+import { QueueEventsTable, type QueueEventRow } from "./QueueEventsTable";
 
 const SOURCES_ALL = "__all_src__";
 
@@ -79,9 +64,12 @@ function QueueLoading() {
 }
 
 function EditorialQueueInner() {
+  const router = useRouter();
   const [rows, setRows] = useState<QueueEventRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [generatingEventId, setGeneratingEventId] = useState<string | null>(null);
+  const [generateError, setGenerateError] = useState<string | null>(null);
   const {
     status: factsStatus,
     data: factsData,
@@ -117,14 +105,37 @@ function EditorialQueueInner() {
     reload();
   }, [reload]);
 
+  const handleGenerateDraft = useCallback(
+    async (eventId: string) => {
+      setGeneratingEventId(eventId);
+      setGenerateError(null);
+      const result = await requestDraftFromEvent(eventId);
+      if (!result.ok) {
+        setGenerateError(result.message);
+        setGeneratingEventId(null);
+        return;
+      }
+
+      setRows((current) =>
+        current.map((row) =>
+          row.id === eventId ? { ...row, draft_card_id: result.cardId } : row,
+        ),
+      );
+      setGeneratingEventId(null);
+      router.push(`/admin/review/${result.cardId}`);
+    },
+    [router],
+  );
+
   return (
     <main className="mx-auto flex min-h-screen max-w-6xl flex-col gap-8 px-4 py-10">
       <header className="space-y-2">
         <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Editorial</p>
         <h1 className="font-display text-3xl text-slate-900">Draft event queue</h1>
         <p className="max-w-2xl text-sm text-slate-600">
-          Draft events surfaced by FinnWise ingestion. Sorted highest confidence first. Filters
-          combine with the FastAPI catalogue view (Phase&nbsp;1: no reviewer auth gate).
+          Triage ingested events, then generate an ICE draft card to open the review workspace.
+          Generation takes about 30–90 seconds. Rows with an existing draft show{" "}
+          <span className="font-medium text-slate-800">Open review</span> instead.
         </p>
       </header>
 
@@ -182,7 +193,28 @@ function EditorialQueueInner() {
         </Alert>
       ) : null}
 
-      <EventsTable loading={loading} rows={rows} />
+      {generateError ? (
+        <Alert variant="destructive" className="border-amber-200 bg-amber-50 text-amber-900">
+          <AlertDescription className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p>{generateError}</p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setGenerateError(null)}
+            >
+              Dismiss
+            </Button>
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
+      <QueueEventsTable
+        loading={loading}
+        rows={rows}
+        generatingEventId={generatingEventId}
+        onGenerateDraft={(eventId) => void handleGenerateDraft(eventId)}
+      />
 
       <footer className="border-t border-slate-200 pt-6 text-center text-[11px] leading-relaxed text-slate-700">
         <p>
@@ -191,89 +223,5 @@ function EditorialQueueInner() {
         </p>
       </footer>
     </main>
-  );
-}
-
-function EventsTable({
-  loading,
-  rows,
-}: {
-  loading: boolean;
-  rows: QueueEventRow[];
-}) {
-  if (loading) {
-    return <p className="text-sm text-slate-500">Refreshing ingest snapshot…</p>;
-  }
-
-  if (!rows.length) {
-    return (
-      <p className="rounded-lg border border-dashed border-slate-300 bg-white px-4 py-6 text-sm text-slate-600">
-        No draft events matched these filters yet. Run&nbsp;
-        <code className="font-mono text-xs">python -m app.jobs.event_detection</code> against a
-        configured Supabase backend to populate drafts.
-      </p>
-    );
-  }
-
-  return (
-    <div className="overflow-auto rounded-xl border border-slate-200 bg-white shadow-sm">
-      <Table className="min-w-full border-collapse text-left text-sm">
-        <TableHeader className="bg-slate-50 text-xs uppercase tracking-wide text-slate-600">
-          <TableRow className="hover:bg-transparent">
-            <TableHead className="px-4 py-3 font-medium">Confidence</TableHead>
-            <TableHead className="px-4 py-3 font-medium">Title</TableHead>
-            <TableHead className="px-4 py-3 font-medium">Category</TableHead>
-            <TableHead className="px-4 py-3 font-medium">Source</TableHead>
-            <TableHead className="px-4 py-3 font-medium">Link</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {rows.map((ev) => (
-            <TableRow key={ev.id} className="border-t border-slate-100 hover:bg-slate-50/80">
-              <TableCell className="px-4 py-3 font-mono text-finnwise-green">
-                {ev.confidence_score}
-              </TableCell>
-              <TableCell className="max-w-xl px-4 py-3 whitespace-normal text-slate-900">
-                {ev.title}
-              </TableCell>
-              <TableCell className="px-4 py-3 text-xs uppercase tracking-wide text-slate-600">
-                {ev.category.replaceAll("_", " ")}
-              </TableCell>
-              <TableCell className="px-4 py-3 text-xs text-slate-500">{ev.event_source}</TableCell>
-              <TableCell className="px-4 py-3">
-                <QueueLink canonical={ev.canonical_url} fallback={ev.source_url} />
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
-  );
-}
-
-function QueueLink({
-  canonical,
-  fallback,
-}: {
-  canonical: string;
-  fallback?: string | null;
-}) {
-  const hrefCandidate = canonical.startsWith("http") ? canonical : fallback;
-  const href =
-    typeof hrefCandidate === "string" && hrefCandidate.startsWith("http")
-      ? hrefCandidate
-      : null;
-  const label = canonical.length > 64 ? `${canonical.slice(0, 64)}…` : canonical;
-  return href ? (
-    <a
-      href={href}
-      target="_blank"
-      rel="noreferrer"
-      className="text-xs text-finnwise-blue underline decoration-dotted"
-    >
-      {label || "Open"}
-    </a>
-  ) : (
-    <span className="font-mono text-[11px] text-slate-500">{canonical}</span>
   );
 }

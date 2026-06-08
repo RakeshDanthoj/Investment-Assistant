@@ -20,6 +20,7 @@ class EventRecord(BaseModel):
     lifecycle_state: LifecycleState = LifecycleState.DRAFT
     prompt_version: str | None = None
     created_at: datetime
+    draft_card_id: UUID | None = None
 
 
 class SignalRecord(BaseModel):

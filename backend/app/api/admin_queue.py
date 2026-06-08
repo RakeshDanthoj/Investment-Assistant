@@ -10,12 +10,17 @@ from fastapi import APIRouter, Query
 
 from app.models.enums import EventCategory, LifecycleState
 from app.models.schemas import EventRecord
+from app.services.card_repository import fetch_latest_draft_card_ids_by_event_ids
 from app.services.event_persistence import fetch_events_filtered
 
 router = APIRouter(tags=["admin"])
 
 
-def _row_to_schema(row: dict[str, Any]) -> EventRecord:
+def _row_to_schema(
+    row: dict[str, Any],
+    *,
+    draft_card_id: UUID | None = None,
+) -> EventRecord:
     cat = EventCategory(row["category"])
     state = LifecycleState(row["lifecycle_state"])
     event_uuid = UUID(str(row["id"]))
@@ -42,6 +47,7 @@ def _row_to_schema(row: dict[str, Any]) -> EventRecord:
         lifecycle_state=state,
         prompt_version=str(row["prompt_version"]) if row.get("prompt_version") else None,
         created_at=created,
+        draft_card_id=draft_card_id,
     )
 
 
@@ -59,4 +65,9 @@ def list_editorial_events(
         order_by_confidence_desc=True,
         limit=limit,
     )
-    return [_row_to_schema(row) for row in rows]
+    event_ids = [UUID(str(row["id"])) for row in rows]
+    draft_cards = fetch_latest_draft_card_ids_by_event_ids(event_ids)
+    return [
+        _row_to_schema(row, draft_card_id=draft_cards.get(UUID(str(row["id"]))))
+        for row in rows
+    ]
