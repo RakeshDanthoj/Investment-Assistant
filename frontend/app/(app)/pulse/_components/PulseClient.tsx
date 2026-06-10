@@ -56,7 +56,7 @@ function FeedSkeletonRow() {
 
 function FeedSkeleton() {
   return (
-    <div className="mx-auto max-w-6xl space-y-4 px-4 py-6">
+    <div className="mx-auto w-full max-w-[380px] space-y-4 py-6 min-[860px]:max-w-6xl min-[860px]:px-4">
       {[1, 2, 3].map((k) => (
         <FeedSkeletonRow key={k} />
       ))}

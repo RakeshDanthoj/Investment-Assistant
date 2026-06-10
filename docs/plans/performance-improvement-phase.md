@@ -1,7 +1,7 @@
 # Performance Improvement Phase
 
-**Version:** v1.0 | **Date:** 07-06-2026  
-**Status:** Locked — ready to execute  
+**Version:** v1.1 | **Date:** 08-06-2026  
+**Status:** Wave 1 complete — Wave 2 (production sign-in → Pulse) ready to execute  
 **Related:** [performance-correction-pulse-mirror.md](performance-correction-pulse-mirror.md) (supersedes PC-3.2, PC-3.3, PC-5.1, PC-5.3), [cross-phase-performance-standards.md](cross-phase-performance-standards.md)
 
 ---
@@ -22,6 +22,12 @@
 | D14 | `public, max-age=60` on `/api/feed` when `session_id` and `personalisation_token` absent |
 | D10-12 | DB views + single `connection()` per screen; no Redis; no colocation (deferred) |
 | D-Pulse | Option A: mirror `session_id` + `personalisation_token` into cookies at onboarding so SSR can serve personalized feed; Option B fallback when cookies absent |
+| D15 | **Amend D3/D4 (Wave 2):** sidebar nav `Link` default prefetch off; thread/card RSC prefetch intent-only (dwell 250ms). PI-S4.10–4.11 superseded for idle prefetch. |
+| D16 | Feed DB views: **prove-or-skip** — `EXPLAIN ANALYZE` on existing feed CTE first; add `pulse_feed_v` only if `db_query_ms` > 300ms on production path. Feed already uses 1 `connection()` + bundled CTE — views are not default. |
+| D17 | Market facts: **snapshot table** written by background job; `/api/market-facts` reads DB only (no live Yahoo/NSE/RBI on request path). |
+| D18 | Sign-in → Pulse: no `router.refresh()` after successful `router.push()`; suppress stale Supabase `refresh_token` attempt on sign-in page mount. |
+
+**Production evidence (08-06-2026):** sign-in `OPTIONS` ~15s (Supabase); `pulse?_rsc` ~2.4s; `market-facts` ~2.2s (live scrape); `saved-threads` ~2.9s; sidebar RSC prefetch storm after Pulse mount. Local dev 8s Pulse RSC not representative — optimize against production traces only.
 
 ---
 
@@ -291,18 +297,24 @@ DB hit occurs only after 250ms declared intent. Aborted requests must not update
 | PI-S2 | `mirror_dashboard.py`, `mirror.py` | `mirror/**`, `useMirrorDashboard.ts` |
 | PI-S3 | `lens_queries.py` | `lens/**`, `lensServer.ts` |
 | PI-S4 | `cache_control.py`, `feed.py`, `test_http_cache.py` | `pulse/**`, `usePulseFeed.ts`, cookies, `EventCard.tsx` |
+| PI-S5 | — | `sign-in/**` |
+| PI-S6 | `feed.py` (EXPLAIN) | `scripts/bench_*.mjs` |
+| PI-S7 | — | `Sidebar.tsx`, `PulseFeedList.tsx` |
+| PI-S8 | `market_facts*.sql`, `market_facts.py`, signal job | `useMarketFacts.ts` |
+| PI-S9 | optional gated migration | `pulse/page.tsx`, `SavedThreadsNav.tsx` |
 
-**Conflict note:** PI-S1 and PI-S4 both touch `cache_control.py` — coordinate: PI-S1 adds `MAP_READ_CACHE`; PI-S4 adds `PUBLIC_FEED_CACHE` in separate functions. Merge both in S0 if needed.
+**Conflict note:** PI-S1 and PI-S4 both touch `cache_control.py` — coordinate: PI-S1 adds `MAP_READ_CACHE`; PI-S4 adds `PUBLIC_FEED_CACHE` in separate functions. Merge both in S0 if needed. PI-S8 and PI-S9 migrations: separate files; PI-S9 view migration only if PI-S6 gate fails.
 
 ---
 
 ## Rejected / deferred (record only)
 
 - Redis layer
-- Regional colocation (D13)
+- Regional colocation (D13) — revisit only if PI-S6 shows proxy RTT dominates and `db_query_ms` is low
 - Skeleton expansion (D1)
 - Mirror partial refetch further work (D8)
-- Materialized views in initial delivery
+- Materialized views in Wave 1 — Wave 2: feed matview only if PI-S6 gate fails (D16)
+- Live external scrape on `/api/market-facts` request path — superseded by D17 (PI-S8)
 
 ---
 
@@ -315,4 +327,205 @@ DB hit occurs only after 250ms declared intent. Aborted requests must not update
 | 2b | PI-S2 | Parallel |
 | 2c | PI-S3 | Parallel ✓ |
 | 2d | PI-S4 | Parallel ✓ |
-| 3 | Phase exit | Bench + CI + manual smoke on Map/Mirror/Lens/Pulse |
+| 3 | Phase exit (Wave 1) | Bench + CI + manual smoke on Map/Mirror/Lens/Pulse ✓ |
+| 4 | PI-S5 | Auth + sign-in navigation — blocks perceived sign-in wall clock |
+| 5 | PI-S6 | Measurement gate — blocks feed view decision |
+| 6a | PI-S7 | Parallel with PI-S8, PI-S9 |
+| 6b | PI-S8 | Parallel with PI-S7, PI-S9 |
+| 6c | PI-S9 | Parallel with PI-S7, PI-S8; depends on PI-S6 gate for optional views |
+| 7 | Wave 2 exit | Production Network trace: sign-in → Pulse cards < 2.5s filmstrip; Tier-2 APIs deferred |
+
+---
+
+## Wave 2 — Production sign-in → Pulse (08-06-2026)
+
+**Trigger:** Production Network traces show Wave 1 architecture is correct but incomplete. Dominant gaps are outside PI-S0–S4 scope: Supabase auth preflight, idle RSC prefetch, live market-facts scrape, undiffered shell fetches.
+
+**Execution model:**
+
+```mermaid
+flowchart LR
+  S5[PI-S5 Auth path]
+  S6[PI-S6 Measure gate]
+  S7[PI-S7 Prefetch policy]
+  S8[PI-S8 Market facts cache]
+  S9[PI-S9 Pulse shell stream]
+  S5 --> S9
+  S6 --> S9
+  S7 --> S9
+```
+
+**Wave 2 (day 1):** PI-S5 + PI-S6 (blocking — measure before schema changes)  
+**Wave 2 (parallel):** PI-S7, PI-S8, PI-S9 after S5/S6 gates pass
+
+**View policy (D16):** Map/Mirror/Lens views shipped in PI-S0. Pulse feed **does not** get a view by default. `saved_threads_nav_v` is optional consistency only. Market facts use a **snapshot table**, not a read view.
+
+---
+
+## PI-S5 — Auth + sign-in navigation
+
+**Points:** 3 | **Blocks:** PI-S9 (clean post-auth RSC timing)  
+**Parallel with:** PI-S6
+
+### User story
+
+> As a returning tester, I click Sign in with password and reach Pulse without waiting on a stale session refresh or a redundant full-page server refresh. Auth preflight completes in under one second on production.
+
+### Frontend
+
+- [ ] **5.1** `frontend/app/(auth)/sign-in/sign-in-form.tsx`: after successful `signInWithPassword`, use `router.replace(nextPath)` only — remove `router.refresh()` (D18).
+- [ ] **5.2** Sign-in page: prevent Supabase client from firing `refresh_token` with an invalid/expired cookie before user submits — clear stale auth storage on sign-in mount or use a sign-in-scoped client that skips auto-refresh until post-login.
+- [ ] **5.3** Tests: `sign-in-form.test.tsx` — assert `replace` called once, `refresh` not called on success path.
+
+### Ops / verification (no code if config-only)
+
+- [ ] **5.4** Record Supabase project region vs Vercel deployment region; document RTT if `OPTIONS` remains > 1s after 5.2.
+- [ ] **5.5** Production Network acceptance: `token?grant_type=password` preflight < 1s; no parallel failing `refresh_token` 400 before password POST.
+
+### Acceptance
+
+- Password POST still < 500ms once preflight completes.
+- Single Pulse RSC navigation after sign-in (no duplicate `pulse?_rsc` from push + refresh).
+- Documented Supabase region note in PR or close-out comment.
+
+---
+
+## PI-S6 — Production measurement gate
+
+**Points:** 2 | **Blocks:** PI-S9 feed view decision (D16)  
+**Parallel with:** PI-S5
+
+### User story
+
+> As a platform engineer, I have timing evidence from the production proxy path before changing feed SQL or adding views — so schema work targets proven query latency, not assumed multi-query debt.
+
+### Measurement
+
+- [ ] **6.1** Capture `X-FinnWise-Timing` on `GET /api/feed` and `GET /api/saved-threads` through Vercel `/backend` proxy (production or preview) during cold and warm requests.
+- [ ] **6.2** Run `EXPLAIN (ANALYZE, BUFFERS)` on the feed bundled CTE (`_fetch_feed_bundle_conn` in `backend/app/services/feed.py`) against production-scale data; record `db_query_ms` equivalent.
+- [ ] **6.3** Extend `scripts/bench_api_latency.mjs` (or add `scripts/bench_proxy_timing.mjs`) to parse and report `db_connect_ms`, `db_query_ms`, `total_ms` from response headers.
+- [ ] **6.4** **Decision gate (D16):**
+  - If `db_query_ms` ≤ 300ms → **skip** `pulse_feed_v`; prioritize streaming SSR (PI-S9) and proxy/cache path.
+  - If `db_query_ms` > 300ms → add diagnostic `pulse_feed_v` in new migration + static SQL test; re-benchmark before considering materialized view.
+
+### Acceptance
+
+- Written timing breakdown for feed and saved-threads on production path.
+- Explicit go/no-go on `pulse_feed_v` recorded in PR.
+- No migration added without passing 6.4 gate.
+
+---
+
+## PI-S7 — Prefetch policy (D15)
+
+**Points:** 3 | **Depends on:** none (frontend-only)  
+**Parallel with:** PI-S8, PI-S9
+
+### User story
+
+> As a signed-in user opening Pulse, the app does not idle-prefetch Mirror, Lens, Map, Thread routes or card RSC payloads until I show intent (hover dwell 250ms or click). Network tab stays quiet after Pulse first paint.
+
+### Frontend
+
+- [ ] **7.1** `frontend/components/Sidebar/Sidebar.tsx`: `Link prefetch={false}` on all `SIDEBAR_NAV_ITEMS` (D15).
+- [ ] **7.2** `frontend/app/(app)/pulse/_components/PulseFeedList.tsx`: set `prefetch={false}` on mobile feed links — PI-S4.10 superseded; thread prefetch remains on `EventCard` dwell only (D4).
+- [ ] **7.3** Audit other `(app)` nav `Link` components for default prefetch; align with D3.
+- [ ] **7.4** Tests: Pulse feed list does not set link prefetch; EventCard still calls `router.prefetch` after dwell.
+
+### Acceptance
+
+- Production Network trace after Pulse mount: no burst of `thread`, `mirror`, `lens`, `map` `_rsc` prefetches without user interaction.
+- Card UUID `_rsc` prefetches absent until hover dwell on desktop or navigation click.
+
+---
+
+## PI-S8 — Market facts snapshot cache (D17)
+
+**Points:** 5 | **Depends on:** none  
+**Parallel with:** PI-S7, PI-S9
+
+### User story
+
+> As a user on Pulse, market fact chips appear quickly after the feed paints because the API reads a recent DB snapshot — not live external quote chains on every request.
+
+### Backend
+
+- [ ] **8.1** Migration `backend/db/migrations/00XX_market_facts_snapshots.sql`:
+  - Table `market_facts_snapshots` (or `market_fact_chips` rows): `fact_id`, `label`, `display_value`, `observed_at`, `source`, `freshness_status`, `reference_time`, `written_at`.
+  - Index on `written_at DESC` for latest snapshot read.
+- [ ] **8.2** Static SQL tests: `backend/tests/test_market_facts_snapshots_migration_sql.py`.
+- [ ] **8.3** Extend `signal_monitor` job (or dedicated `market_facts_refresh` job) to call `evaluate_critical_facts_gate` and upsert snapshot rows on schedule (e.g. every 5–15 min).
+- [ ] **8.4** Refactor `backend/app/api/market_facts.py` `get_market_facts` to read latest snapshot; return `degraded` / `has_stale_critical` from stored freshness metadata. No live HTTP on request path.
+- [ ] **8.5** `Cache-Control: public, max-age=60` on snapshot read when product-safe.
+- [ ] **8.6** Tests: `backend/tests/test_market_facts_api.py` — API does not call external fetchers; serves last snapshot; 503 or empty degraded when snapshot missing.
+
+### Frontend
+
+- [ ] **8.7** `frontend/lib/marketFacts/useMarketFacts.ts`: TanStack Query wrapper with `staleTime: 60_000` and shared query key (dedupe Strict Mode double fetch in dev).
+
+### Acceptance
+
+- `GET /api/market-facts` p95 < 200ms warm on production proxy path.
+- Chips still defer until feed ready (PI-S4.8 unchanged).
+- Job failure surfaces `degraded: true` in UI, not 15s hang.
+
+---
+
+## PI-S9 — Pulse shell streaming + Tier-2 defer
+
+**Points:** 5 | **Depends on:** PI-S5, PI-S6 gate  
+**Parallel with:** PI-S7, PI-S8
+
+### User story
+
+> As a user, I see the Pulse shell (layout, topbar, nav) within one second while the feed streams in. Saved threads in the sidebar load after feed paint, not in competition with the feed SSR.
+
+### Frontend — streaming SSR (PC-2.1)
+
+- [ ] **9.1** Split `frontend/app/(app)/pulse/page.tsx`:
+  - Shell + `PulseClient` frame render immediately.
+  - Feed data in nested async RSC boundary + `Suspense` (mirror `MirrorContentSection` / `LensContentSection` pattern).
+- [ ] **9.2** Pass `initialData` from Suspense child into `PulseClient`; preserve TanStack hydrate-skip behavior (D7).
+- [ ] **9.3** `loading.tsx` or inline fallback: minimal topbar skeleton only — no full feed skeleton expansion (D1).
+
+### Frontend — saved threads defer
+
+- [ ] **9.4** `frontend/components/Sidebar/SavedThreadsNav.tsx`: defer `load()` until `PULSE_FEED_READY_EVENT` (same contract as `NotificationBadge` on Pulse).
+- [ ] **9.5** Optional: TanStack Query hook `useSavedThreads` with `staleTime: 60_000` for cross-navigation dedup.
+
+### Backend — optional view (gated by PI-S6 only)
+
+- [ ] **9.6** **If and only if PI-S6 gate fails:** migration adds `saved_threads_nav_v(user_id)` or `pulse_feed_v`; wire services; static SQL test. Skip if gate passes.
+
+### Acceptance
+
+- Production: Pulse topbar/shell visible before feed RSC completes.
+- `saved-threads` fetch starts after `finnwise-pulse-feed-ready` event, not on sidebar mount.
+- Feed path unchanged at 1 `connection()` unless PI-S6 mandates view.
+- Sign-in → first feed card visible < 2.5s desktop filmstrip on production (after PI-S5).
+
+---
+
+## Wave 2 — Definition of done
+
+| Metric | Target |
+|--------|--------|
+| Sign-in auth preflight | < 1s production |
+| Sign-in → Pulse shell | < 1s after password POST |
+| Sign-in → first feed card | < 2.5s desktop filmstrip production |
+| `GET /api/market-facts` warm | p95 < 200ms (snapshot read) |
+| Idle RSC prefetch after Pulse | None without user intent (D15) |
+| Feed DB | 1 `connection()`; view added only if PI-S6 gate fails |
+| CI | `ruff`, `pytest`, `pnpm lint/typecheck/test/build` green |
+
+---
+
+## Wave 2 — File ownership
+
+| Story | Primary backend files | Primary frontend files |
+|-------|----------------------|------------------------|
+| PI-S5 | — | `sign-in/sign-in-form.tsx`, `sign-in-form.test.tsx` |
+| PI-S6 | `feed.py` (EXPLAIN only) | `scripts/bench_api_latency.mjs` or new bench script |
+| PI-S7 | — | `Sidebar.tsx`, `PulseFeedList.tsx`, `EventCard.tsx` |
+| PI-S8 | `00XX_market_facts_snapshots.sql`, `market_facts.py`, `market_facts_adapters.py`, signal job | `useMarketFacts.ts` |
+| PI-S9 | optional `00XX_*_v.sql` if gated | `pulse/page.tsx`, `SavedThreadsNav.tsx` |

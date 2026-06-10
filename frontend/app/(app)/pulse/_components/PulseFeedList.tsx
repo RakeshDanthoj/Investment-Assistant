@@ -12,7 +12,7 @@ type PulseFeedListProps = {
 export function PulseFeedList({ cards }: PulseFeedListProps) {
   return (
     <section
-      className="mx-auto min-w-0 flex-1 space-y-4 px-4 py-6 min-[860px]:hidden"
+      className="mx-auto min-w-0 w-full max-w-[380px] flex-1 space-y-4 py-6 min-[860px]:hidden"
       aria-label="Event feed"
     >
       {cards.map((card) => (
