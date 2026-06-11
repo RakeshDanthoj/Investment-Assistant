@@ -90,7 +90,7 @@ def normalize_signal_label(raw: str | None) -> str:
 
 def _should_skip_source_name(name: str) -> bool:
     low = name.lower()
-    return "llm" in low or "gemini" in low or "gpt" in low
+    return "llm" in low or "gemini" in low or "gpt" in low or "nemotron" in low
 
 
 def build_evidence_rows(

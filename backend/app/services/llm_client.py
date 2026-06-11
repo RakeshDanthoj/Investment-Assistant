@@ -1,4 +1,4 @@
-"""Thin Google Gemini client (google-genai SDK) with retries + structured logging (P1-S7)."""
+"""OpenAI-compatible LLM client (NVIDIA Nemotron via integrate API) with retries (P1-S7)."""
 
 from __future__ import annotations
 
@@ -8,9 +8,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from google import genai
-from google.genai import errors as genai_errors
-from google.genai import types
+from openai import APIConnectionError, APIStatusError, APITimeoutError, OpenAI, RateLimitError
 
 from app.core.settings import get_settings
 
@@ -19,15 +17,13 @@ _LOG = logging.getLogger(__name__)
 _REPO_PROMPTS = Path(__file__).resolve().parents[2] / "prompts"
 _MAX_RETRIES = 4
 _BACKOFF_BASE_S = 0.7
+_DEFAULT_BASE_URL = "https://integrate.api.nvidia.com/v1"
 
 
 def _is_retryable_api_error(exc: BaseException) -> bool:
-    if isinstance(exc, genai_errors.ServerError):
+    if isinstance(exc, (APIConnectionError, APITimeoutError, RateLimitError)):
         return True
-    if isinstance(exc, genai_errors.ClientError):
-        code = getattr(exc, "status_code", None)
-        return code in {408, 429, 500, 502, 503, 504}
-    return isinstance(exc, genai_errors.APIError) and getattr(exc, "status_code", None) in {
+    return isinstance(exc, APIStatusError) and exc.status_code in {
         408,
         429,
         500,
@@ -69,14 +65,24 @@ def _extract_json_object(text: str) -> dict[str, Any]:
         raise ValueError(f"LLM returned non-JSON payload: {text[:400]!r}") from exc
 
 
+def _message_text(message: Any) -> str:
+    parts: list[str] = []
+    for attr in ("content", "reasoning", "reasoning_content"):
+        val = getattr(message, attr, None)
+        if isinstance(val, str) and val.strip():
+            parts.append(val.strip())
+    return "\n".join(parts)
+
+
 class LlmClient:
     def __init__(self) -> None:
         settings = get_settings()
-        key = settings.gemini_api_key.strip()
+        key = settings.nvidia_api_key.strip()
         if not key:
-            raise RuntimeError("GEMINI_API_KEY is not configured (or set GOOGLE_API_KEY)")
-        self._client = genai.Client(api_key=key)
-        self._model_name = settings.gemini_model.strip()
+            raise RuntimeError("NVIDIA_API_KEY is not configured")
+        base_url = settings.llm_base_url.strip() or _DEFAULT_BASE_URL
+        self._client = OpenAI(api_key=key, base_url=base_url)
+        self._model_name = settings.llm_model.strip()
 
     def complete_json(
         self,
@@ -94,26 +100,26 @@ class LlmClient:
         while attempt < _MAX_RETRIES:
             attempt += 1
             try:
-                response = self._client.models.generate_content(
+                response = self._client.chat.completions.create(
                     model=self._model_name,
-                    contents=user,
-                    config=types.GenerateContentConfig(
-                        system_instruction=system,
-                        max_output_tokens=max_tokens,
-                        response_mime_type="application/json",
-                    ),
+                    messages=[
+                        {"role": "system", "content": system},
+                        {"role": "user", "content": user},
+                    ],
+                    max_tokens=max_tokens,
+                    temperature=0.2,
+                    response_format={"type": "json_object"},
                 )
-                if not response.candidates:
-                    fb = getattr(response, "prompt_feedback", None)
-                    raise ValueError(f"Gemini returned no candidates (blocked or empty): {fb!r}")
+                if not response.choices:
+                    raise ValueError("LLM returned no choices (blocked or empty)")
 
-                text = (response.text or "").strip()
+                text = _message_text(response.choices[0].message)
                 if not text:
-                    raise ValueError("Gemini returned empty text")
+                    raise ValueError("LLM returned empty text")
                 data = _extract_json_object(text)
-                um = getattr(response, "usage_metadata", None)
-                usage_in = int(getattr(um, "prompt_token_count", 0) or 0) if um else 0
-                usage_out = int(getattr(um, "candidates_token_count", 0) or 0) if um else 0
+                usage = response.usage
+                usage_in = int(usage.prompt_tokens or 0) if usage else 0
+                usage_out = int(usage.completion_tokens or 0) if usage else 0
                 _LOG.info(
                     "llm.complete_json",
                     extra={
@@ -124,7 +130,7 @@ class LlmClient:
                     },
                 )
                 return data, {"input_tokens": usage_in, "output_tokens": usage_out}
-            except genai_errors.APIError as exc:
+            except (APIConnectionError, APITimeoutError, RateLimitError, APIStatusError) as exc:
                 last_exc = exc
                 if not _is_retryable_api_error(exc) or attempt >= _MAX_RETRIES:
                     break

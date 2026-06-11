@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, Literal
+from uuid import UUID
 
 from psycopg.rows import dict_row
 
@@ -98,6 +99,17 @@ def lookup_sensitivity(
     )
 
 
+def _json_safe_row(row: dict[str, Any]) -> dict[str, Any]:
+    """Normalize DB row values for JSON/API consumers (e.g. UUID → str)."""
+    out: dict[str, Any] = {}
+    for key, value in row.items():
+        if isinstance(value, UUID):
+            out[key] = str(value)
+        else:
+            out[key] = value
+    return out
+
+
 def fetch_matrix_rows(*, sector_slug: str) -> dict[str, Any]:
     """
     Matrix payload for admin JSON: sector, factors, instruments, sensitivities map.
@@ -172,7 +184,7 @@ def fetch_matrix_rows(*, sector_slug: str) -> dict[str, Any]:
 
     return {
         "sector": {"slug": str(sector_row["slug"]), "name": str(sector_row["name"])},
-        "factors": [dict(r) for r in factor_rows],
-        "instruments": [dict(r) for r in instruments],
+        "factors": [_json_safe_row(dict(r)) for r in factor_rows],
+        "instruments": [_json_safe_row(dict(r)) for r in instruments],
         "sensitivities": sensitivities,
     }

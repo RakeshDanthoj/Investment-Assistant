@@ -26,6 +26,17 @@ describe("parseDraftFromEventError", () => {
     expect(message).toMatch(/daily llm card limit/i);
   });
 
+  it("maps llm_quota_exceeded to editor-friendly copy", () => {
+    const message = parseDraftFromEventError(
+      429,
+      JSON.stringify({
+        detail: { code: "llm_quota_exceeded", message: "quota" },
+      }),
+    );
+
+    expect(message).toMatch(/nvidia api quota exceeded/i);
+  });
+
   it("falls back to string detail bodies", () => {
     const message = parseDraftFromEventError(
       404,

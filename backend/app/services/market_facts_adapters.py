@@ -196,13 +196,67 @@ def _fetch_rbi_reference_rate(*, client: httpx.Client | None = None) -> QuoteObs
     )
 
 
+def _parse_nse_fii_trade_payload(payload: object) -> QuoteObservation | None:
+    """Parse NSE ``fiidiiTradeReact`` JSON (category/netValue rows or legacy fiiNet)."""
+    if not isinstance(payload, list) or not payload:
+        return None
+
+    def _net_value(row: dict) -> float | None:
+        raw = row.get("netValue") or row.get("fiiNet") or row.get("fii_net") or row.get("netFII")
+        if raw is None:
+            return None
+        try:
+            return float(str(raw).replace(",", ""))
+        except ValueError:
+            return None
+
+    def _observed_at(row: dict) -> datetime:
+        date_raw = row.get("date")
+        if isinstance(date_raw, str):
+            try:
+                parsed = datetime.strptime(date_raw.strip(), "%d-%b-%Y")
+                return parsed.replace(tzinfo=UTC)
+            except ValueError:
+                pass
+        return datetime.now(tz=UTC)
+
+    def _observation(row: dict, value: float) -> QuoteObservation:
+        sign = "+" if value >= 0 else ""
+        return QuoteObservation(
+            display_value=f"{sign}{value:,.2f} Cr",
+            observed_at=_observed_at(row),
+            source="nse_csv",
+        )
+
+    for item in payload:
+        if not isinstance(item, dict):
+            continue
+        category = str(item.get("category") or "").upper()
+        if "FII" not in category and "FPI" not in category:
+            continue
+        value = _net_value(item)
+        if value is not None:
+            return _observation(item, value)
+
+    first = payload[0]
+    if isinstance(first, dict):
+        value = _net_value(first)
+        if value is not None:
+            return _observation(first, value)
+    return None
+
+
 def _fetch_nse_fii_csv(*, client: httpx.Client | None = None) -> QuoteObservation | None:
     owns_client = client is None
     http = client or httpx.Client(timeout=25.0, headers=_HTTP_HEADERS, follow_redirects=True)
     try:
-        warm = http.get(NSE_ORIGIN + "/")
-        warm.raise_for_status()
-        cookies = dict(warm.cookies.items())
+        cookies: dict[str, str] = {}
+        try:
+            warm = http.get(NSE_ORIGIN + "/")
+            if warm.status_code < 400:
+                cookies = dict(warm.cookies.items())
+        except httpx.HTTPError:
+            pass
         response = http.get(NSE_FII_DII_URL, cookies=cookies)
         response.raise_for_status()
         payload = response.json()
@@ -212,24 +266,7 @@ def _fetch_nse_fii_csv(*, client: httpx.Client | None = None) -> QuoteObservatio
         if owns_client:
             http.close()
 
-    if not isinstance(payload, list) or not payload:
-        return None
-    row = payload[0] if isinstance(payload[0], dict) else None
-    if row is None:
-        return None
-    raw = row.get("fiiNet") or row.get("fii_net") or row.get("netFII")
-    if raw is None:
-        return None
-    try:
-        value = float(str(raw).replace(",", ""))
-    except ValueError:
-        return None
-    sign = "+" if value >= 0 else ""
-    return QuoteObservation(
-        display_value=f"{sign}{value:,.0f} Cr",
-        observed_at=datetime.now(tz=UTC),
-        source="nse_csv",
-    )
+    return _parse_nse_fii_trade_payload(payload)
 
 
 def _fetch_cdsl_portal_stub() -> QuoteObservation | None:

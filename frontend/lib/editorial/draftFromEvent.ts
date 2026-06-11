@@ -18,6 +18,13 @@ function messageForDetailCode(code: string, fallback: string): string {
       );
     case "llm_daily_cap":
       return "Daily LLM card limit reached. Try again after the UTC day resets.";
+    case "llm_quota_exceeded":
+      return (
+        "NVIDIA API quota exceeded. Wait about a minute and try again, or check " +
+        "credits and rate limits at build.nvidia.com."
+      );
+    case "llm_provider_error":
+      return fallback || "The LLM provider returned an error. Check backend logs and API key.";
     case "llm_monthly_budget":
       return "Monthly LLM budget exceeded. Contact ops before generating more drafts.";
     case "event_not_found":

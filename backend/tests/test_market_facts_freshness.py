@@ -271,3 +271,37 @@ def test_build_quoted_market_facts_returns_all_configured_rows() -> None:
     )
     assert len(rows) == 2
     assert all(row.freshness_status == "fresh" for row in rows)
+
+
+def test_parse_nse_fii_trade_payload_current_api_shape() -> None:
+    from app.services.market_facts_adapters import _parse_nse_fii_trade_payload
+
+    payload = [
+        {
+            "buyValue": "17396.4",
+            "category": "DII",
+            "date": "10-Jun-2026",
+            "netValue": "3123.95",
+            "sellValue": "14272.45",
+        },
+        {
+            "buyValue": "14047.79",
+            "category": "FII/FPI",
+            "date": "10-Jun-2026",
+            "netValue": "-2124.98",
+            "sellValue": "16172.77",
+        },
+    ]
+    obs = _parse_nse_fii_trade_payload(payload)
+    assert obs is not None
+    assert obs.display_value == "-2,124.98 Cr"
+    assert obs.source == "nse_csv"
+    assert obs.observed_at == datetime(2026, 6, 10, tzinfo=UTC)
+
+
+def test_parse_nse_fii_trade_payload_legacy_fii_net_row() -> None:
+    from app.services.market_facts_adapters import _parse_nse_fii_trade_payload
+
+    obs = _parse_nse_fii_trade_payload([{"fiiNet": "-1500", "date": "01-May-2026"}])
+    assert obs is not None
+    assert obs.display_value == "-1,500.00 Cr"

@@ -10,6 +10,7 @@ from datetime import UTC, datetime
 from typing import Any, Literal
 from uuid import UUID
 
+from app.core.settings import get_settings
 from app.services.card_pipeline import (
     COMBINED_PROMPT_VERSION,
     SupportsCompletion,
@@ -48,7 +49,6 @@ from app.services.number_validator import (
 )
 
 PROMPT_REGEN_SECTION_VERSION = "regen_section.v1"
-MODEL_NAME = "gemini-pro"
 
 SECTION_LABELS: dict[SectionKey, str] = {
     "insight": "Insight",
@@ -142,7 +142,7 @@ def _regen_history_entry(
         "section": section,
         "editor_note": editor_note.strip(),
         "timestamp": datetime.now(tz=UTC).isoformat(),
-        "model": MODEL_NAME,
+        "model": get_settings().llm_model,
         "tokens_used": int(input_tokens) + int(output_tokens),
         "input_tokens": int(input_tokens),
         "output_tokens": int(output_tokens),

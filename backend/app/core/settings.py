@@ -1,7 +1,7 @@
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import AliasChoices, Field, field_validator
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -27,11 +27,15 @@ class Settings(BaseSettings):
     supabase_anon_key: str = ""
     supabase_service_role_key: str = ""
     supabase_db_url: str = ""
-    gemini_api_key: str = Field(
-        default="",
-        validation_alias=AliasChoices("GEMINI_API_KEY", "GOOGLE_API_KEY"),
+    nvidia_api_key: str = Field(default="", validation_alias="NVIDIA_API_KEY")
+    llm_model: str = Field(
+        default="nvidia/nemotron-3-ultra-550b-a55b",
+        validation_alias="LLM_MODEL",
     )
-    gemini_model: str = Field(default="gemini-2.0-flash", validation_alias="GEMINI_MODEL")
+    llm_base_url: str = Field(
+        default="https://integrate.api.nvidia.com/v1",
+        validation_alias="LLM_BASE_URL",
+    )
 
     @field_validator("supabase_url", mode="before")
     @classmethod
@@ -40,13 +44,22 @@ class Settings(BaseSettings):
             return normalize_supabase_url(v)
         return v
 
-    @field_validator("gemini_model", mode="before")
+    @field_validator("llm_model", mode="before")
     @classmethod
-    def _gemini_model_fallback(cls, v: object) -> object:
+    def _llm_model_fallback(cls, v: object) -> object:
         if v is None:
-            return "gemini-2.0-flash"
+            return "nvidia/nemotron-3-ultra-550b-a55b"
         if isinstance(v, str) and not v.strip():
-            return "gemini-2.0-flash"
+            return "nvidia/nemotron-3-ultra-550b-a55b"
+        return v
+
+    @field_validator("llm_base_url", mode="before")
+    @classmethod
+    def _llm_base_url_fallback(cls, v: object) -> object:
+        if v is None:
+            return "https://integrate.api.nvidia.com/v1"
+        if isinstance(v, str) and not v.strip():
+            return "https://integrate.api.nvidia.com/v1"
         return v
 
     newsapi_key: str = ""

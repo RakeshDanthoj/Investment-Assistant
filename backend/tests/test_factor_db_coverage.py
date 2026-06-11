@@ -1,9 +1,12 @@
 """P2-S11 — Factor DB must cover ≥120 NSE instruments × 8 factors with MMJ + source."""
 
+import json
+
 import pytest
 
 from app.db.migrate import apply_migrations
 from app.db.seeds import apply_all_factor_db_seeds
+from app.services.factor_db import fetch_matrix_rows
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -56,3 +59,10 @@ def test_at_least_120_instruments_with_full_factor_grid(db_connection) -> None:
         )
         total_cells = cur.fetchone()[0]
         assert total_cells >= 120 * 8
+
+
+def test_fetch_matrix_rows_is_json_serializable() -> None:
+    matrix = fetch_matrix_rows(sector_slug="banking")
+    json.dumps(matrix)
+    assert matrix["instruments"]
+    assert isinstance(matrix["instruments"][0]["id"], str)

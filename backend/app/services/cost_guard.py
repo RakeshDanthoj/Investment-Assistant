@@ -49,11 +49,11 @@ def consume_slot_or_raise(*, max_cards_per_day: int = _DAILY_CAP) -> None:
 
 def estimate_cost_usd(*, input_tokens: int, output_tokens: int) -> float:
     """
-    Rough Gemini Flash–class pricing for dashboarding (not invoicing).
+    Rough Nemotron 3 Ultra pricing for dashboarding (not invoicing).
     Override with env-driven table later; keeps per-card field populated.
     """
-    in_rate = 0.10 / 1_000_000
-    out_rate = 0.40 / 1_000_000
+    in_rate = 0.50 / 1_000_000
+    out_rate = 2.50 / 1_000_000
     return round(input_tokens * in_rate + output_tokens * out_rate, 6)
 
 

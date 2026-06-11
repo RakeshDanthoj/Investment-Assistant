@@ -73,24 +73,42 @@ A **decision tree** here is not a test script — it is a **branching model of c
 | Layer | What it tells you | Typical tool |
 |-------|-------------------|--------------|
 | **SQL / Render logs** | Ground truth (rows exist, cron ran, merge happened) | Supabase, Render log search |
-| **Network (API)** | What the server actually returned | Chrome DevTools → Network |
+| **Network (API)** | What the server actually returned | Chrome DevTools → Network, or direct `/backend/...` URL |
 | **UI** | What the editor/user sees; must **match** API, not replace it | Browser only |
 
 **UI testing rule for Phase 3:** For every tree, do **both** where possible:
 
 1. **See it on screen** (button state, badge, banner, dot colour).
-2. **Confirm the same branch in Network** (status code + JSON field) or SQL (one query).
+2. **Confirm the same branch in API JSON** (status code + field) or SQL (one query).
 
 If UI says PASS but API says FAIL (or the reverse), treat as **FAIL** and file under “UI/API drift”.
+
+**SSR / RSC architecture (read before Network hunting):**
+
+Pulse, Thread, and Mirror load their main payloads on the **Next.js server** during render (`fetchPulseFeed`, `fetchCardDetail`, `fetchMirrorInitialData` in `frontend/lib/api/server.ts`). Those calls go **Vercel → Render** and often **do not** appear in the browser Network tab on first paint.
+
+| Surface | Server fetch (invisible in browser) | Client fetch (visible in Network) |
+|---------|-------------------------------------|-----------------------------------|
+| `/pulse` feed | `/api/feed` on page load | `/backend/api/feed` after category change, stale feed (over 60s), holdings change, or token mismatch |
+| `/thread/[id]` card | `/api/cards/{id}` on page load | Same path when switching to **Original** view or when SSR failed |
+| `/mirror` dashboard | `/api/mirror/dashboard` on page load (signed in) | Same path after ~60s stale remount or status filter change |
+| Pulse/Thread chips | — | `/backend/api/market-facts` (always client) |
+| Confidence aside | — | `/backend/api/events/.../confidence-breakdown` after expand (lazy) |
+
+**Three ways to get inspectable JSON** (use any; same pass criteria):
+
+1. **Direct proxy URL (recommended):** While on the Vercel site, open a new tab to `https://investment-assistant-frontend.vercel.app/backend/api/feed` (or `/api/cards/{id}`, `/api/mirror/dashboard` while signed in). Same-origin proxy as the app.
+2. **Force a client refetch:** On Pulse, change a **category filter** chip; on Mirror, change the **status** filter; on Thread, switch to **Original** view. Then filter Network for `feed`, `cards`, or `mirror`.
+3. **RSC payload search:** Click the `pulse`, `thread/...`, or `mirror` request with `?_rsc=` in the name → **Response** → `Ctrl+F` for `synthetic` or seed titles (harder to read than clean JSON).
 
 **DevTools setup (use for all UI trees below):**
 
 1. Open production site in Chrome/Edge (not localhost unless you are testing staging).
 2. `F12` → **Network** tab → check **Preserve log**.
-3. Filter box: type `backend` or `api` so you only see proxied API calls.
-4. Optional: **Network** → right-click a request → **Copy as cURL** for evidence.
+3. Filter box: type `backend` or the endpoint name (`feed`, `market-facts`, `cards`, `mirror`). Expect **client-only** calls here unless you forced a refetch (see table above).
+4. Optional: **Network** → right-click a request → **Copy as cURL** for evidence; or use §7 curl cheatsheet against Render direct.
 
-Record in your evidence log: **Tree ID → branch name → UI screenshot + request URL + status code**.
+Record in your evidence log: **Tree ID → branch name → UI screenshot + JSON source (Network row, proxy URL, or curl) + status code**.
 
 ---
 
@@ -110,16 +128,21 @@ Synthetic events are **real database rows** used for calibration and future FoW 
 
 **How to UI-test this tree**
 
-There is **no** “synthetic” label in the UI — you prove isolation by **absence** and by spot-checking API payloads.
+There is **no** “synthetic” label in the UI — you prove isolation by **absence** on screen and by spot-checking **API JSON** (see SSR table above: first paint may not show `/api/feed` in Network).
+
+**Search strings** (from `backend/scripts/seed_data/synthetic_events.json`):
+
+- Literal: `synthetic` (catches `synthetic://seed/` URLs if leaked)
+- Example seed titles: `INR weakens past 87 per USD`, `RBI announces liquidity injection via variable rate repo`, `TCS and Infosys Q3 FY25`
 
 | Step | Action | Which branch |
 |------|--------|--------------|
 | 1 | Sign in as a normal user (or your PO account — same rule applies on user routes). | — |
-| 2 | Go to `/pulse`. Wait until feed cards render. | — |
-| 3 | **Network:** find request like `GET .../backend/api/feed` (or `/api/feed` via proxy). Click → **Response** tab. | — |
-| 4 | In JSON, search (`Ctrl+F`) for `synthetic` and for a known seed title from `backend/scripts/seed_data/synthetic_events.json` (e.g. a distinctive 2025 headline you seeded). | **PASS** = zero matches |
-| 5 | Scroll the visible feed; open 2–3 cards → `/thread/[id]`. Repeat search in any card/event payload in Network. | **PASS** = still zero |
-| 6 | Go to `/mirror`. Load predictions list; inspect Network response for mirror/feed endpoints. Same search. | **PASS** = zero |
+| 2 | Go to `/pulse`. Wait until feed cards render. Visually confirm **no** Jan–Jun 2025 seed headlines in the feed. | — |
+| 3 | **Get feed JSON** (pick one): **(A)** open `.../backend/api/feed` in a new tab; **(B)** change a Pulse **category** filter and find `GET .../backend/api/feed` in Network; **(C)** search the `pulse?_rsc=...` Response. | — |
+| 4 | In feed JSON, `Ctrl+F` for `synthetic` and the seed titles above. | **PASS** = zero matches |
+| 5 | Open 2–3 cards → `/thread/[id]`. Get card JSON via **(A)** `.../backend/api/cards/{id}?view=current`, **(B)** switch to **Original** view and watch Network, or **(C)** RSC response on `thread/...?_rsc=...`. Same search. | **PASS** = still zero |
+| 6 | Go to `/mirror` (signed in). Get dashboard JSON via **(A)** `.../backend/api/mirror/dashboard` (auth cookies from session), **(B)** change **status** filter and watch Network, or **(C)** RSC on `mirror?_rsc=...`. Same search. | **PASS** = zero |
 | 7 | **Optional FAIL reproduction (staging only):** If you temporarily break isolation in dev, you would see seed headlines on Pulse — in **production** you must **not** see that. | FAIL branch |
 
 **What you cannot prove from UI alone**
@@ -127,7 +150,7 @@ There is **no** “synthetic” label in the UI — you prove isolation by **abs
 - That exactly **20** synthetic rows exist → use SQL once (scenario P3-S0-01).
 - That RLS blocks PostgREST direct access → API uses service layer + mixin; UI test covers **API paths users hit**.
 
-**UI pass statement:** “Pulse, Thread, and Mirror Network responses contain no `synthetic` substring and no seed fixture titles.”
+**UI pass statement:** “Pulse, Thread, and Mirror API responses (feed, card detail, mirror dashboard) contain no `synthetic` substring and no seed fixture titles.”
 
 ---
 
@@ -254,9 +277,9 @@ All of this lives on **`/thread/[cardId]`** or **Lens result card** after you ex
 
 | Step | Action | Which branch |
 |------|--------|--------------|
-| 1 | Open a **published** card from Pulse (`/thread/[id]`). | — |
+| 1 | Open a **published** card from Pulse (`/thread/[id]`). Card body is SSR — you may see `thread/...?_rsc=...` instead of `/api/cards/...` on first paint. | — |
 | 2 | In aside, find ICE bar (Measured/Modelled/Judged) — **ignore for tier**; scroll to **“Why this confidence tier?”** | — |
-| 3 | **Before click:** Network tab — confirm **no** `confidence-breakdown` request yet (lazy load). | Perf contract |
+| 3 | **Before click:** Network tab — confirm **no** `confidence-breakdown` request yet (lazy client fetch only). | Perf contract |
 | 4 | Click to expand panel. Wait for skeleton → content. | — |
 | 5 | Read **tier label** (HIGH / MEDIUM / LOW) and **raw %** vs **effective %**. | Map to threshold branches |
 | 6 | **Network:** `GET .../confidence-breakdown`. Compare `tier`, `confidence_raw`, `confidence_effective`, `fog_active` to UI. | UI must match API |
@@ -317,7 +340,7 @@ Use **`/admin/review/[draftId]`** only. Keep Network open on `admin/cards` reque
 | B2 | Ensure dissent, freshness, SEBI items **PASS**. | Four auto badges PASS | `editorial_checklist` all automated PASS |
 | B3 | Check **Plain English** checkbox. | **Publish** enabled | — |
 | B4 | Click **Publish**. Confirm dialog if any. | Success toast or navigation | **200** on `POST .../publish` |
-| B5 | Open `/pulse`. | Card appears in feed | `GET /api/feed` includes new `card.id` |
+| B5 | Open `/pulse`. | Card appears in feed | Confirm via `.../backend/api/feed` (direct tab or category-filter refetch); SSR first paint may not list the request in Network |
 
 **Phase C — Regen branch (after section regen)**
 
@@ -341,7 +364,7 @@ The server checks **number validator first**, then checklist, then plain English
 
 | Tree | Primary UI surfaces | SQL/logs still needed? |
 |------|---------------------|-------------------------|
-| 1.1 Synthetic | Pulse, Thread, Mirror (Network JSON search) | Yes — confirm 20 seed rows once |
+| 1.1 Synthetic | Pulse, Thread, Mirror (proxy URL or forced client refetch; SSR hides first-paint feed) | Yes — confirm 20 seed rows once |
 | 1.2 Dedup | `/admin/queue` headline scan | Yes — `source_count` proof |
 | 1.3 NewsAPI | Queue refresh (indirect); digest HTML | Yes — `factor_poll_log` |
 | 1.4 Market facts | Pulse, Thread chips, `/admin/queue` banner | Optional — API matches dots |
@@ -359,9 +382,9 @@ The server checks **number validator first**, then checklist, then plain English
 | **P3-S0-01** | Supabase SQL (service role) | Calibration data exists | Run: `SELECT COUNT(*) FROM events WHERE is_synthetic = TRUE;` | Count = **20** | If 0, re-run seed script (PF-05) |
 | **P3-S0-02** | Supabase SQL | Major-event FoW prep | `SELECT COUNT(*) FROM events WHERE is_synthetic = TRUE AND is_major = TRUE;` | Count = **7** | — |
 | **P3-S0-03** | Supabase SQL | Idempotent seed | Re-run `seed_synthetic_events.py`; repeat count query | Still **20** rows; no duplicates on `external_id` | — |
-| **P3-S0-04** | Browser → `/pulse` | User feed must exclude synthetic | 1. Open `https://investment-assistant-frontend.vercel.app/pulse` 2. Sign in if prompted 3. Scroll full feed 4. Open DevTools → Network → filter `feed` 5. Inspect JSON response bodies | No `canonical_url` containing `synthetic://seed/`; no Jan–Jun 2025 synthetic fixture titles | Compare against `backend/scripts/seed_data/synthetic_events.json` offline |
-| **P3-S0-05** | Browser → `/mirror` | Mirror predictions isolation | 1. Navigate to `/mirror` 2. Load prediction list 3. Inspect network response for `/api/mirror/...` | Zero rows tied to synthetic events | Phase 2 Mirror must still load |
-| **P3-S0-06** | curl (Render direct) | API layer filter | `curl -s "https://investment-assistant-3eqc.onrender.com/api/feed?limit=50" \| jq '.items[].event_id'` then spot-check titles via card detail | No synthetic event titles | Service role DB can still `SELECT` synthetic — that is correct |
+| **P3-S0-04** | Browser → `/pulse` | User feed must exclude synthetic | 1. Open `https://investment-assistant-frontend.vercel.app/pulse` 2. Sign in if prompted 3. Scroll full feed — no seed headlines visible 4. Inspect feed JSON: open `.../backend/api/feed` in a new tab **or** change a category filter and use DevTools → Network → `feed` **or** search `pulse?_rsc=...` Response 5. `Ctrl+F` for `synthetic` and titles from `synthetic_events.json` | No `canonical_url` containing `synthetic://seed/`; no Jan–Jun 2025 synthetic fixture titles | First paint is SSR — filtering Network for `feed` alone often shows nothing until step 4b |
+| **P3-S0-05** | Browser → `/mirror` | Mirror predictions isolation | 1. Navigate to `/mirror` (signed in) 2. Load prediction list 3. Inspect `.../backend/api/mirror/dashboard` (direct tab or status-filter refetch / `mirror?_rsc=...`) | Zero rows tied to synthetic events; no seed titles in JSON | Phase 2 Mirror must still load; dashboard SSR on first paint |
+| **P3-S0-06** | curl (Render direct) | API layer filter | `curl -s "https://investment-assistant-3eqc.onrender.com/api/feed" \| jq '.cards[].title'` then spot-check card detail: `curl -s ".../api/cards/<CARD_ID>?view=current" \| jq .` | No synthetic event titles | Service role DB can still `SELECT` synthetic — that is correct |
 
 ---
 
@@ -580,6 +603,7 @@ Copy into your test log (Notion, sheet, or `docs/plans/phase3-go-no-go.md` evide
 | FoW banner | Full named banner is **P3-S1l** — dampener + aside callout may work without feed banner |
 | LLM caps | Section/full regen counts against daily Gemini budget — sequence tests to avoid 429 |
 | API proxy latency | Feed p95 may exceed 800 ms (Phase 2.5 PO waiver) — not a Phase 3 functional fail |
+| SSR / RSC first paint | Pulse feed, Thread card, and Mirror dashboard are fetched on the **server**; browser Network may only show `?_rsc=` flights plus client calls (`market-facts`, `saved-threads`). Use §1 “Three ways to get inspectable JSON” — not finding `feed` on first load is **not** a fail |
 
 ---
 
@@ -588,6 +612,19 @@ Copy into your test log (Notion, sheet, or `docs/plans/phase3-go-no-go.md` evide
 Replace placeholders before running.
 
 ```bash
+# Pulse feed (synthetic isolation spot-check)
+curl -s "https://investment-assistant-3eqc.onrender.com/api/feed" | jq '.cards[].title'
+
+# Same via browser proxy (while on Vercel origin)
+# https://investment-assistant-frontend.vercel.app/backend/api/feed
+
+# Thread card detail
+curl -s "https://investment-assistant-3eqc.onrender.com/api/cards/<CARD_UUID>?view=current" | jq .
+
+# Mirror dashboard (requires Bearer token from signed-in session)
+curl -s "https://investment-assistant-3eqc.onrender.com/api/mirror/dashboard" \
+  -H "Authorization: Bearer <ACCESS_TOKEN>" | jq .
+
 # Market facts
 curl -s "https://investment-assistant-3eqc.onrender.com/api/market-facts" | jq .
 

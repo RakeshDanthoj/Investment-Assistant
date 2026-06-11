@@ -1,6 +1,7 @@
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, status
+from openai import APIStatusError, RateLimitError
 from pydantic import BaseModel, Field
 
 from app.api.admin_review import (
@@ -56,6 +57,33 @@ def post_draft_from_event(body: DraftFromEventRequest) -> DraftFromEventResponse
                 "message": str(exc),
                 "unavailable_critical_facts": list(exc.unavailable_fact_ids),
             },
+        ) from exc
+    except RateLimitError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail={
+                "code": "llm_quota_exceeded",
+                "message": (
+                    "NVIDIA API quota exceeded. Wait a minute and retry, or check "
+                    "credits and rate limits at build.nvidia.com."
+                ),
+            },
+        ) from exc
+    except APIStatusError as exc:
+        if exc.status_code == 429:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail={
+                    "code": "llm_quota_exceeded",
+                    "message": (
+                        "NVIDIA API quota exceeded. Wait a minute and retry, or check "
+                        "credits and rate limits at build.nvidia.com."
+                    ),
+                },
+            ) from exc
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail={"code": "llm_provider_error", "message": str(exc)},
         ) from exc
     except (DissentQualityError, FrameworkQualityError, ValueError, RuntimeError) as exc:
         raise HTTPException(
