@@ -11,7 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { getApiBaseUrl } from "@/lib/api";
+import { getLongRunningApiBaseUrl } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useCallback, useState } from "react";
 
@@ -80,7 +80,7 @@ export default function RegenSection({
     setError(null);
     setLastResult(null);
     try {
-      const base = getApiBaseUrl().replace(/\/$/, "");
+      const base = getLongRunningApiBaseUrl().replace(/\/$/, "");
       const res = await fetch(`${base}/api/admin/cards/${cardId}/regenerate-section`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -114,7 +114,7 @@ export default function RegenSection({
       setFullLoading(true);
       setError(null);
       try {
-        const base = getApiBaseUrl().replace(/\/$/, "");
+        const base = getLongRunningApiBaseUrl().replace(/\/$/, "");
         const res = await fetch(`${base}/api/admin/cards/${cardId}/regenerate-full`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },

@@ -6,6 +6,7 @@ import { QueueEventsTable } from "./QueueEventsTable";
 
 jest.mock("../../../lib/api", () => ({
   getApiBaseUrl: () => "http://localhost:8000",
+  getLongRunningApiBaseUrl: () => "http://localhost:8000",
 }));
 
 describe("QueueEventsTable", () => {

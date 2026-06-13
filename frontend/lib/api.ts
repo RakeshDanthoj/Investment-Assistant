@@ -18,6 +18,16 @@ export function getApiBaseUrl(): string {
   return configured || fallback;
 }
 
+/**
+ * Backend origin for long-running browser calls (LLM draft/regen, ~30–90s).
+ * Bypasses the Vercel `/backend` proxy, which times out before Render responds.
+ * Requires FastAPI CORS to allow this site's origin (see `allow_origin_regex` in main.py).
+ */
+export function getLongRunningApiBaseUrl(): string {
+  const configured = process.env.NEXT_PUBLIC_API_BASE_URL?.trim().replace(/\/$/, "");
+  return configured || "http://127.0.0.1:8000";
+}
+
 function isLoopbackUrl(url: string): boolean {
   return /\/\/(localhost|127\.0\.0\.1)(:|\/|$)/i.test(url);
 }

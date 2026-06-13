@@ -1,4 +1,4 @@
-import { describeHttpFailure, getApiBaseUrl } from "@/lib/api";
+import { describeHttpFailure, getLongRunningApiBaseUrl } from "@/lib/api";
 
 export type DraftFromEventResult =
   | { ok: true; cardId: string }
@@ -47,6 +47,15 @@ function messageForDetailCode(
 
 export function parseDraftFromEventError(status: number, body: string): string {
   const trimmed = body.trim();
+  if (
+    trimmed.includes("FUNCTION_INVOCATION_TIMEOUT") ||
+    (status === 504 && trimmed.toLowerCase().includes("timeout"))
+  ) {
+    return (
+      "Draft generation timed out in the hosting proxy (usually 10–60s). " +
+      "LLM synthesis needs about 30–90 seconds — retry after the frontend redeploys with direct API access."
+    );
+  }
   try {
     const parsed = JSON.parse(trimmed) as { detail?: unknown };
     const detail = parsed.detail;
@@ -77,7 +86,7 @@ export function parseDraftFromEventError(status: number, body: string): string {
 }
 
 export async function requestDraftFromEvent(eventId: string): Promise<DraftFromEventResult> {
-  const base = getApiBaseUrl().replace(/\/$/, "");
+  const base = getLongRunningApiBaseUrl().replace(/\/$/, "");
   let response: Response;
   try {
     response = await fetch(`${base}/api/cards/draft-from-event`, {

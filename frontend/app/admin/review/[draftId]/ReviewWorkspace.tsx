@@ -6,7 +6,7 @@ import IceCardReader, {
 import ThreadReviewShell from "@/components/thread/ThreadReviewShell";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getApiBaseUrl } from "@/lib/api";
+import { getApiBaseUrl, getLongRunningApiBaseUrl } from "@/lib/api";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
@@ -120,7 +120,7 @@ export default function ReviewWorkspace({ draftId }: { draftId: string }) {
       setRegenerating(true);
       setError(null);
       try {
-        const base = getApiBaseUrl().replace(/\/$/, "");
+        const base = getLongRunningApiBaseUrl().replace(/\/$/, "");
         const res = await fetch(`${base}/api/admin/cards/${draftId}/regenerate`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },

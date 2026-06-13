@@ -39,6 +39,16 @@ describe("parseDraftFromEventError", () => {
     expect(message).toMatch(/nvidia api quota exceeded/i);
   });
 
+  it("maps FUNCTION_INVOCATION_TIMEOUT to editor-friendly copy", () => {
+    const message = parseDraftFromEventError(
+      504,
+      "An error occurred with your deployment FUNCTION_INVOCATION_TIMEOUT",
+    );
+
+    expect(message).toMatch(/timed out in the hosting proxy/i);
+    expect(message).toMatch(/30–90 seconds/i);
+  });
+
   it("falls back to string detail bodies", () => {
     const message = parseDraftFromEventError(
       404,
