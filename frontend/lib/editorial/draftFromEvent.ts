@@ -7,15 +7,24 @@ export type DraftFromEventResult =
 type FastApiDetailObject = {
   code?: string;
   message?: string;
+  unavailable_critical_facts?: string[];
 };
 
-function messageForDetailCode(code: string, fallback: string): string {
+function messageForDetailCode(
+  code: string,
+  fallback: string,
+  unavailableCritical?: string[],
+): string {
   switch (code) {
-    case "critical_facts_held":
+    case "critical_facts_held": {
+      const ids = (unavailableCritical ?? []).filter((id) => id.trim()).join(", ");
+      const unavailableDetail = ids ? ` Unavailable: ${ids}.` : "";
       return (
-        "Card drafting is on hold — critical market facts are unavailable. " +
-        "Check the market facts banner above and try again when facts recover."
+        "Card drafting is on hold — critical market facts are unavailable." +
+        unavailableDetail +
+        " Check the market facts banner above and try again when facts recover."
       );
+    }
     case "llm_daily_cap":
       return "Daily LLM card limit reached. Try again after the UTC day resets.";
     case "llm_quota_exceeded":
@@ -48,7 +57,12 @@ export function parseDraftFromEventError(status: number, body: string): string {
           ? obj.message.trim()
           : "Draft generation failed.";
       if (typeof obj.code === "string") {
-        return messageForDetailCode(obj.code, message);
+        const unavailable =
+          Array.isArray(obj.unavailable_critical_facts) &&
+          obj.unavailable_critical_facts.every((id) => typeof id === "string")
+            ? obj.unavailable_critical_facts
+            : undefined;
+        return messageForDetailCode(obj.code, message, unavailable);
       }
       return message;
     }

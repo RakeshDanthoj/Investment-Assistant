@@ -247,17 +247,20 @@ def _parse_nse_fii_trade_payload(payload: object) -> QuoteObservation | None:
 
 
 def _fetch_nse_fii_csv(*, client: httpx.Client | None = None) -> QuoteObservation | None:
+    nse_headers = {
+        **_HTTP_HEADERS,
+        "Referer": f"{NSE_ORIGIN}/market-data",
+    }
     owns_client = client is None
-    http = client or httpx.Client(timeout=25.0, headers=_HTTP_HEADERS, follow_redirects=True)
+    http = client or httpx.Client(timeout=25.0, headers=nse_headers, follow_redirects=True)
     try:
-        cookies: dict[str, str] = {}
         try:
             warm = http.get(NSE_ORIGIN + "/")
-            if warm.status_code < 400:
-                cookies = dict(warm.cookies.items())
+            warm.raise_for_status()
+            cookies = dict(warm.cookies.items())
         except httpx.HTTPError:
-            pass
-        response = http.get(NSE_FII_DII_URL, cookies=cookies)
+            return None
+        response = http.get(NSE_FII_DII_URL, cookies=cookies, headers=nse_headers)
         response.raise_for_status()
         payload = response.json()
     except (httpx.HTTPError, ValueError):

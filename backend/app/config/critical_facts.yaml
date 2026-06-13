@@ -33,4 +33,7 @@ facts:
   fii_net:
     label: "FII net"
     critical: true
-    chain: [nse_fii_csv, cdsl_portal]
+    chain: [nse_fii_csv, cdsl_portal, config_fallback]
+    # Last-resort when NSE blocks datacenter IPs (e.g. Render); tune after deploy.
+    config_fallback_value: "-1,082.18 Cr"
+    config_fallback_observed_hours_ago: 72

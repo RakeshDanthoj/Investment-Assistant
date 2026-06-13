@@ -305,3 +305,24 @@ def test_parse_nse_fii_trade_payload_legacy_fii_net_row() -> None:
     obs = _parse_nse_fii_trade_payload([{"fiiNet": "-1500", "date": "01-May-2026"}])
     assert obs is not None
     assert obs.display_value == "-1,500.00 Cr"
+
+
+def test_fii_net_config_fallback_unblocks_gate_when_nse_fails() -> None:
+    clear_critical_facts_config_cache()
+    from app.services.critical_facts_config import load_critical_facts_config
+    from app.services.market_facts_adapters import _CHAIN_FETCHERS
+
+    cfg = load_critical_facts_config()
+    fii = cfg.fact_by_id("fii_net")
+    assert fii is not None
+    assert "config_fallback" in fii.chain
+
+    fetchers = {
+        "nse_fii_csv": lambda *_: None,
+        "cdsl_portal": lambda *_: None,
+        "config_fallback": _CHAIN_FETCHERS["config_fallback"],
+    }
+    fact = resolve_quote_fact(fii, reference_time=REF, config=cfg, chain_fetchers=fetchers)
+    assert fact.freshness_status == "stale"
+    assert fact.source == "config_fallback"
+    assert fact.display_value == "-1,082.18 Cr"

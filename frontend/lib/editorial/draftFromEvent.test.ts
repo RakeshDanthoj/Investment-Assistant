@@ -7,12 +7,14 @@ describe("parseDraftFromEventError", () => {
       JSON.stringify({
         detail: {
           code: "critical_facts_held",
-          message: "INR/USD unavailable",
+          message: "critical facts unavailable: fii_net",
+          unavailable_critical_facts: ["fii_net"],
         },
       }),
     );
 
     expect(message).toMatch(/critical market facts are unavailable/i);
+    expect(message).toMatch(/fii_net/);
   });
 
   it("maps llm_daily_cap to editor-friendly copy", () => {
