@@ -34,7 +34,7 @@ services:
       - key: LLM_REQUEST_TIMEOUT_SECONDS
         value: "90"
       - key: LLM_MAX_RETRIES
-        value: "2"
+        value: "3"
       - key: DRAFT_PIPELINE_MAX_LLM_CALLS
         value: "5"
       - key: NEWSAPI_KEY

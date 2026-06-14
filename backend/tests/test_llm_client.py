@@ -150,3 +150,42 @@ def test_complete_json_retries_with_higher_max_tokens_on_truncation(mock_get_set
     assert mock_create.call_count == 2
     assert mock_create.call_args_list[0].kwargs["max_tokens"] == 4096
     assert mock_create.call_args_list[1].kwargs["max_tokens"] == 8192
+
+
+@patch("app.services.llm_client.get_settings")
+def test_complete_json_disables_nemotron_thinking_for_structured_output(
+    mock_get_settings,
+) -> None:
+    settings = MagicMock()
+    settings.nvidia_api_key = "nvapi-test"
+    settings.llm_base_url = "https://integrate.api.nvidia.com/v1"
+    settings.llm_model = "nvidia/nemotron-3-super-120b-a12b"
+    settings.llm_request_timeout_seconds = 90.0
+    settings.llm_max_retries = 1
+    mock_get_settings.return_value = settings
+
+    client = LlmClient.__new__(LlmClient)
+    client._timeout_seconds = 90.0
+    client._max_retries = 1
+    client._model_name = "nvidia/nemotron-3-super-120b-a12b"
+
+    mock_create = MagicMock(
+        return_value=MagicMock(
+            choices=[
+                MagicMock(
+                    message=MagicMock(content='{"ok": true}', reasoning=None),
+                    finish_reason="stop",
+                )
+            ],
+            usage=MagicMock(prompt_tokens=1, completion_tokens=1),
+        )
+    )
+    client._client = MagicMock()
+    client._client.chat.completions.create = mock_create
+
+    data, _ = client.complete_json(system="sys", user="user", prompt_version="test.v1")
+
+    assert data == {"ok": True}
+    assert mock_create.call_args.kwargs["extra_body"] == {
+        "chat_template_kwargs": {"enable_thinking": False},
+    }

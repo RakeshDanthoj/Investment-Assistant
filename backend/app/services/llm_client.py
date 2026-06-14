@@ -19,6 +19,8 @@ _BACKOFF_BASE_S = 0.7
 _DEFAULT_BASE_URL = "https://integrate.api.nvidia.com/v1"
 _OUTPUT_TOKEN_CAP = 16384
 SYNTHESIS_MAX_OUTPUT_TOKENS = 8192
+# Nemotron reasoning models spend max_tokens on chain-of-thought before JSON content.
+_JSON_COMPLETION_EXTRA_BODY = {"chat_template_kwargs": {"enable_thinking": False}}
 
 
 class LlmTimeoutError(RuntimeError):
@@ -156,6 +158,7 @@ class LlmClient:
                     max_tokens=request_max_tokens,
                     temperature=0.2,
                     response_format={"type": "json_object"},
+                    extra_body=_JSON_COMPLETION_EXTRA_BODY,
                 )
                 if not response.choices:
                     raise ValueError("LLM returned no choices (blocked or empty)")
