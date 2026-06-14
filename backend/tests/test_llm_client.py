@@ -7,6 +7,7 @@ from openai import APITimeoutError
 
 from app.services.llm_client import (
     LlmClient,
+    LlmOutputTruncatedError,
     LlmTimeoutError,
     _json_message_text,
 )
@@ -19,6 +20,17 @@ def test_json_message_text_uses_content_only_when_reasoning_present() -> None:
         reasoning_content=None,
     )
     assert _json_message_text(message) == '{"title": "ok"}'
+
+
+def test_json_message_text_uses_reasoning_when_content_is_truncated_json() -> None:
+    message = MagicMock(
+        content='{\n "title": "RBI Holds Rates",\n "context_layer": "partial',
+        reasoning='{"title": "RBI Holds Rates", "context_layer": "done"}',
+        reasoning_content=None,
+    )
+    assert _json_message_text(message) == (
+        '{"title": "RBI Holds Rates", "context_layer": "done"}'
+    )
 
 
 def test_complete_json_maps_api_timeout_to_llm_timeout_error() -> None:
@@ -150,6 +162,41 @@ def test_complete_json_retries_with_higher_max_tokens_on_truncation(mock_get_set
     assert mock_create.call_count == 2
     assert mock_create.call_args_list[0].kwargs["max_tokens"] == 4096
     assert mock_create.call_args_list[1].kwargs["max_tokens"] == 8192
+
+
+@patch("app.services.llm_client.get_settings")
+def test_complete_json_raises_truncated_error_when_retries_exhausted(mock_get_settings) -> None:
+    settings = MagicMock()
+    settings.nvidia_api_key = "nvapi-test"
+    settings.llm_base_url = "https://integrate.api.nvidia.com/v1"
+    settings.llm_model = "test-model"
+    settings.llm_request_timeout_seconds = 90.0
+    settings.llm_max_retries = 1
+    mock_get_settings.return_value = settings
+
+    truncated = '{\n "title": "RBI Holds Rates",\n "context_layer": "partial'
+
+    client = LlmClient.__new__(LlmClient)
+    client._timeout_seconds = 90.0
+    client._max_retries = 1
+    client._model_name = "test-model"
+
+    mock_create = MagicMock(
+        return_value=MagicMock(
+            choices=[
+                MagicMock(
+                    message=MagicMock(content=truncated, reasoning=None),
+                    finish_reason="length",
+                )
+            ],
+            usage=MagicMock(prompt_tokens=100, completion_tokens=4096),
+        )
+    )
+    client._client = MagicMock()
+    client._client.chat.completions.create = mock_create
+
+    with pytest.raises(LlmOutputTruncatedError, match="finish_reason=length"):
+        client.complete_json(system="sys", user="user", prompt_version="synthesis.v1")
 
 
 @patch("app.services.llm_client.get_settings")

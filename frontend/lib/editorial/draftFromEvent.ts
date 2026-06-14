@@ -1,7 +1,7 @@
 import { describeHttpFailure, getLongRunningApiBaseUrl } from "@/lib/api";
 
-/** synthesis (up to 2) + dissent + framework — see card_pipeline.draft_card_from_event */
-const DRAFT_PIPELINE_LLM_CALLS = 5;
+/** synthesis layers (up to 2) + instruments + dissent + framework — see card_pipeline */
+const DRAFT_PIPELINE_LLM_CALLS = 6;
 
 /** Backend fails with llm_timeout slightly before this buffer elapses. */
 const DRAFT_TIMEOUT_BUFFER_MS = 45_000;
@@ -79,7 +79,14 @@ function messageForDetailCode(
     case "llm_timeout":
       return (
         "Draft generation timed out waiting on the LLM. Switch to a faster model " +
-        "(e.g. nvidia/nemotron-3-super-120b-a12b) or raise LLM_REQUEST_TIMEOUT_SECONDS, then retry."
+        "(e.g. nvidia/nemotron-3-nano-30b-a3b) or raise LLM_REQUEST_TIMEOUT_SECONDS, then retry."
+      );
+    case "llm_output_truncated":
+      return (
+        "Draft generation failed because the model ran out of output tokens before " +
+        "finishing structured JSON. Retry once; if it persists, use " +
+        "nvidia/nemotron-3-nano-30b-a3b or raise LLM_SYNTHESIS_LAYERS_MAX_TOKENS " +
+        "and LLM_SYNTHESIS_INSTRUMENTS_MAX_TOKENS on the backend."
       );
     case "event_not_found":
       return "This event was not found. Refresh the queue and try again.";

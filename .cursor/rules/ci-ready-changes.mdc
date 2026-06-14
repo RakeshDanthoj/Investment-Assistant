@@ -1,5 +1,5 @@
 ---
-description: Mandatory CI checks before finishing any code change — run same commands as GitHub Actions
+description: 
 alwaysApply: true
 ---
 

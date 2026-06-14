@@ -27,11 +27,12 @@ from app.services.lens_pipeline_steps import (
     STEP_VALIDATE,
 )
 from app.services.llm_client import (
-    SYNTHESIS_MAX_OUTPUT_TOKENS,
     LlmClient,
     LlmTimeoutError,
     load_prompt_markdown,
     render_prompt,
+    synthesis_instruments_max_output_tokens,
+    synthesis_layers_max_output_tokens,
 )
 from app.services.market_facts_adapters import (
     CriticalFactsHoldError,
@@ -43,15 +44,17 @@ from app.services.number_validator import validate_numbers_in_evidence
 from app.services.pipeline_telemetry import record_pipeline_run
 
 PROMPT_SYNTHESIS_VERSION = "synthesis.v1"
+PROMPT_SYN_INSTRUMENTS_VERSION = "synthesis_instruments.v1"
 PROMPT_DISSENT_VERSION = "dissent.v1"
 PROMPT_FRAMEWORK_VERSION = "framework.v1"
 
 COMBINED_PROMPT_VERSION = (
-    f"{PROMPT_SYNTHESIS_VERSION}|{PROMPT_DISSENT_VERSION}|{PROMPT_FRAMEWORK_VERSION}"
+    f"{PROMPT_SYNTHESIS_VERSION}|{PROMPT_SYN_INSTRUMENTS_VERSION}|"
+    f"{PROMPT_DISSENT_VERSION}|{PROMPT_FRAMEWORK_VERSION}"
 )
 
-# synthesis (up to 2) + dissent + framework
-DRAFT_PIPELINE_MAX_LLM_CALLS = 5
+# synthesis layers (up to 2) + instruments + dissent + framework
+DRAFT_PIPELINE_MAX_LLM_CALLS = 6
 
 
 def draft_pipeline_deadline_seconds() -> float:
@@ -240,6 +243,151 @@ _SYNTHESIS_MMJ_RETRY_HINT = (
 )
 
 
+def _synthesis_event_vars(
+    *,
+    event_row: dict[str, Any],
+    evidence_block: str,
+    editor_notes: str | None,
+) -> dict[str, str]:
+    notes_block = (
+        f"\n## Editor notes\n{editor_notes.strip()}\n"
+        if editor_notes and editor_notes.strip()
+        else "\n## Editor notes\n(none)\n"
+    )
+    return {
+        "evidence_markdown": evidence_block,
+        "event_title": str(event_row.get("title") or ""),
+        "event_category": str(event_row.get("category") or ""),
+        "confidence_score": str(event_row.get("confidence_score") or ""),
+        "canonical_url": str(event_row.get("canonical_url") or ""),
+        "editor_notes": notes_block,
+    }
+
+
+def _run_synthesis_layers(
+    *,
+    model: SupportsCompletion,
+    event_row: dict[str, Any],
+    evidence_block: str,
+    corpus: str,
+    editor_notes: str | None,
+    started: float,
+    usage_acc: dict[str, int],
+) -> tuple[str, str, str]:
+    syn_t = load_prompt_markdown("synthesis.v1.md")
+    syn_user = render_prompt(
+        syn_t,
+        _synthesis_event_vars(
+            event_row=event_row,
+            evidence_block=evidence_block,
+            editor_notes=editor_notes,
+        ),
+    )
+    syn_correction = ""
+    title = ""
+    insight = ""
+    context = ""
+    for syn_attempt in range(2):
+        assert_draft_pipeline_budget(started=started, prompt_version=PROMPT_SYNTHESIS_VERSION)
+        syn_data, syn_usage = model.complete_json(
+            system="Respond with a single JSON object only. No markdown, no commentary.",
+            user=syn_user + syn_correction,
+            prompt_version=PROMPT_SYNTHESIS_VERSION,
+            max_tokens=synthesis_layers_max_output_tokens(),
+        )
+        merge_usage(usage_acc, syn_usage)
+
+        title = str(syn_data.get("title") or event_row.get("title") or "Untitled card")
+        insight = str(syn_data.get("insight_layer") or "")
+        context = str(syn_data.get("context_layer") or "")
+
+        if not insight.strip() or not context.strip():
+            raise ValueError("synthesis returned empty insight_layer or context_layer")
+
+        insight, context = _normalize_synthesis_mmj_tags(
+            insight=insight,
+            context=context,
+            assessments=[],
+        )
+        try:
+            _validate_layers(
+                corpus=corpus,
+                insight=insight,
+                context=context,
+                assessments=[],
+            )
+            return title, insight, context
+        except ValueError as exc:
+            if syn_attempt == 0:
+                syn_correction = _SYNTHESIS_MMJ_RETRY_HINT.format(error=exc)
+                continue
+            raise
+    raise RuntimeError("synthesis layers retry loop exhausted")
+
+
+def _run_synthesis_instruments(
+    *,
+    model: SupportsCompletion,
+    event_row: dict[str, Any],
+    evidence_block: str,
+    editor_notes: str | None,
+    insight: str,
+    context: str,
+    corpus: str,
+    started: float,
+    usage_acc: dict[str, int],
+) -> tuple[list[dict[str, Any]], list[dict[str, str]]]:
+    inst_t = load_prompt_markdown("synthesis_instruments.v1.md")
+    base_vars = _synthesis_event_vars(
+        event_row=event_row,
+        evidence_block=evidence_block,
+        editor_notes=editor_notes,
+    )
+    inst_user = render_prompt(
+        inst_t,
+        {
+            **base_vars,
+            "insight_layer": insight,
+            "context_layer": context,
+        },
+    )
+    inst_correction = ""
+    for inst_attempt in range(2):
+        assert_draft_pipeline_budget(
+            started=started,
+            prompt_version=PROMPT_SYN_INSTRUMENTS_VERSION,
+        )
+        inst_data, inst_usage = model.complete_json(
+            system="Respond with a single JSON object only. No markdown, no commentary.",
+            user=inst_user + inst_correction,
+            prompt_version=PROMPT_SYN_INSTRUMENTS_VERSION,
+            max_tokens=synthesis_instruments_max_output_tokens(),
+        )
+        merge_usage(usage_acc, inst_usage)
+
+        assessments = _coerce_assessments(inst_data.get("instrument_assessments"))
+        signals = _coerce_signals(inst_data.get("signals"))
+        normalized_insight, normalized_context = _normalize_synthesis_mmj_tags(
+            insight=insight,
+            context=context,
+            assessments=assessments,
+        )
+        try:
+            _validate_layers(
+                corpus=corpus,
+                insight=normalized_insight,
+                context=normalized_context,
+                assessments=assessments,
+            )
+            return assessments, signals
+        except ValueError as exc:
+            if inst_attempt == 0:
+                inst_correction = _SYNTHESIS_MMJ_RETRY_HINT.format(error=exc)
+                continue
+            raise
+    raise RuntimeError("synthesis instruments retry loop exhausted")
+
+
 def _validate_layers(
     *,
     corpus: str,
@@ -299,68 +447,26 @@ def draft_card_from_event(
         evidence_block = f"{evidence_md}\n\n{evidence_layer.get('macro_stub') or ''}\n"
         corpus = _evidence_corpus(evidence_layer)
 
-        syn_t = load_prompt_markdown("synthesis.v1.md")
-        notes_block = (
-            f"\n## Editor notes\n{editor_notes.strip()}\n"
-            if editor_notes and editor_notes.strip()
-            else "\n## Editor notes\n(none)\n"
+        title, insight, context = _run_synthesis_layers(
+            model=model,
+            event_row=row,
+            evidence_block=evidence_block,
+            corpus=corpus,
+            editor_notes=editor_notes,
+            started=started,
+            usage_acc=usage_acc,
         )
-        syn_user = render_prompt(
-            syn_t,
-            {
-                "evidence_markdown": evidence_block,
-                "event_title": str(row.get("title") or ""),
-                "event_category": str(row.get("category") or ""),
-                "confidence_score": str(row.get("confidence_score") or ""),
-                "canonical_url": str(row.get("canonical_url") or ""),
-                "editor_notes": notes_block,
-            },
+        assessments, signals = _run_synthesis_instruments(
+            model=model,
+            event_row=row,
+            evidence_block=evidence_block,
+            editor_notes=editor_notes,
+            insight=insight,
+            context=context,
+            corpus=corpus,
+            started=started,
+            usage_acc=usage_acc,
         )
-        syn_correction = ""
-        syn_data: dict[str, Any] = {}
-        syn_usage: dict[str, int] = {"input_tokens": 0, "output_tokens": 0}
-        title = ""
-        insight = ""
-        context = ""
-        assessments: list[dict[str, Any]] = []
-        signals: list[dict[str, str]] = []
-        for syn_attempt in range(2):
-            assert_draft_pipeline_budget(started=started, prompt_version=PROMPT_SYNTHESIS_VERSION)
-            syn_data, syn_usage = model.complete_json(
-                system="Respond with a single JSON object only. No markdown, no commentary.",
-                user=syn_user + syn_correction,
-                prompt_version=PROMPT_SYNTHESIS_VERSION,
-                max_tokens=SYNTHESIS_MAX_OUTPUT_TOKENS,
-            )
-            merge_usage(usage_acc, syn_usage)
-
-            title = str(syn_data.get("title") or row.get("title") or "Untitled card")
-            insight = str(syn_data.get("insight_layer") or "")
-            context = str(syn_data.get("context_layer") or "")
-            assessments = _coerce_assessments(syn_data.get("instrument_assessments"))
-            signals = _coerce_signals(syn_data.get("signals"))
-
-            if not insight.strip() or not context.strip():
-                raise ValueError("synthesis returned empty insight_layer or context_layer")
-
-            insight, context = _normalize_synthesis_mmj_tags(
-                insight=insight,
-                context=context,
-                assessments=assessments,
-            )
-            try:
-                _validate_layers(
-                    corpus=corpus,
-                    insight=insight,
-                    context=context,
-                    assessments=assessments,
-                )
-                break
-            except ValueError as exc:
-                if syn_attempt == 0:
-                    syn_correction = _SYNTHESIS_MMJ_RETRY_HINT.format(error=exc)
-                    continue
-                raise
 
         _emit_milestone(on_milestone, STEP_SYNTHESIS)
 
@@ -483,5 +589,9 @@ __all__ = [
     "DissentQualityError",
     "FrameworkQualityError",
     "MilestoneCallback",
+    "PROMPT_SYN_INSTRUMENTS_VERSION",
+    "PROMPT_SYNTHESIS_VERSION",
+    "_run_synthesis_instruments",
+    "_run_synthesis_layers",
     "draft_card_from_event",
 ]

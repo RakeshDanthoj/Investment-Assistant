@@ -28,7 +28,7 @@ services:
       - key: NVIDIA_API_KEY
         sync: false
       - key: LLM_MODEL
-        value: nvidia/nemotron-3-super-120b-a12b
+        value: nvidia/nemotron-3-nano-30b-a3b
       - key: LLM_BASE_URL
         sync: false
       - key: LLM_REQUEST_TIMEOUT_SECONDS
@@ -36,7 +36,11 @@ services:
       - key: LLM_MAX_RETRIES
         value: "3"
       - key: DRAFT_PIPELINE_MAX_LLM_CALLS
-        value: "5"
+        value: "6"
+      - key: LLM_SYNTHESIS_LAYERS_MAX_TOKENS
+        value: "4096"
+      - key: LLM_SYNTHESIS_INSTRUMENTS_MAX_TOKENS
+        value: "4096"
       - key: NEWSAPI_KEY
         sync: false
 

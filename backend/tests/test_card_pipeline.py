@@ -29,7 +29,7 @@ def _matrix() -> dict:
 
 
 def _fake_llm_calls():
-    syn = {
+    syn_layers = {
         "title": "Test headline",
         "insight_layer": (
             "HDFCBANK shows crude sensitivity near -4 on the seeded matrix [MEASURED]."
@@ -37,6 +37,8 @@ def _fake_llm_calls():
         "context_layer": (
             "That -4 reading is what we surface from the banking slice today [MEASURED]."
         ),
+    }
+    syn_instruments = {
         "instrument_assessments": [
             {
                 "instrument_id": "HDFCBANK",
@@ -66,7 +68,7 @@ def _fake_llm_calls():
         ),
     }
     usage = {"input_tokens": 100, "output_tokens": 200}
-    return [(syn, usage), (dis, usage), (fw, usage)]
+    return [(syn_layers, usage), (syn_instruments, usage), (dis, usage), (fw, usage)]
 
 
 class _SeqLlm:
@@ -129,11 +131,13 @@ def test_draft_card_pipeline_mocked_llm(
     mock_budget.assert_called_once()
     mock_insert.assert_called_once()
     kw = mock_insert.call_args.kwargs
-    assert kw["prompt_version"] == "synthesis.v1|dissent.v1|framework.v1"
+    assert kw["prompt_version"] == (
+        "synthesis.v1|synthesis_instruments.v1|dissent.v1|framework.v1"
+    )
     assert kw["dissenting_view"]
     assert kw["framework_behind_this"].startswith("**Macro factor matrix priors**")
-    assert kw["llm_input_tokens"] == 300
-    assert kw["llm_output_tokens"] == 600
+    assert kw["llm_input_tokens"] == 400
+    assert kw["llm_output_tokens"] == 800
 
 
 MIGRATION = Path(__file__).resolve().parents[1] / "db" / "migrations" / "0008_cards_llm_budget.sql"
@@ -168,6 +172,11 @@ def test_draft_card_repairs_untagged_entry_conditions(
                             "context_layer": (
                                 "Transmission to bank margins lags policy moves [JUDGED]."
                             ),
+                        },
+                        {"input_tokens": 50, "output_tokens": 80},
+                    ),
+                    (
+                        {
                             "instrument_assessments": [
                                 {
                                     "instrument_id": "HDFCBANK",
@@ -261,17 +270,18 @@ def test_draft_card_repairs_untagged_insight_context(
             self._calls = iter(_fake_llm_calls())
 
         def complete_json(self, **kwargs):
-            syn, usage = next(self._calls)
-            syn = {
-                **syn,
-                "insight_layer": (
-                    "HDFCBANK shows crude sensitivity near -4 on the seeded matrix."
-                ),
-                "context_layer": (
-                    "That -4 reading is what we surface from the banking slice today."
-                ),
-            }
-            return syn, usage
+            payload, usage = next(self._calls)
+            if "insight_layer" in payload:
+                payload = {
+                    **payload,
+                    "insight_layer": (
+                        "HDFCBANK shows crude sensitivity near -4 on the seeded matrix."
+                    ),
+                    "context_layer": (
+                        "That -4 reading is what we surface from the banking slice today."
+                    ),
+                }
+            return payload, usage
 
     mock_gate.return_value = CriticalFactsGateResult(
         facts=(
