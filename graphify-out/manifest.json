@@ -200,8 +200,8 @@
     "semantic_hash": ""
   },
   "backend/app/api/admin_review.py": {
-    "mtime": 1780172802.5361862,
-    "ast_hash": "e7482112b719df80610bf49208f1645f",
+    "mtime": 1781431618.334897,
+    "ast_hash": "4a50f1f3e9763c472d7c965630d4d982",
     "semantic_hash": ""
   },
   "backend/app/api/admin_signal_queue.py": {
@@ -210,8 +210,8 @@
     "semantic_hash": ""
   },
   "backend/app/api/cards.py": {
-    "mtime": 1781201738.6602137,
-    "ast_hash": "048e7112eb8bd37f98cc036c95cf1f0d",
+    "mtime": 1781431577.4316616,
+    "ast_hash": "b88ff1b851688fc28c2df41a44622e77",
     "semantic_hash": ""
   },
   "backend/app/api/cards_detail.py": {
@@ -350,8 +350,8 @@
     "semantic_hash": ""
   },
   "backend/app/core/settings.py": {
-    "mtime": 1781201735.104427,
-    "ast_hash": "afb6ac90fd1c00621a05827e57e389dc",
+    "mtime": 1781438344.28468,
+    "ast_hash": "0a152c0119486b8ccaeb77d1d2afd42b",
     "semantic_hash": ""
   },
   "backend/app/db/__init__.py": {
@@ -485,13 +485,13 @@
     "semantic_hash": ""
   },
   "backend/app/services/card_pipeline.py": {
-    "mtime": 1781379767.4012995,
-    "ast_hash": "7d721073b2432b85458c8f45fa12e918",
+    "mtime": 1781438348.710048,
+    "ast_hash": "6fb4b0be43d90cdb22a52e1db211eb91",
     "semantic_hash": ""
   },
   "backend/app/services/card_regen.py": {
-    "mtime": 1781201970.8351934,
-    "ast_hash": "f04cd795338c2d45f59cec773f984e68",
+    "mtime": 1781438364.07089,
+    "ast_hash": "949c3577c3c4bd1ab16921fac3f61682",
     "semantic_hash": ""
   },
   "backend/app/services/card_repository.py": {
@@ -610,8 +610,8 @@
     "semantic_hash": ""
   },
   "backend/app/services/llm_client.py": {
-    "mtime": 1781201730.9111128,
-    "ast_hash": "c6ba257ae5dd096aaac045d7b118a0d1",
+    "mtime": 1781433901.0886533,
+    "ast_hash": "9e558c43750def152d9d59ffb561acff",
     "semantic_hash": ""
   },
   "backend/app/services/local_dev_auth.py": {
@@ -1055,8 +1055,8 @@
     "semantic_hash": ""
   },
   "backend/tests/test_card_pipeline.py": {
-    "mtime": 1781379869.08751,
-    "ast_hash": "63c12639929a4895746bfb8d0a030eb2",
+    "mtime": 1781438390.981097,
+    "ast_hash": "287963d009ca89740dac923f09f79b01",
     "semantic_hash": ""
   },
   "backend/tests/test_card_regen.py": {
@@ -1070,8 +1070,8 @@
     "semantic_hash": ""
   },
   "backend/tests/test_cards_api.py": {
-    "mtime": 1781201970.8351934,
-    "ast_hash": "41220b4d9d9956c9415935410f076a60",
+    "mtime": 1781431576.620488,
+    "ast_hash": "cfbac9433dac28165440ad7eb5646f37",
     "semantic_hash": ""
   },
   "backend/tests/test_confidence_audit_migration_sql.py": {
@@ -1315,8 +1315,8 @@
     "semantic_hash": ""
   },
   "backend/tests/test_mmj_validator.py": {
-    "mtime": 1781379771.3113506,
-    "ast_hash": "baf74fb717562aa1b6df54b1e0cc0177",
+    "mtime": 1781434461.125373,
+    "ast_hash": "c299678d6bcf898470085d343e2b4c4f",
     "semantic_hash": ""
   },
   "backend/tests/test_mode_detection.py": {
@@ -2565,13 +2565,13 @@
     "semantic_hash": ""
   },
   "frontend/lib/editorial/draftFromEvent.test.ts": {
-    "mtime": 1781379776.9166167,
-    "ast_hash": "0e75834c7a6608d9cce6d775e32951f4",
+    "mtime": 1781438394.9940412,
+    "ast_hash": "fe5bffa575f9eb9207b37e24117999a3",
     "semantic_hash": ""
   },
   "frontend/lib/editorial/draftFromEvent.ts": {
-    "mtime": 1781379776.4518795,
-    "ast_hash": "1ecb79da1dbbdd97bb3de7cd7f7109ff",
+    "mtime": 1781438374.589662,
+    "ast_hash": "4116c51e44c68e280dc9ff027224c5cf",
     "semantic_hash": ""
   },
   "frontend/lib/env.ts": {
@@ -3380,8 +3380,8 @@
     "semantic_hash": ""
   },
   "render.yaml": {
-    "mtime": 1779440587.5447598,
-    "ast_hash": "8fd5ac83b38930e4c01862615036100c",
+    "mtime": 1781438376.7749667,
+    "ast_hash": "1558e0ec7aa3f7050f5c3549ffdfa708",
     "semantic_hash": ""
   },
   "scripts/README.md": {
@@ -3392,6 +3392,11 @@
   "docs/PRD/FinnWise_PRD_v3_Final.pdf": {
     "mtime": 1778236232.695758,
     "ast_hash": "2dbb7b39e2405ba08e238f4910bcf0be",
+    "semantic_hash": ""
+  },
+  "backend/tests/test_llm_client.py": {
+    "mtime": 1781433937.9909754,
+    "ast_hash": "ec34033c3f1893cea9aa86396f704161",
     "semantic_hash": ""
   }
 }
