@@ -610,8 +610,8 @@
     "semantic_hash": ""
   },
   "backend/app/services/llm_client.py": {
-    "mtime": 1781441094.270873,
-    "ast_hash": "1f2843258c2aa00f815442d6e5a452fb",
+    "mtime": 1781442866.2412026,
+    "ast_hash": "507630c7cd88da261981116b69ae4a36",
     "semantic_hash": ""
   },
   "backend/app/services/local_dev_auth.py": {
@@ -3380,8 +3380,8 @@
     "semantic_hash": ""
   },
   "render.yaml": {
-    "mtime": 1781438376.7749667,
-    "ast_hash": "1558e0ec7aa3f7050f5c3549ffdfa708",
+    "mtime": 1781442866.6292648,
+    "ast_hash": "0327a6ccbe2293f371e5adb91f8678bb",
     "semantic_hash": ""
   },
   "scripts/README.md": {
@@ -3395,8 +3395,8 @@
     "semantic_hash": ""
   },
   "backend/tests/test_llm_client.py": {
-    "mtime": 1781441110.5139022,
-    "ast_hash": "da7e1edb8e5904ca9c68539b37dd24e9",
+    "mtime": 1781442872.4586923,
+    "ast_hash": "04abaa19e9a6c35aa1afe408391d0364",
     "semantic_hash": ""
   }
 }
