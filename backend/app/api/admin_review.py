@@ -29,6 +29,7 @@ from app.services.editorial_checklist import (
 from app.services.editorial_checklist import (
     check_card as check_editorial,
 )
+from app.services.llm_client import LlmTimeoutError
 from app.services.number_validator import (
     NumberValidationFailedError,
     check_card,
@@ -164,6 +165,8 @@ def post_regenerate_card(card_id: UUID, body: RegenerateCardBody) -> dict:
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
             detail={"code": "llm_monthly_budget", "message": str(exc)},
         ) from exc
+    except LlmTimeoutError as exc:
+        raise _llm_timeout_error(exc) from exc
     except (DissentQualityError, FrameworkQualityError, RuntimeError, ValueError) as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -183,6 +186,13 @@ def _regen_budget_errors(exc: BaseException) -> HTTPException:
             detail={"code": "llm_monthly_budget", "message": str(exc)},
         )
     raise exc
+
+
+def _llm_timeout_error(exc: LlmTimeoutError) -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+        detail={"code": "llm_timeout", "message": str(exc)},
+    )
 
 
 @router.post("/cards/{card_id}/regenerate-section")
@@ -205,6 +215,8 @@ def post_regenerate_section(card_id: UUID, body: RegenerateSectionBody) -> dict:
         ) from exc
     except (DailyLLMCardCapError, MonthlyLLMBudgetError) as exc:
         raise _regen_budget_errors(exc) from exc
+    except LlmTimeoutError as exc:
+        raise _llm_timeout_error(exc) from exc
     except (DissentQualityError, FrameworkQualityError, RuntimeError, ValueError) as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -254,6 +266,8 @@ def post_regenerate_full(card_id: UUID, body: RegenerateFullBody) -> dict:
         ) from exc
     except (DailyLLMCardCapError, MonthlyLLMBudgetError) as exc:
         raise _regen_budget_errors(exc) from exc
+    except LlmTimeoutError as exc:
+        raise _llm_timeout_error(exc) from exc
     except (DissentQualityError, FrameworkQualityError, RuntimeError, ValueError) as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,

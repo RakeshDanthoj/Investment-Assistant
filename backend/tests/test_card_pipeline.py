@@ -77,6 +77,19 @@ class _SeqLlm:
         return next(self._calls)
 
 
+def test_draft_pipeline_deadline_seconds_matches_env() -> None:
+    from app.core.settings import get_settings
+    from app.services.card_pipeline import draft_pipeline_deadline_seconds
+
+    settings = get_settings()
+    expected = (
+        float(settings.llm_request_timeout_seconds)
+        * max(1, int(settings.llm_max_retries))
+        * max(1, int(settings.draft_pipeline_max_llm_calls))
+    )
+    assert draft_pipeline_deadline_seconds() == expected
+
+
 @patch("app.services.card_pipeline.insert_draft_card_bundle", return_value=CARD_ID)
 @patch("app.services.card_pipeline.consume_slot_or_raise")
 @patch("app.services.card_pipeline.check_monthly_budget_or_raise")
@@ -131,3 +144,160 @@ def test_cards_migration_has_budget_function() -> None:
     assert "create table if not exists public.cards" in sql
     assert "try_consume_llm_card_slot" in sql
     assert "llm_card_daily_usage" in sql
+
+
+@patch("app.services.card_pipeline.insert_draft_card_bundle", return_value=CARD_ID)
+@patch("app.services.card_pipeline.consume_slot_or_raise")
+@patch("app.services.card_pipeline.check_monthly_budget_or_raise")
+@patch("app.services.card_pipeline.assert_critical_facts_available")
+@patch("app.services.card_pipeline.fetch_matrix_rows")
+@patch("app.services.card_pipeline.fetch_event_row")
+def test_draft_card_repairs_untagged_entry_conditions(
+    mock_event, mock_matrix, mock_gate, mock_budget, mock_consume, mock_insert
+):
+    from app.services.market_facts_adapters import CriticalFactsGateResult, MarketQuoteFact
+
+    class _RepairLlm:
+        def __init__(self) -> None:
+            self._calls = iter(
+                [
+                    (
+                        {
+                            "title": "RBI policy watch",
+                            "insight_layer": "Policy path stays data-dependent [JUDGED].",
+                            "context_layer": (
+                                "Transmission to bank margins lags policy moves [JUDGED]."
+                            ),
+                            "instrument_assessments": [
+                                {
+                                    "instrument_id": "HDFCBANK",
+                                    "signal_type": "watch",
+                                    "reasoning": (
+                                        "Funding mix keeps the read qualitative for now [JUDGED]."
+                                    ),
+                                    "entry_conditions": [
+                                        "Repo rate reduction of 25 basis points or more",
+                                        "Further policy tightening signal from RBI",
+                                    ],
+                                    "exit_conditions": [],
+                                }
+                            ],
+                            "signals": [],
+                        },
+                        {"input_tokens": 50, "output_tokens": 80},
+                    ),
+                    (
+                        {
+                            "dissenting_view": (
+                                "The counter-story is that transmission can lag policy guidance "
+                                "by several quarters when banks carry excess liquidity buffers "
+                                "and hedging books mute the first pass-through into reported "
+                                "margins in prior tightening cycles [JUDGED]."
+                            )
+                        },
+                        {"input_tokens": 40, "output_tokens": 60},
+                    ),
+                    (
+                        {
+                            "pattern_name": "Policy transmission lag",
+                            "framework_behind_this": (
+                                "Treat policy headlines as a monitor for funding costs, not an "
+                                "instant earnings read, until deposit repricing shows up in "
+                                "reported spreads [JUDGED]."
+                            ),
+                        },
+                        {"input_tokens": 40, "output_tokens": 60},
+                    ),
+                ]
+            )
+
+        def complete_json(self, **kwargs):
+            return next(self._calls)
+
+    mock_gate.return_value = CriticalFactsGateResult(
+        facts=(
+            MarketQuoteFact(
+                fact_id="inr_usd",
+                label="INR/USD",
+                display_value="84.00",
+                observed_at=datetime.now(tz=UTC),
+                source="yfinance",
+                freshness_status="fresh",
+            ),
+        ),
+        unavailable_critical=(),
+        has_stale_critical=False,
+    )
+    mock_event.return_value = {
+        "id": str(EVENT_ID),
+        "title": "RBI signals repo rate reduction of 25 basis points or more",
+        "category": "rbi_policy",
+        "confidence_score": 72,
+        "canonical_url": "https://example.com/rbi",
+        "event_source": "rbi_rss",
+    }
+    mock_matrix.return_value = _matrix()
+    out = draft_card_from_event(EVENT_ID, llm=_RepairLlm())
+    assert out == CARD_ID
+    inserted = mock_insert.call_args.kwargs
+    entry_conditions = inserted["instrument_assessments"][0]["entry_conditions"]
+    assert entry_conditions[0].endswith("[JUDGED].")
+    assert entry_conditions[1] == "Further policy tightening signal from RBI"
+
+
+@patch("app.services.card_pipeline.insert_draft_card_bundle", return_value=CARD_ID)
+@patch("app.services.card_pipeline.consume_slot_or_raise")
+@patch("app.services.card_pipeline.check_monthly_budget_or_raise")
+@patch("app.services.card_pipeline.assert_critical_facts_available")
+@patch("app.services.card_pipeline.fetch_matrix_rows")
+@patch("app.services.card_pipeline.fetch_event_row")
+def test_draft_card_repairs_untagged_insight_context(
+    mock_event, mock_matrix, mock_gate, mock_budget, mock_consume, mock_insert
+):
+    from app.services.market_facts_adapters import CriticalFactsGateResult, MarketQuoteFact
+
+    class _InsightRepairLlm:
+        def __init__(self) -> None:
+            self._calls = iter(_fake_llm_calls())
+
+        def complete_json(self, **kwargs):
+            syn, usage = next(self._calls)
+            syn = {
+                **syn,
+                "insight_layer": (
+                    "HDFCBANK shows crude sensitivity near -4 on the seeded matrix."
+                ),
+                "context_layer": (
+                    "That -4 reading is what we surface from the banking slice today."
+                ),
+            }
+            return syn, usage
+
+    mock_gate.return_value = CriticalFactsGateResult(
+        facts=(
+            MarketQuoteFact(
+                fact_id="inr_usd",
+                label="INR/USD",
+                display_value="84.00",
+                observed_at=datetime.now(tz=UTC),
+                source="yfinance",
+                freshness_status="fresh",
+            ),
+        ),
+        unavailable_critical=(),
+        has_stale_critical=False,
+    )
+    mock_event.return_value = {
+        "id": str(EVENT_ID),
+        "title": "RBI guidance tweak",
+        "category": "rbi_policy",
+        "confidence_score": 72,
+        "canonical_url": "https://example.com/rbi",
+        "event_source": "rbi_rss",
+    }
+    mock_matrix.return_value = _matrix()
+    out = draft_card_from_event(EVENT_ID, llm=_InsightRepairLlm())
+    assert out == CARD_ID
+    inserted = mock_insert.call_args.kwargs
+    assert "[MEASURED]" in inserted["insight_layer"]
+    assert "[MEASURED]" in inserted["context_layer"]

@@ -12,15 +12,18 @@ from uuid import UUID
 
 from app.core.settings import get_settings
 from app.services.card_pipeline import (
+    _SYNTHESIS_MMJ_RETRY_HINT,
     COMBINED_PROMPT_VERSION,
     SupportsCompletion,
     _build_evidence_layer,
     _coerce_assessments,
     _coerce_signals,
     _evidence_corpus,
+    _normalize_synthesis_mmj_tags,
     _validate_dissent,
     _validate_framework,
     _validate_layers,
+    assert_draft_pipeline_budget,
 )
 from app.services.card_repository import (
     fetch_card_detail_for_review,
@@ -41,7 +44,7 @@ from app.services.market_facts_adapters import (
     assert_critical_facts_available,
     quote_facts_to_macro_lines,
 )
-from app.services.mmj_validator import validate_mmj_tags
+from app.services.mmj_validator import repair_mmj_tags, validate_mmj_tags
 from app.services.number_validator import (
     NumberValidationResult,
     check_card,
@@ -219,6 +222,9 @@ def _llm_regen_section(
     text = str(data.get(json_key) or "").strip()
     if not text:
         raise ValueError(f"regen returned empty {json_key}")
+
+    default_tag = "MEASURED" if section in ("insight", "context") else "JUDGED"
+    text = repair_mmj_tags(prose=text, default_tag=default_tag)
 
     corpus = _evidence_corpus(evidence_layer)
     validate_mmj_tags(prose=text)
@@ -405,23 +411,50 @@ def regenerate_full(
             "editor_notes": notes_block,
         },
     )
-    syn_data, syn_usage = model.complete_json(
-        system="Respond with a single JSON object only. No markdown, no commentary.",
-        user=syn_user,
-        prompt_version="synthesis.v1",
-    )
-    merge_usage(usage_acc, syn_usage)
+    syn_correction = ""
+    syn_data: dict[str, Any] = {}
+    syn_usage: dict[str, int] = {"input_tokens": 0, "output_tokens": 0}
+    title = ""
+    insight = ""
+    context = ""
+    assessments: list[dict[str, Any]] = []
+    signals: list[dict[str, str]] = []
+    for syn_attempt in range(2):
+        assert_draft_pipeline_budget(started=started, prompt_version="synthesis.v1")
+        syn_data, syn_usage = model.complete_json(
+            system="Respond with a single JSON object only. No markdown, no commentary.",
+            user=syn_user + syn_correction,
+            prompt_version="synthesis.v1",
+        )
+        merge_usage(usage_acc, syn_usage)
 
-    title = str(syn_data.get("title") or event_row.get("title") or "Untitled card")
-    insight = str(syn_data.get("insight_layer") or "")
-    context = str(syn_data.get("context_layer") or "")
-    assessments = _coerce_assessments(syn_data.get("instrument_assessments"))
-    signals = _coerce_signals(syn_data.get("signals"))
+        title = str(syn_data.get("title") or event_row.get("title") or "Untitled card")
+        insight = str(syn_data.get("insight_layer") or "")
+        context = str(syn_data.get("context_layer") or "")
+        assessments = _coerce_assessments(syn_data.get("instrument_assessments"))
+        signals = _coerce_signals(syn_data.get("signals"))
 
-    if not insight.strip() or not context.strip():
-        raise ValueError("synthesis returned empty insight_layer or context_layer")
+        if not insight.strip() or not context.strip():
+            raise ValueError("synthesis returned empty insight_layer or context_layer")
 
-    _validate_layers(corpus=corpus, insight=insight, context=context, assessments=assessments)
+        insight, context = _normalize_synthesis_mmj_tags(
+            insight=insight,
+            context=context,
+            assessments=assessments,
+        )
+        try:
+            _validate_layers(
+                corpus=corpus,
+                insight=insight,
+                context=context,
+                assessments=assessments,
+            )
+            break
+        except ValueError as exc:
+            if syn_attempt == 0:
+                syn_correction = _SYNTHESIS_MMJ_RETRY_HINT.format(error=exc)
+                continue
+            raise
 
     dis_t = load_prompt_markdown("dissent.v1.md")
     dis_user = render_prompt(
@@ -432,6 +465,7 @@ def regenerate_full(
             "context_layer": context,
         },
     )
+    assert_draft_pipeline_budget(started=started, prompt_version="dissent.v1")
     dis_data, dis_usage = model.complete_json(
         system="Respond with a single JSON object only. No markdown, no commentary.",
         user=dis_user,
@@ -439,7 +473,10 @@ def regenerate_full(
     )
     merge_usage(usage_acc, dis_usage)
 
-    dissenting_view = str(dis_data.get("dissenting_view") or "").strip()
+    dissenting_view = repair_mmj_tags(
+        prose=str(dis_data.get("dissenting_view") or ""),
+        default_tag="JUDGED",
+    ).strip()
     if not dissenting_view:
         raise ValueError("dissenting_view empty")
     _validate_dissent(dissenting_view)
@@ -454,6 +491,7 @@ def regenerate_full(
             "dissenting_view": dissenting_view,
         },
     )
+    assert_draft_pipeline_budget(started=started, prompt_version="framework.v1")
     fw_data, fw_usage = model.complete_json(
         system="Respond with a single JSON object only. No markdown, no commentary.",
         user=fw_user,
@@ -462,7 +500,10 @@ def regenerate_full(
     merge_usage(usage_acc, fw_usage)
 
     pattern_name = str(fw_data.get("pattern_name") or "").strip()
-    framework_text = str(fw_data.get("framework_behind_this") or "").strip()
+    framework_text = repair_mmj_tags(
+        prose=str(fw_data.get("framework_behind_this") or ""),
+        default_tag="JUDGED",
+    ).strip()
     _validate_framework(pattern_name, framework_text)
 
     validate_mmj_tags(prose=dissenting_view)

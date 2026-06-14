@@ -8,6 +8,7 @@ from collections.abc import Callable
 from typing import Any, Protocol
 from uuid import UUID
 
+from app.core.settings import get_settings
 from app.services.card_repository import fetch_event_row, insert_draft_card_bundle
 from app.services.confidence_scorer import apply_confidence_to_event
 from app.services.cost_guard import (
@@ -25,13 +26,13 @@ from app.services.lens_pipeline_steps import (
     STEP_SYNTHESIS,
     STEP_VALIDATE,
 )
-from app.services.llm_client import LlmClient, load_prompt_markdown, render_prompt
+from app.services.llm_client import LlmClient, LlmTimeoutError, load_prompt_markdown, render_prompt
 from app.services.market_facts_adapters import (
     CriticalFactsHoldError,
     assert_critical_facts_available,
     quote_facts_to_macro_lines,
 )
-from app.services.mmj_validator import validate_mmj_tags
+from app.services.mmj_validator import repair_mmj_tags, validate_mmj_tags
 from app.services.number_validator import validate_numbers_in_evidence
 from app.services.pipeline_telemetry import record_pipeline_run
 
@@ -42,6 +43,20 @@ PROMPT_FRAMEWORK_VERSION = "framework.v1"
 COMBINED_PROMPT_VERSION = (
     f"{PROMPT_SYNTHESIS_VERSION}|{PROMPT_DISSENT_VERSION}|{PROMPT_FRAMEWORK_VERSION}"
 )
+
+# synthesis (up to 2) + dissent + framework
+DRAFT_PIPELINE_MAX_LLM_CALLS = 5
+
+
+def draft_pipeline_deadline_seconds() -> float:
+    return get_settings().draft_pipeline_deadline_seconds()
+
+
+def assert_draft_pipeline_budget(*, started: float, prompt_version: str) -> None:
+    """Fail the draft with LlmTimeoutError before the browser aborts a hung pipeline."""
+    deadline_s = draft_pipeline_deadline_seconds()
+    if time.perf_counter() - started >= deadline_s:
+        raise LlmTimeoutError(timeout_seconds=deadline_s, prompt_version=prompt_version)
 
 
 class SupportsCompletion(Protocol):
@@ -182,6 +197,43 @@ def _coerce_signals(raw: Any) -> list[dict[str, str]]:
     return out
 
 
+def _normalize_synthesis_mmj_tags(
+    *,
+    insight: str,
+    context: str,
+    assessments: list[dict[str, Any]],
+) -> tuple[str, str]:
+    """
+    Auto-append MMJ tags the model omitted before validation.
+
+    Evidence-backed layers default to [MEASURED]; monitors and judgment default to [JUDGED].
+    """
+    repaired_insight = repair_mmj_tags(prose=insight, default_tag="MEASURED")
+    repaired_context = repair_mmj_tags(prose=context, default_tag="MEASURED")
+    for asm in assessments:
+        reasoning = str(asm.get("reasoning") or "")
+        if reasoning.strip():
+            asm["reasoning"] = repair_mmj_tags(prose=reasoning, default_tag="JUDGED")
+        asm["entry_conditions"] = [
+            repair_mmj_tags(prose=str(condition))
+            for condition in (asm.get("entry_conditions") or [])
+        ]
+        asm["exit_conditions"] = [
+            repair_mmj_tags(prose=str(condition))
+            for condition in (asm.get("exit_conditions") or [])
+        ]
+    return repaired_insight, repaired_context
+
+
+_SYNTHESIS_MMJ_RETRY_HINT = (
+    "\n\n## Correction required\n"
+    "Your previous JSON failed editorial validation:\n{error}\n\n"
+    "Re-emit the **complete** JSON object. Every sentence that contains a digit "
+    "must end with [MEASURED], [MODELLED], or [JUDGED] (uppercase, square brackets) — "
+    "including insight_layer, context_layer, and instrument_assessments.reasoning.\n"
+)
+
+
 def _validate_layers(
     *,
     corpus: str,
@@ -195,13 +247,16 @@ def _validate_layers(
 
     for asm in assessments:
         reasoning = str(asm.get("reasoning") or "")
-        joined_conds = " ".join(
-            list(asm.get("entry_conditions") or []) + list(asm.get("exit_conditions") or [])
-        )
-        for chunk in (reasoning, joined_conds):
-            if chunk.strip():
-                validate_mmj_tags(prose=chunk)
-                validate_numbers_in_evidence(prose=chunk, evidence_corpus=corpus)
+        if reasoning.strip():
+            validate_mmj_tags(prose=reasoning)
+            validate_numbers_in_evidence(prose=reasoning, evidence_corpus=corpus)
+        for condition in list(asm.get("entry_conditions") or []) + list(
+            asm.get("exit_conditions") or []
+        ):
+            cond_text = str(condition or "").strip()
+            if cond_text:
+                validate_mmj_tags(prose=cond_text)
+                validate_numbers_in_evidence(prose=cond_text, evidence_corpus=corpus)
 
 
 def draft_card_from_event(
@@ -255,24 +310,52 @@ def draft_card_from_event(
                 "editor_notes": notes_block,
             },
         )
-        syn_data, syn_usage = model.complete_json(
-            system="Respond with a single JSON object only. No markdown, no commentary.",
-            user=syn_user,
-            prompt_version=PROMPT_SYNTHESIS_VERSION,
-        )
-        merge_usage(usage_acc, syn_usage)
+        syn_correction = ""
+        syn_data: dict[str, Any] = {}
+        syn_usage: dict[str, int] = {"input_tokens": 0, "output_tokens": 0}
+        title = ""
+        insight = ""
+        context = ""
+        assessments: list[dict[str, Any]] = []
+        signals: list[dict[str, str]] = []
+        for syn_attempt in range(2):
+            assert_draft_pipeline_budget(started=started, prompt_version=PROMPT_SYNTHESIS_VERSION)
+            syn_data, syn_usage = model.complete_json(
+                system="Respond with a single JSON object only. No markdown, no commentary.",
+                user=syn_user + syn_correction,
+                prompt_version=PROMPT_SYNTHESIS_VERSION,
+            )
+            merge_usage(usage_acc, syn_usage)
 
-        title = str(syn_data.get("title") or row.get("title") or "Untitled card")
-        insight = str(syn_data.get("insight_layer") or "")
-        context = str(syn_data.get("context_layer") or "")
-        assessments = _coerce_assessments(syn_data.get("instrument_assessments"))
-        signals = _coerce_signals(syn_data.get("signals"))
+            title = str(syn_data.get("title") or row.get("title") or "Untitled card")
+            insight = str(syn_data.get("insight_layer") or "")
+            context = str(syn_data.get("context_layer") or "")
+            assessments = _coerce_assessments(syn_data.get("instrument_assessments"))
+            signals = _coerce_signals(syn_data.get("signals"))
 
-        if not insight.strip() or not context.strip():
-            raise ValueError("synthesis returned empty insight_layer or context_layer")
+            if not insight.strip() or not context.strip():
+                raise ValueError("synthesis returned empty insight_layer or context_layer")
+
+            insight, context = _normalize_synthesis_mmj_tags(
+                insight=insight,
+                context=context,
+                assessments=assessments,
+            )
+            try:
+                _validate_layers(
+                    corpus=corpus,
+                    insight=insight,
+                    context=context,
+                    assessments=assessments,
+                )
+                break
+            except ValueError as exc:
+                if syn_attempt == 0:
+                    syn_correction = _SYNTHESIS_MMJ_RETRY_HINT.format(error=exc)
+                    continue
+                raise
 
         _emit_milestone(on_milestone, STEP_SYNTHESIS)
-        _validate_layers(corpus=corpus, insight=insight, context=context, assessments=assessments)
 
         dis_t = load_prompt_markdown("dissent.v1.md")
         dis_user = render_prompt(
@@ -283,6 +366,7 @@ def draft_card_from_event(
                 "context_layer": context,
             },
         )
+        assert_draft_pipeline_budget(started=started, prompt_version=PROMPT_DISSENT_VERSION)
         dis_data, dis_usage = model.complete_json(
             system="Respond with a single JSON object only. No markdown, no commentary.",
             user=dis_user,
@@ -290,7 +374,10 @@ def draft_card_from_event(
         )
         merge_usage(usage_acc, dis_usage)
 
-        dissenting_view = str(dis_data.get("dissenting_view") or "").strip()
+        dissenting_view = repair_mmj_tags(
+            prose=str(dis_data.get("dissenting_view") or ""),
+            default_tag="JUDGED",
+        ).strip()
         if not dissenting_view:
             raise DissentQualityError("dissenting_view empty")
         _validate_dissent(dissenting_view)
@@ -306,6 +393,7 @@ def draft_card_from_event(
                 "dissenting_view": dissenting_view,
             },
         )
+        assert_draft_pipeline_budget(started=started, prompt_version=PROMPT_FRAMEWORK_VERSION)
         fw_data, fw_usage = model.complete_json(
             system="Respond with a single JSON object only. No markdown, no commentary.",
             user=fw_user,
@@ -314,7 +402,10 @@ def draft_card_from_event(
         merge_usage(usage_acc, fw_usage)
 
         pattern_name = str(fw_data.get("pattern_name") or "").strip()
-        framework_text = str(fw_data.get("framework_behind_this") or "").strip()
+        framework_text = repair_mmj_tags(
+            prose=str(fw_data.get("framework_behind_this") or ""),
+            default_tag="JUDGED",
+        ).strip()
         _validate_framework(pattern_name, framework_text)
         _emit_milestone(on_milestone, STEP_FRAMEWORK)
 

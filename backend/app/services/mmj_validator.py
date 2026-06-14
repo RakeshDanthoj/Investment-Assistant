@@ -16,6 +16,26 @@ def _split_sentences(text: str) -> list[str]:
     return [c.strip() for c in chunks if c.strip()]
 
 
+def repair_mmj_tags(*, prose: str, default_tag: str = "JUDGED") -> str:
+    """
+    Append an MMJ tag to quantitative sentences that lack one.
+
+    Used for hypothetical monitor strings (entry/exit conditions) where [JUDGED]
+    is the correct provenance when the model omits a tag.
+    """
+    tag = f"[{default_tag}]"
+    repaired: list[str] = []
+    for sentence in _split_sentences(prose):
+        if _HAS_DIGIT.search(sentence) and not _MMJ_TAG.search(sentence):
+            stripped = sentence.rstrip()
+            if stripped.endswith((".", "!", "?")):
+                stripped = stripped[:-1].rstrip()
+            repaired.append(f"{stripped} {tag}.")
+        else:
+            repaired.append(sentence)
+    return " ".join(repaired)
+
+
 def validate_mmj_tags(*, prose: str) -> None:
     """
     Any sentence containing a digit must include at least one MMJ tag in that sentence.

@@ -15,13 +15,28 @@ from app.core.settings import get_settings
 _LOG = logging.getLogger(__name__)
 
 _REPO_PROMPTS = Path(__file__).resolve().parents[2] / "prompts"
-_MAX_RETRIES = 4
 _BACKOFF_BASE_S = 0.7
 _DEFAULT_BASE_URL = "https://integrate.api.nvidia.com/v1"
 
 
+class LlmTimeoutError(RuntimeError):
+    """LLM request exceeded the configured per-call timeout."""
+
+    def __init__(self, *, timeout_seconds: float, prompt_version: str) -> None:
+        self.timeout_seconds = timeout_seconds
+        self.prompt_version = prompt_version
+        super().__init__(
+            f"LLM request timed out after {timeout_seconds:.0f}s "
+            f"(prompt {prompt_version}). "
+            "Use a faster model (e.g. nvidia/nemotron-3-super-120b-a12b) or raise "
+            "LLM_REQUEST_TIMEOUT_SECONDS."
+        )
+
+
 def _is_retryable_api_error(exc: BaseException) -> bool:
-    if isinstance(exc, (APIConnectionError, APITimeoutError, RateLimitError)):
+    if isinstance(exc, APITimeoutError):
+        return False
+    if isinstance(exc, (APIConnectionError, RateLimitError)):
         return True
     return isinstance(exc, APIStatusError) and exc.status_code in {
         408,
@@ -81,8 +96,17 @@ class LlmClient:
         if not key:
             raise RuntimeError("NVIDIA_API_KEY is not configured")
         base_url = settings.llm_base_url.strip() or _DEFAULT_BASE_URL
-        self._client = OpenAI(api_key=key, base_url=base_url)
+        timeout_s = float(settings.llm_request_timeout_seconds)
+        # Disable SDK-level retries; complete_json applies its own bounded retry policy.
+        self._client = OpenAI(
+            api_key=key,
+            base_url=base_url,
+            timeout=timeout_s,
+            max_retries=0,
+        )
         self._model_name = settings.llm_model.strip()
+        self._timeout_seconds = timeout_s
+        self._max_retries = max(1, int(settings.llm_max_retries))
 
     def complete_json(
         self,
@@ -97,7 +121,7 @@ class LlmClient:
         """
         attempt = 0
         last_exc: Exception | None = None
-        while attempt < _MAX_RETRIES:
+        while attempt < self._max_retries:
             attempt += 1
             try:
                 response = self._client.chat.completions.create(
@@ -130,9 +154,14 @@ class LlmClient:
                     },
                 )
                 return data, {"input_tokens": usage_in, "output_tokens": usage_out}
-            except (APIConnectionError, APITimeoutError, RateLimitError, APIStatusError) as exc:
+            except APITimeoutError as exc:
+                raise LlmTimeoutError(
+                    timeout_seconds=self._timeout_seconds,
+                    prompt_version=prompt_version,
+                ) from exc
+            except (APIConnectionError, RateLimitError, APIStatusError) as exc:
                 last_exc = exc
-                if not _is_retryable_api_error(exc) or attempt >= _MAX_RETRIES:
+                if not _is_retryable_api_error(exc) or attempt >= self._max_retries:
                     break
                 sleep_s = _BACKOFF_BASE_S * (2 ** (attempt - 1))
                 _LOG.warning(
@@ -142,7 +171,7 @@ class LlmClient:
                 time.sleep(sleep_s)
             except (json.JSONDecodeError, ValueError, AttributeError) as exc:
                 last_exc = exc
-                if attempt >= _MAX_RETRIES:
+                if attempt >= self._max_retries:
                     break
                 sleep_s = _BACKOFF_BASE_S * (2 ** (attempt - 1))
                 _LOG.warning(

@@ -58,6 +58,8 @@ class AdminNoStoreCacheMiddleware(BaseHTTPMiddleware):
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    # .env.local lives at repo root; uvicorn reload may not re-import until restart.
+    get_settings.cache_clear()
     init_db_pool()
     yield
     close_db_pool()

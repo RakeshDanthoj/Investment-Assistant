@@ -29,13 +29,37 @@ class Settings(BaseSettings):
     supabase_db_url: str = ""
     nvidia_api_key: str = Field(default="", validation_alias="NVIDIA_API_KEY")
     llm_model: str = Field(
-        default="nvidia/nemotron-3-ultra-550b-a55b",
+        default="nvidia/nemotron-3-super-120b-a12b",
         validation_alias="LLM_MODEL",
     )
     llm_base_url: str = Field(
         default="https://integrate.api.nvidia.com/v1",
         validation_alias="LLM_BASE_URL",
     )
+    llm_request_timeout_seconds: float = Field(
+        default=90.0,
+        validation_alias="LLM_REQUEST_TIMEOUT_SECONDS",
+    )
+    llm_max_retries: int = Field(
+        default=2,
+        validation_alias="LLM_MAX_RETRIES",
+    )
+    draft_pipeline_max_llm_calls: int = Field(
+        default=5,
+        validation_alias="DRAFT_PIPELINE_MAX_LLM_CALLS",
+    )
+
+    def draft_pipeline_deadline_seconds(self) -> float:
+        """
+        Wall-clock budget for draft-from-event (synthesis×2 + dissent + framework).
+
+        Each slot allows up to llm_max_retries per-call attempts at llm_request_timeout_seconds.
+        """
+        return (
+            float(self.llm_request_timeout_seconds)
+            * max(1, int(self.llm_max_retries))
+            * max(1, int(self.draft_pipeline_max_llm_calls))
+        )
 
     @field_validator("supabase_url", mode="before")
     @classmethod
@@ -48,9 +72,9 @@ class Settings(BaseSettings):
     @classmethod
     def _llm_model_fallback(cls, v: object) -> object:
         if v is None:
-            return "nvidia/nemotron-3-ultra-550b-a55b"
+            return "nvidia/nemotron-3-super-120b-a12b"
         if isinstance(v, str) and not v.strip():
-            return "nvidia/nemotron-3-ultra-550b-a55b"
+            return "nvidia/nemotron-3-super-120b-a12b"
         return v
 
     @field_validator("llm_base_url", mode="before")

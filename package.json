@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "pnpm --parallel -r run dev",
     "dev:frontend": "pnpm --filter frontend dev",
-    "dev:backend": "cd backend && uvicorn app.main:app --reload --port 8000",
+    "dev:backend": "cd backend && uvicorn app.main:app --reload --host 127.0.0.1 --port 8000 --reload-dir . --reload-dir ..",
     "lint": "pnpm -r run lint",
     "typecheck": "pnpm --filter frontend typecheck",
     "test": "pnpm -r run test",
