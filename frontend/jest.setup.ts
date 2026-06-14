@@ -17,3 +17,14 @@ if (!globalThis.crypto?.subtle) {
     configurable: true,
   });
 }
+
+// jsdom does not implement AbortSignal.timeout (Node 17.3+ / modern browsers do).
+if (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout !== "function") {
+  AbortSignal.timeout = (delay: number): AbortSignal => {
+    const controller = new AbortController();
+    setTimeout(() => {
+      controller.abort(new DOMException("Signal timed out", "TimeoutError"));
+    }, delay);
+    return controller.signal;
+  };
+}

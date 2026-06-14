@@ -7,12 +7,14 @@ alwaysApply: true
 
 **Every execution that edits code must finish with CI-green locally.** Do not mark work complete until checks pass. Read `.cursor/skills/ci-ready-changes/SKILL.md` for traps and patterns.
 
-## Before finishing
+## Before finishing (before commit / PR)
 
 1. Identify touched jobs: `backend` (`backend/**`), `frontend` (`frontend/**`), or both.
-2. Run the matching commands from repo root.
+2. Run the matching commands from repo root — **all of them**, in order, not just lint/typecheck.
 3. Fix all failures and re-run until green.
 4. Report what ran and the result in the final summary.
+
+**Frontend async/fetch changes:** `pnpm lint` and `pnpm typecheck` do not execute runtime code. Always run `pnpm test` — Jest/jsdom lacks APIs that Node and browsers have (e.g. `AbortSignal.timeout`). See skill § Frontend traps.
 
 ## Commands (mirror `.github/workflows/ci.yml`)
 
@@ -43,3 +45,5 @@ pnpm build
 - Say "should pass" without running the commands.
 - Fix only one reported lint line without full `ruff check backend`.
 - Skip CI checks because the task was "small".
+- Skip `pnpm test` after frontend changes because lint/typecheck passed — runtime-only failures (jsdom API gaps, fetch mocks) only surface in Jest.
+- Mark work complete without running the full matching command block at least once locally.
