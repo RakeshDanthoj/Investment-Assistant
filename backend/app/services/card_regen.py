@@ -39,7 +39,12 @@ from app.services.cost_guard import (
     estimate_cost_usd,
     merge_usage,
 )
-from app.services.llm_client import LlmClient, load_prompt_markdown, render_prompt
+from app.services.llm_client import (
+    SYNTHESIS_MAX_OUTPUT_TOKENS,
+    LlmClient,
+    load_prompt_markdown,
+    render_prompt,
+)
 from app.services.market_facts_adapters import (
     assert_critical_facts_available,
     quote_facts_to_macro_lines,
@@ -425,6 +430,7 @@ def regenerate_full(
             system="Respond with a single JSON object only. No markdown, no commentary.",
             user=syn_user + syn_correction,
             prompt_version="synthesis.v1",
+            max_tokens=SYNTHESIS_MAX_OUTPUT_TOKENS,
         )
         merge_usage(usage_acc, syn_usage)
 

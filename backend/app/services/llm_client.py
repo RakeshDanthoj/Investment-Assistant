@@ -17,6 +17,8 @@ _LOG = logging.getLogger(__name__)
 _REPO_PROMPTS = Path(__file__).resolve().parents[2] / "prompts"
 _BACKOFF_BASE_S = 0.7
 _DEFAULT_BASE_URL = "https://integrate.api.nvidia.com/v1"
+_OUTPUT_TOKEN_CAP = 16384
+SYNTHESIS_MAX_OUTPUT_TOKENS = 8192
 
 
 class LlmTimeoutError(RuntimeError):
@@ -67,26 +69,46 @@ def render_prompt(template: str, variables: dict[str, str]) -> str:
     return out
 
 
-def _extract_json_object(text: str) -> dict[str, Any]:
+def _json_message_text(message: Any) -> str:
+    """
+    Prefer `content` for json_object responses.
+
+    Reasoning models (e.g. Nemotron) may emit chain-of-thought in `reasoning`;
+    concatenating those fields corrupts or truncates the JSON payload.
+    """
+    content = getattr(message, "content", None)
+    if isinstance(content, str) and content.strip():
+        return content.strip()
+    for attr in ("reasoning", "reasoning_content"):
+        val = getattr(message, attr, None)
+        if isinstance(val, str) and val.strip():
+            return val.strip()
+    return ""
+
+
+def _json_parse_error(text: str, *, finish_reason: str | None) -> ValueError:
+    preview = text[:400]
+    if finish_reason == "length":
+        return ValueError(
+            "LLM output truncated before valid JSON (finish_reason=length): "
+            f"{preview!r}"
+        )
+    if "{" in text and "}" not in text:
+        return ValueError(f"LLM returned incomplete JSON (no closing brace): {preview!r}")
+    return ValueError(f"LLM returned no JSON object: {preview!r}")
+
+
+def _extract_json_object(text: str, *, finish_reason: str | None = None) -> dict[str, Any]:
     text = text.strip()
     start = text.find("{")
     end = text.rfind("}")
     if start == -1 or end == -1 or end <= start:
-        raise ValueError(f"LLM returned no JSON object: {text[:400]!r}")
+        raise _json_parse_error(text, finish_reason=finish_reason)
     blob = text[start : end + 1]
     try:
         return json.loads(blob)
     except json.JSONDecodeError as exc:
         raise ValueError(f"LLM returned non-JSON payload: {text[:400]!r}") from exc
-
-
-def _message_text(message: Any) -> str:
-    parts: list[str] = []
-    for attr in ("content", "reasoning", "reasoning_content"):
-        val = getattr(message, attr, None)
-        if isinstance(val, str) and val.strip():
-            parts.append(val.strip())
-    return "\n".join(parts)
 
 
 class LlmClient:
@@ -121,6 +143,7 @@ class LlmClient:
         """
         attempt = 0
         last_exc: Exception | None = None
+        request_max_tokens = max_tokens
         while attempt < self._max_retries:
             attempt += 1
             try:
@@ -130,17 +153,21 @@ class LlmClient:
                         {"role": "system", "content": system},
                         {"role": "user", "content": user},
                     ],
-                    max_tokens=max_tokens,
+                    max_tokens=request_max_tokens,
                     temperature=0.2,
                     response_format={"type": "json_object"},
                 )
                 if not response.choices:
                     raise ValueError("LLM returned no choices (blocked or empty)")
 
-                text = _message_text(response.choices[0].message)
+                choice = response.choices[0]
+                finish_reason = getattr(choice, "finish_reason", None)
+                text = _json_message_text(choice.message)
                 if not text:
                     raise ValueError("LLM returned empty text")
-                data = _extract_json_object(text)
+                if finish_reason == "length":
+                    raise _json_parse_error(text, finish_reason=finish_reason)
+                data = _extract_json_object(text, finish_reason=finish_reason)
                 usage = response.usage
                 usage_in = int(usage.prompt_tokens or 0) if usage else 0
                 usage_out = int(usage.completion_tokens or 0) if usage else 0
@@ -173,10 +200,17 @@ class LlmClient:
                 last_exc = exc
                 if attempt >= self._max_retries:
                     break
+                if request_max_tokens < _OUTPUT_TOKEN_CAP:
+                    request_max_tokens = min(request_max_tokens * 2, _OUTPUT_TOKEN_CAP)
                 sleep_s = _BACKOFF_BASE_S * (2 ** (attempt - 1))
                 _LOG.warning(
                     "llm.retry_json",
-                    extra={"attempt": attempt, "sleep_s": sleep_s, "error": repr(exc)},
+                    extra={
+                        "attempt": attempt,
+                        "sleep_s": sleep_s,
+                        "error": repr(exc),
+                        "max_tokens": request_max_tokens,
+                    },
                 )
                 time.sleep(sleep_s)
         assert last_exc is not None

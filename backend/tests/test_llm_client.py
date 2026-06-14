@@ -5,7 +5,20 @@ from unittest.mock import MagicMock, patch
 import pytest
 from openai import APITimeoutError
 
-from app.services.llm_client import LlmClient, LlmTimeoutError
+from app.services.llm_client import (
+    LlmClient,
+    LlmTimeoutError,
+    _json_message_text,
+)
+
+
+def test_json_message_text_uses_content_only_when_reasoning_present() -> None:
+    message = MagicMock(
+        content='{"title": "ok"}',
+        reasoning="chain-of-thought should not be merged",
+        reasoning_content=None,
+    )
+    assert _json_message_text(message) == '{"title": "ok"}'
 
 
 def test_complete_json_maps_api_timeout_to_llm_timeout_error() -> None:
@@ -80,3 +93,60 @@ def test_openai_client_uses_configured_timeout_and_disables_sdk_retries(
         timeout=75.0,
         max_retries=0,
     )
+
+
+@patch("app.services.llm_client.get_settings")
+def test_complete_json_retries_with_higher_max_tokens_on_truncation(mock_get_settings) -> None:
+    settings = MagicMock()
+    settings.nvidia_api_key = "nvapi-test"
+    settings.llm_base_url = "https://integrate.api.nvidia.com/v1"
+    settings.llm_model = "test-model"
+    settings.llm_request_timeout_seconds = 90.0
+    settings.llm_max_retries = 2
+    mock_get_settings.return_value = settings
+
+    truncated = '{\n "title": "RBI Holds Rates",\n "context_layer": "partial'
+    full_json = '{"title": "RBI Holds Rates", "context_layer": "done"}'
+
+    client = LlmClient.__new__(LlmClient)
+    client._timeout_seconds = 90.0
+    client._max_retries = 2
+    client._model_name = "test-model"
+
+    mock_create = MagicMock(
+        side_effect=[
+            MagicMock(
+                choices=[
+                    MagicMock(
+                        message=MagicMock(content=truncated, reasoning=None),
+                        finish_reason="length",
+                    )
+                ],
+                usage=MagicMock(prompt_tokens=100, completion_tokens=4096),
+            ),
+            MagicMock(
+                choices=[
+                    MagicMock(
+                        message=MagicMock(content=full_json, reasoning=None),
+                        finish_reason="stop",
+                    )
+                ],
+                usage=MagicMock(prompt_tokens=100, completion_tokens=200),
+            ),
+        ]
+    )
+    client._client = MagicMock()
+    client._client.chat.completions.create = mock_create
+
+    data, usage = client.complete_json(
+        system="sys",
+        user="user",
+        prompt_version="synthesis.v1",
+        max_tokens=4096,
+    )
+
+    assert data["title"] == "RBI Holds Rates"
+    assert usage["output_tokens"] == 200
+    assert mock_create.call_count == 2
+    assert mock_create.call_args_list[0].kwargs["max_tokens"] == 4096
+    assert mock_create.call_args_list[1].kwargs["max_tokens"] == 8192

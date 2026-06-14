@@ -26,7 +26,13 @@ from app.services.lens_pipeline_steps import (
     STEP_SYNTHESIS,
     STEP_VALIDATE,
 )
-from app.services.llm_client import LlmClient, LlmTimeoutError, load_prompt_markdown, render_prompt
+from app.services.llm_client import (
+    SYNTHESIS_MAX_OUTPUT_TOKENS,
+    LlmClient,
+    LlmTimeoutError,
+    load_prompt_markdown,
+    render_prompt,
+)
 from app.services.market_facts_adapters import (
     CriticalFactsHoldError,
     assert_critical_facts_available,
@@ -324,6 +330,7 @@ def draft_card_from_event(
                 system="Respond with a single JSON object only. No markdown, no commentary.",
                 user=syn_user + syn_correction,
                 prompt_version=PROMPT_SYNTHESIS_VERSION,
+                max_tokens=SYNTHESIS_MAX_OUTPUT_TOKENS,
             )
             merge_usage(usage_acc, syn_usage)
 

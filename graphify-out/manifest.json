@@ -485,13 +485,13 @@
     "semantic_hash": ""
   },
   "backend/app/services/card_pipeline.py": {
-    "mtime": 1781438348.710048,
-    "ast_hash": "6fb4b0be43d90cdb22a52e1db211eb91",
+    "mtime": 1781441095.6479256,
+    "ast_hash": "a94e5ebf0c8accbfed779f8b949ea498",
     "semantic_hash": ""
   },
   "backend/app/services/card_regen.py": {
-    "mtime": 1781438364.07089,
-    "ast_hash": "949c3577c3c4bd1ab16921fac3f61682",
+    "mtime": 1781441106.2202744,
+    "ast_hash": "fcc7137a507da1f262b3fdf18da73556",
     "semantic_hash": ""
   },
   "backend/app/services/card_repository.py": {
@@ -610,8 +610,8 @@
     "semantic_hash": ""
   },
   "backend/app/services/llm_client.py": {
-    "mtime": 1781433901.0886533,
-    "ast_hash": "9e558c43750def152d9d59ffb561acff",
+    "mtime": 1781441094.270873,
+    "ast_hash": "1f2843258c2aa00f815442d6e5a452fb",
     "semantic_hash": ""
   },
   "backend/app/services/local_dev_auth.py": {
@@ -2415,8 +2415,8 @@
     "semantic_hash": ""
   },
   "frontend/jest.setup.ts": {
-    "mtime": 1779623320.2777312,
-    "ast_hash": "1a7e0b4ed92612a26d7c26bcf6458316",
+    "mtime": 1781440328.8913052,
+    "ast_hash": "8c1ad96b52b986818e6f593bef22cc46",
     "semantic_hash": ""
   },
   "frontend/lib/admin-nav.test.ts": {
@@ -3035,8 +3035,8 @@
     "semantic_hash": ""
   },
   "docs/PRD/Learnings.md": {
-    "mtime": 1779631052.517848,
-    "ast_hash": "c65703a0da8a02e79240cc36f76ab0ed",
+    "mtime": 1781440456.9414222,
+    "ast_hash": "0184594cc4f41fa33dba0326bf5123bc",
     "semantic_hash": ""
   },
   "docs/Post Implementation documentation/Phase1.5_P1.5-S1 - Baseline instrumentation and latency proof.md": {
@@ -3395,8 +3395,8 @@
     "semantic_hash": ""
   },
   "backend/tests/test_llm_client.py": {
-    "mtime": 1781433937.9909754,
-    "ast_hash": "ec34033c3f1893cea9aa86396f704161",
+    "mtime": 1781441110.5139022,
+    "ast_hash": "da7e1edb8e5904ca9c68539b37dd24e9",
     "semantic_hash": ""
   }
 }
