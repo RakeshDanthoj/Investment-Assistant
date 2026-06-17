@@ -1,5 +1,5 @@
 ---
-description: Production incident triage — decision tree, one branch at a time, config-format checks before credential rabbit holes
+description: 
 alwaysApply: true
 ---
 
@@ -37,7 +37,7 @@ Do not fixate on "wrong key" (anon vs service role) when the codebase shows inco
 ## 3. Separate browser symptom from root cause
 
 | Observation | Often means |
-|-------------|-------------|
+|----|----|
 | CORS error + 500 in Network tab | Server crashed; 500 response may omit CORS headers — **not** necessarily misconfigured CORS |
 | CORS error + 200/4xx with no ACAO | True CORS misconfiguration |
 | "Failed to fetch" | Network block, CORS mask, or unreachable host — reproduce outside the browser |

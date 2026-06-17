@@ -18,7 +18,9 @@ _REPO_PROMPTS = Path(__file__).resolve().parents[2] / "prompts"
 _BACKOFF_BASE_S = 0.7
 _DEFAULT_BASE_URL = "https://integrate.api.nvidia.com/v1"
 _OUTPUT_TOKEN_CAP = 16384
-SYNTHESIS_MAX_OUTPUT_TOKENS = 8192
+DEFAULT_MAX_OUTPUT_TOKENS = 4096
+# Nemotron reasoning models spend max_tokens on chain-of-thought before JSON content.
+_JSON_COMPLETION_EXTRA_BODY = {"chat_template_kwargs": {"enable_thinking": False}}
 
 
 class LlmTimeoutError(RuntimeError):
@@ -30,9 +32,29 @@ class LlmTimeoutError(RuntimeError):
         super().__init__(
             f"LLM request timed out after {timeout_seconds:.0f}s "
             f"(prompt {prompt_version}). "
-            "Use a faster model (e.g. nvidia/nemotron-3-super-120b-a12b) or raise "
+            "Use a faster model (e.g. nvidia/nemotron-3-nano-30b-a3b) or raise "
             "LLM_REQUEST_TIMEOUT_SECONDS."
         )
+
+
+class LlmOutputTruncatedError(ValueError):
+    """LLM hit the output token limit before returning valid JSON."""
+
+    def __init__(self, *, prompt_version: str, preview: str) -> None:
+        self.prompt_version = prompt_version
+        self.preview = preview
+        super().__init__(
+            "LLM output truncated before valid JSON (finish_reason=length). "
+            f"Prompt {prompt_version}. Preview: {preview!r}"
+        )
+
+
+def synthesis_layers_max_output_tokens() -> int:
+    return max(1024, int(get_settings().llm_synthesis_layers_max_tokens))
+
+
+def synthesis_instruments_max_output_tokens() -> int:
+    return max(1024, int(get_settings().llm_synthesis_instruments_max_tokens))
 
 
 def _is_retryable_api_error(exc: BaseException) -> bool:
@@ -69,41 +91,71 @@ def render_prompt(template: str, variables: dict[str, str]) -> str:
     return out
 
 
+def _contains_parseable_json_object(text: str) -> bool:
+    stripped = text.strip()
+    start = stripped.find("{")
+    end = stripped.rfind("}")
+    if start == -1 or end == -1 or end <= start:
+        return False
+    try:
+        json.loads(stripped[start : end + 1])
+    except json.JSONDecodeError:
+        return False
+    return True
+
+
 def _json_message_text(message: Any) -> str:
     """
-    Prefer `content` for json_object responses.
+    Return the message field that contains a parseable JSON object.
 
-    Reasoning models (e.g. Nemotron) may emit chain-of-thought in `reasoning`;
-    concatenating those fields corrupts or truncates the JSON payload.
+    Reasoning models (e.g. Nemotron) may emit chain-of-thought in `reasoning`
+    and partial JSON in `content`. Never concatenate fields — pick whichever
+    holds a complete JSON object, preferring `content` when both qualify.
     """
     content = getattr(message, "content", None)
-    if isinstance(content, str) and content.strip():
-        return content.strip()
+    content_str = content.strip() if isinstance(content, str) else ""
+
+    reasoning_parts: list[str] = []
     for attr in ("reasoning", "reasoning_content"):
         val = getattr(message, attr, None)
         if isinstance(val, str) and val.strip():
-            return val.strip()
-    return ""
+            reasoning_parts.append(val.strip())
+    reasoning_str = "\n\n".join(reasoning_parts)
+
+    for candidate in (content_str, reasoning_str):
+        if candidate and _contains_parseable_json_object(candidate):
+            return candidate
+
+    if content_str:
+        return content_str
+    return reasoning_str
 
 
-def _json_parse_error(text: str, *, finish_reason: str | None) -> ValueError:
+def _json_parse_error(
+    text: str,
+    *,
+    finish_reason: str | None,
+    prompt_version: str,
+) -> ValueError:
     preview = text[:400]
     if finish_reason == "length":
-        return ValueError(
-            "LLM output truncated before valid JSON (finish_reason=length): "
-            f"{preview!r}"
-        )
+        return LlmOutputTruncatedError(prompt_version=prompt_version, preview=preview)
     if "{" in text and "}" not in text:
         return ValueError(f"LLM returned incomplete JSON (no closing brace): {preview!r}")
     return ValueError(f"LLM returned no JSON object: {preview!r}")
 
 
-def _extract_json_object(text: str, *, finish_reason: str | None = None) -> dict[str, Any]:
+def _extract_json_object(
+    text: str,
+    *,
+    finish_reason: str | None = None,
+    prompt_version: str = "",
+) -> dict[str, Any]:
     text = text.strip()
     start = text.find("{")
     end = text.rfind("}")
     if start == -1 or end == -1 or end <= start:
-        raise _json_parse_error(text, finish_reason=finish_reason)
+        raise _json_parse_error(text, finish_reason=finish_reason, prompt_version=prompt_version)
     blob = text[start : end + 1]
     try:
         return json.loads(blob)
@@ -136,7 +188,7 @@ class LlmClient:
         system: str,
         user: str,
         prompt_version: str,
-        max_tokens: int = 4096,
+        max_tokens: int = DEFAULT_MAX_OUTPUT_TOKENS,
     ) -> tuple[dict[str, Any], dict[str, int]]:
         """
         Returns parsed JSON object + usage dict {input_tokens, output_tokens}.
@@ -156,6 +208,7 @@ class LlmClient:
                     max_tokens=request_max_tokens,
                     temperature=0.2,
                     response_format={"type": "json_object"},
+                    extra_body=_JSON_COMPLETION_EXTRA_BODY,
                 )
                 if not response.choices:
                     raise ValueError("LLM returned no choices (blocked or empty)")
@@ -165,9 +218,17 @@ class LlmClient:
                 text = _json_message_text(choice.message)
                 if not text:
                     raise ValueError("LLM returned empty text")
-                if finish_reason == "length":
-                    raise _json_parse_error(text, finish_reason=finish_reason)
-                data = _extract_json_object(text, finish_reason=finish_reason)
+                if finish_reason == "length" and not _contains_parseable_json_object(text):
+                    raise _json_parse_error(
+                        text,
+                        finish_reason=finish_reason,
+                        prompt_version=prompt_version,
+                    )
+                data = _extract_json_object(
+                    text,
+                    finish_reason=finish_reason,
+                    prompt_version=prompt_version,
+                )
                 usage = response.usage
                 usage_in = int(usage.prompt_tokens or 0) if usage else 0
                 usage_out = int(usage.completion_tokens or 0) if usage else 0
@@ -178,6 +239,7 @@ class LlmClient:
                         "input_tokens": usage_in,
                         "output_tokens": usage_out,
                         "model": self._model_name,
+                        "finish_reason": finish_reason,
                     },
                 )
                 return data, {"input_tokens": usage_in, "output_tokens": usage_out}

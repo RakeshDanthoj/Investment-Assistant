@@ -12,17 +12,14 @@ from uuid import UUID
 
 from app.core.settings import get_settings
 from app.services.card_pipeline import (
-    _SYNTHESIS_MMJ_RETRY_HINT,
     COMBINED_PROMPT_VERSION,
     SupportsCompletion,
     _build_evidence_layer,
-    _coerce_assessments,
-    _coerce_signals,
     _evidence_corpus,
-    _normalize_synthesis_mmj_tags,
+    _run_synthesis_instruments,
+    _run_synthesis_layers,
     _validate_dissent,
     _validate_framework,
-    _validate_layers,
     assert_draft_pipeline_budget,
 )
 from app.services.card_repository import (
@@ -40,7 +37,6 @@ from app.services.cost_guard import (
     merge_usage,
 )
 from app.services.llm_client import (
-    SYNTHESIS_MAX_OUTPUT_TOKENS,
     LlmClient,
     load_prompt_markdown,
     render_prompt,
@@ -399,68 +395,26 @@ def regenerate_full(
     evidence_block = f"{evidence_md}\n\n{evidence_layer.get('macro_stub') or ''}\n"
     corpus = _evidence_corpus(evidence_layer)
 
-    notes_block = (
-        f"\n## Editor notes\n{editor_notes.strip()}\n"
-        if editor_notes and editor_notes.strip()
-        else "\n## Editor notes\n(none)\n"
+    title, insight, context = _run_synthesis_layers(
+        model=model,
+        event_row=event_row,
+        evidence_block=evidence_block,
+        corpus=corpus,
+        editor_notes=editor_notes,
+        started=started,
+        usage_acc=usage_acc,
     )
-    syn_t = load_prompt_markdown("synthesis.v1.md")
-    syn_user = render_prompt(
-        syn_t,
-        {
-            "evidence_markdown": evidence_block,
-            "event_title": str(event_row.get("title") or ""),
-            "event_category": str(event_row.get("category") or ""),
-            "confidence_score": str(event_row.get("confidence_score") or ""),
-            "canonical_url": str(event_row.get("canonical_url") or ""),
-            "editor_notes": notes_block,
-        },
+    assessments, signals = _run_synthesis_instruments(
+        model=model,
+        event_row=event_row,
+        evidence_block=evidence_block,
+        editor_notes=editor_notes,
+        insight=insight,
+        context=context,
+        corpus=corpus,
+        started=started,
+        usage_acc=usage_acc,
     )
-    syn_correction = ""
-    syn_data: dict[str, Any] = {}
-    syn_usage: dict[str, int] = {"input_tokens": 0, "output_tokens": 0}
-    title = ""
-    insight = ""
-    context = ""
-    assessments: list[dict[str, Any]] = []
-    signals: list[dict[str, str]] = []
-    for syn_attempt in range(2):
-        assert_draft_pipeline_budget(started=started, prompt_version="synthesis.v1")
-        syn_data, syn_usage = model.complete_json(
-            system="Respond with a single JSON object only. No markdown, no commentary.",
-            user=syn_user + syn_correction,
-            prompt_version="synthesis.v1",
-            max_tokens=SYNTHESIS_MAX_OUTPUT_TOKENS,
-        )
-        merge_usage(usage_acc, syn_usage)
-
-        title = str(syn_data.get("title") or event_row.get("title") or "Untitled card")
-        insight = str(syn_data.get("insight_layer") or "")
-        context = str(syn_data.get("context_layer") or "")
-        assessments = _coerce_assessments(syn_data.get("instrument_assessments"))
-        signals = _coerce_signals(syn_data.get("signals"))
-
-        if not insight.strip() or not context.strip():
-            raise ValueError("synthesis returned empty insight_layer or context_layer")
-
-        insight, context = _normalize_synthesis_mmj_tags(
-            insight=insight,
-            context=context,
-            assessments=assessments,
-        )
-        try:
-            _validate_layers(
-                corpus=corpus,
-                insight=insight,
-                context=context,
-                assessments=assessments,
-            )
-            break
-        except ValueError as exc:
-            if syn_attempt == 0:
-                syn_correction = _SYNTHESIS_MMJ_RETRY_HINT.format(error=exc)
-                continue
-            raise
 
     dis_t = load_prompt_markdown("dissent.v1.md")
     dis_user = render_prompt(

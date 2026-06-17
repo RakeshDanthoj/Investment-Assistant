@@ -92,3 +92,39 @@ def test_matrix_requires_admin(monkeypatch: pytest.MonkeyPatch) -> None:
     assert r.status_code == 403
 
     app.dependency_overrides.pop(get_current_user, None)
+
+
+def test_matrix_allows_admin_with_semicolon_list(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.core.settings import get_settings
+
+    monkeypatch.setenv("FACTOR_DB_ADMIN_EMAILS", "owner@example.com; other@example.com")
+    monkeypatch.delenv("SUPABASE_DB_URL", raising=False)
+    get_settings.cache_clear()
+
+    async def _owner():
+        return User(id="111", email="owner@example.com")
+
+    app.dependency_overrides[get_current_user] = _owner
+
+    monkeypatch.setattr(
+        factor_db_svc,
+        "fetch_matrix_rows",
+        MagicMock(
+            return_value={
+                "sector": {"slug": "banking"},
+                "factors": [],
+                "instruments": [],
+                "sensitivities": {},
+            }
+        ),
+    )
+
+    client = TestClient(app)
+    r = client.get(
+        "/api/factor-db/matrix",
+        headers={"Authorization": "Bearer dummy"},
+    )
+
+    assert r.status_code == 200, r.text
+
+    app.dependency_overrides.pop(get_current_user, None)

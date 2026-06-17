@@ -14,11 +14,11 @@ describe("draftFromEventTimeoutMs", () => {
     else process.env.NEXT_PUBLIC_DRAFT_FROM_EVENT_TIMEOUT_MS = prevOverride;
   });
 
-  it("defaults to per-call timeout × retries × 5 calls + 45s buffer", () => {
+  it("defaults to per-call timeout × retries × 6 calls + 45s buffer", () => {
     delete process.env.NEXT_PUBLIC_DRAFT_FROM_EVENT_TIMEOUT_MS;
     delete process.env.NEXT_PUBLIC_LLM_REQUEST_TIMEOUT_SECONDS;
     delete process.env.NEXT_PUBLIC_LLM_MAX_RETRIES;
-    expect(draftFromEventTimeoutMs()).toBe(90 * 2 * 5 * 1000 + 45_000);
+    expect(draftFromEventTimeoutMs()).toBe(90 * 2 * 6 * 1000 + 45_000);
   });
 
   it("honours NEXT_PUBLIC_DRAFT_FROM_EVENT_TIMEOUT_MS override", () => {
@@ -78,7 +78,7 @@ describe("parseDraftFromEventError", () => {
     );
 
     expect(message).toMatch(/timed out/i);
-    expect(message).toMatch(/super-120b/i);
+    expect(message).toMatch(/nano-30b/i);
   });
 
   it("maps FUNCTION_INVOCATION_TIMEOUT to editor-friendly copy", () => {
@@ -89,6 +89,21 @@ describe("parseDraftFromEventError", () => {
 
     expect(message).toMatch(/timed out in the hosting proxy/i);
     expect(message).toMatch(/30–90 seconds/i);
+  });
+
+  it("maps llm_output_truncated to editor-friendly copy", () => {
+    const message = parseDraftFromEventError(
+      422,
+      JSON.stringify({
+        detail: {
+          code: "llm_output_truncated",
+          message: "truncated",
+        },
+      }),
+    );
+
+    expect(message).toMatch(/output tokens/i);
+    expect(message).toMatch(/nano-30b/i);
   });
 
   it("maps draft_pipeline_failed MMJ errors to editor-friendly copy", () => {

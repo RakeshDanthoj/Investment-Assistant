@@ -17,7 +17,7 @@ from app.services.card_pipeline import (
     draft_card_from_event,
 )
 from app.services.cost_guard import DailyLLMCardCapError, MonthlyLLMBudgetError
-from app.services.llm_client import LlmTimeoutError
+from app.services.llm_client import LlmOutputTruncatedError, LlmTimeoutError
 
 router = APIRouter()
 
@@ -63,6 +63,20 @@ def post_draft_from_event(body: DraftFromEventRequest) -> DraftFromEventResponse
         raise HTTPException(
             status_code=status.HTTP_504_GATEWAY_TIMEOUT,
             detail={"code": "llm_timeout", "message": str(exc)},
+        ) from exc
+    except LlmOutputTruncatedError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "code": "llm_output_truncated",
+                "message": (
+                    "Draft generation failed because the model hit its output limit "
+                    f"before finishing structured JSON ({exc.prompt_version}). "
+                    "Retry once; if it persists, switch to "
+                    "nvidia/nemotron-3-nano-30b-a3b or raise "
+                    "LLM_SYNTHESIS_LAYERS_MAX_TOKENS / LLM_SYNTHESIS_INSTRUMENTS_MAX_TOKENS."
+                ),
+            },
         ) from exc
     except RateLimitError as exc:
         raise HTTPException(
