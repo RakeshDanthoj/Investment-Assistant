@@ -1,3 +1,4 @@
+import os
 from functools import lru_cache
 from pathlib import Path
 
@@ -22,6 +23,23 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         extra="ignore",
     )
+
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls: type[BaseSettings],
+        init_settings,
+        env_settings,
+        dotenv_settings,
+        file_secret_settings,
+    ):
+        """
+        Tests expect to fully control settings via monkeypatch.setenv/delenv.
+        Skip loading `.env.local` under pytest so deletions behave as expected.
+        """
+        if os.getenv("PYTEST_CURRENT_TEST"):
+            return init_settings, env_settings, file_secret_settings
+        return init_settings, env_settings, dotenv_settings, file_secret_settings
 
     supabase_url: str = ""
     supabase_anon_key: str = ""
@@ -49,11 +67,11 @@ class Settings(BaseSettings):
         validation_alias="DRAFT_PIPELINE_MAX_LLM_CALLS",
     )
     llm_synthesis_layers_max_tokens: int = Field(
-        default=4096,
+        default=16384,
         validation_alias="LLM_SYNTHESIS_LAYERS_MAX_TOKENS",
     )
     llm_synthesis_instruments_max_tokens: int = Field(
-        default=4096,
+        default=16384,
         validation_alias="LLM_SYNTHESIS_INSTRUMENTS_MAX_TOKENS",
     )
 

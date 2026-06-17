@@ -38,9 +38,9 @@ services:
       - key: DRAFT_PIPELINE_MAX_LLM_CALLS
         value: "6"
       - key: LLM_SYNTHESIS_LAYERS_MAX_TOKENS
-        value: "4096"
+        value: "8192"
       - key: LLM_SYNTHESIS_INSTRUMENTS_MAX_TOKENS
-        value: "4096"
+        value: "8192"
       - key: NEWSAPI_KEY
         sync: false
 

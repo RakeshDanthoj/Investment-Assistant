@@ -7,22 +7,15 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
+from app.core.admin_emails import normalized_admin_emails
 from app.core.auth import User, get_current_user
 from app.core.settings import get_settings
 from app.services import factor_db as factor_db_svc
 
 router = APIRouter(prefix="/factor-db")
 
-
-def _normalized_admin_emails() -> set[str]:
-    raw = get_settings().factor_db_admin_emails.strip()
-    if not raw:
-        return set()
-    return {part.strip().lower() for part in raw.split(",") if part.strip()}
-
-
 def require_factor_db_admin(current: User = Depends(get_current_user)) -> User:
-    allow = _normalized_admin_emails()
+    allow = normalized_admin_emails(get_settings())
     email = (current.email or "").strip().lower()
     if not allow or email not in allow:
         raise HTTPException(

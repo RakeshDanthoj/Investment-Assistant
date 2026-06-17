@@ -23,6 +23,8 @@ Instrument assessments and signals are generated in a **separate** follow-on cal
 
 Keep total JSON under ~900 words. Shorter is better.
 
+Do **not** enumerate every ticker or sensitivity row from Evidence. Synthesise **patterns** across at most **2–3 named tickers** as brief examples; leave instrument-level detail to the follow-on instruments call.
+
 ## Evidence
 
 {{evidence_markdown}}

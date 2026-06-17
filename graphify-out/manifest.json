@@ -235,8 +235,8 @@
     "semantic_hash": ""
   },
   "backend/app/api/factor_db.py": {
-    "mtime": 1779017792.79419,
-    "ast_hash": "0b9c161bbb864b854601a138ab645bef",
+    "mtime": 1781690722.347673,
+    "ast_hash": "86714823da651efc26153202eba85031",
     "semantic_hash": ""
   },
   "backend/app/api/feed.py": {
@@ -330,8 +330,8 @@
     "semantic_hash": ""
   },
   "backend/app/core/admin_emails.py": {
-    "mtime": 1780903590.4711826,
-    "ast_hash": "da68c7597e1553467255ee520088bd40",
+    "mtime": 1781690715.9697397,
+    "ast_hash": "4ef60a9790eceedc6189e1b17367f94c",
     "semantic_hash": ""
   },
   "backend/app/core/auth.py": {
@@ -350,8 +350,8 @@
     "semantic_hash": ""
   },
   "backend/app/core/settings.py": {
-    "mtime": 1781458832.7358146,
-    "ast_hash": "61ee8e63ff54698064991dbb6ca1a523",
+    "mtime": 1781685299.0581508,
+    "ast_hash": "d7f85e0cb9abfe41df55c64354bccf4a",
     "semantic_hash": ""
   },
   "backend/app/db/__init__.py": {
@@ -1175,8 +1175,8 @@
     "semantic_hash": ""
   },
   "backend/tests/test_factor_db_api.py": {
-    "mtime": 1779017939.2675161,
-    "ast_hash": "ba22acbe043642db8109e8430df0070f",
+    "mtime": 1781690730.1392524,
+    "ast_hash": "366ac2602fb3d176d7080ca146e07637",
     "semantic_hash": ""
   },
   "backend/tests/test_factor_db_coverage.py": {
@@ -2990,8 +2990,8 @@
     "semantic_hash": ""
   },
   "backend/prompts/synthesis.v1.md": {
-    "mtime": 1781457626.9725177,
-    "ast_hash": "aee7a680f978fbc316ed3d9e22f35838",
+    "mtime": 1781682380.7089505,
+    "ast_hash": "5271ffb962540340bbff8e64b86f5bd2",
     "semantic_hash": ""
   },
   "docs/Guide/admin-guide-editorial-and-ops.md": {
@@ -3130,7 +3130,7 @@
     "semantic_hash": ""
   },
   "docs/Post Implementation documentation/Phase1_P1-S9 - The Pulse \u2014 feed, filters, live insight panel, Fog of War.md": {
-    "mtime": 1781180727.6486993,
+    "mtime": 1781682380.7165873,
     "ast_hash": "5604fcccc009412fdda92759864c00ae",
     "semantic_hash": ""
   },
@@ -3380,8 +3380,8 @@
     "semantic_hash": ""
   },
   "render.yaml": {
-    "mtime": 1781458831.4624083,
-    "ast_hash": "5a2d12b2e248e2d98a8167b614b202b4",
+    "mtime": 1781682380.7117243,
+    "ast_hash": "53dc09ef19b25dc4671fc3e2cc083660",
     "semantic_hash": ""
   },
   "scripts/README.md": {
